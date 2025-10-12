@@ -34,25 +34,15 @@ function createFancyGradient(gradientFill, fancyData, time) {
     const spread = fancyData.spread ?? 30;
     const period = fancyData.period ?? 1.5;
 
-    // 使用时间来创建动态渐变效果
-    let stop = (time / 3000) % period - period;
-    let curoffset = 0;
+    // 简化的动态渐变，更容易看到变化
+    const oscillation = Math.sin(time / period) * spread;
+    const hue1 = hue + oscillation;
+    const hue2 = hue - oscillation;
 
-    // 总是在0位置添加一个颜色
-    const zeropoint = (0 - stop) / (period / 4);
-    gradientFill.addColorStop(0, `hsl(${linearOscillate(zeropoint * Math.PI / 2) * spread + hue}, ${sat}%, ${light}%)`);
-
-    // 总是在1位置添加一个颜色
-    const onepoint = (1 - stop) / (period / 4);
-    gradientFill.addColorStop(1, `hsl(${linearOscillate(onepoint * Math.PI / 2) * spread + hue}, ${sat}%, ${light}%)`);
-
-    // 添加中间的渐变停止点
-    for (; stop < 1; stop += period / 4) {
-        if (stop > 0) {
-            gradientFill.addColorStop(stop, `hsl(${linearOscillate(curoffset) * spread + hue}, ${sat}%, ${light}%)`);
-        }
-        curoffset += (Math.PI / 2);
-    }
+    // 简单的两色渐变，更容易看到变化
+    gradientFill.addColorStop(0, `hsl(${hue1}, ${sat}%, ${light}%)`);
+    gradientFill.addColorStop(0.5, `hsl(${hue}, ${sat}%, ${light}%)`);
+    gradientFill.addColorStop(1, `hsl(${hue2}, ${sat}%, ${light}%)`);
 }
 
 function linearOscillate(x) {
@@ -429,7 +419,8 @@ function drawStaticPetalItem(petal, canvas, options) {
     // 检查是否需要使用fancy效果（从12级开始）
     if (levelColor.fancy && petal.level >= 12) {
         gradientFill = ctx.createLinearGradient(-width/2, -height/2, width/2, height/2);
-        createFancyGradient(gradientFill, levelColor.fancy, Date.now() / 1000);
+        const currentTime = Date.now() / 1000;
+        createFancyGradient(gradientFill, levelColor.fancy, currentTime);
         ctx.fillStyle = gradientFill;
         // 边框颜色使用fancy.border
         ctx.strokeStyle = levelColor.fancy.border;
@@ -459,49 +450,50 @@ function drawStaticPetalItem(petal, canvas, options) {
         ctx.closePath();
         // 注意：不使用clip，而是直接绘制
 
-        // 使用基于时间的动态星星，不需要存储状态
+        // 使用基于时间的动态星星，完全按照petalContainer.js的方式
         const currentTime = Date.now() / 1000;
         const starCount = levelColor.fancy.stars;
 
         for (let starnum = 0; starnum < starCount; starnum++) {
-            // 基于时间计算星星位置，确保移动
+            // 基于时间计算星星位置，保持与petalContainer.js一致的移动方式
             const timeOffset = starnum * 2; // 每颗星星的时间偏移
-            const starX = ((currentTime * 30 + timeOffset * 50) % (boxSize + 100)) - boxSize/2 - 50;
-            const starY = ((currentTime * 20 + timeOffset * 30) % (boxSize + 100)) - boxSize/2 - 50;
+            const starX = ((currentTime * 15 + timeOffset * 20) % (boxSize + 100)) - boxSize/2 - 50;
+            const starY = ((currentTime * 12 + timeOffset * 15) % (boxSize + 100)) - boxSize/2 - 50;
 
-            // 只在可见区域内绘制星星
+            // 只在可见区域内绘制星星，完全按照petalContainer.js的判断
             if (starX > -boxSize/2 && starX < boxSize/2 && starY > -boxSize/2 && starY < boxSize/2) {
                 // 计算星星在画布上的实际位置
                 const starCanvasX = starX + width/2;
                 const starCanvasY = starY + height/2;
 
-                // 创建径向渐变
+                // 完全按照petalContainer.js的星星渲染方式
+                ctx.beginPath();
+
+                // 创建径向渐变，让颜色更刺眼
                 var grad = ctx.createRadialGradient(
-                    starCanvasX, starCanvasY, 15 * scale,
+                    starCanvasX, starCanvasY, 15 * scale,  // 与petalContainer.js一致
                     starCanvasX, starCanvasY, 0
                 );
                 grad.addColorStop(0, "transparent");
-                grad.addColorStop(0.7, `rgba(255,255,255,${(Math.sin(currentTime * 3 + starnum) + 1) * 0.8})`);
+                grad.addColorStop(0.8, `rgba(255,255,255,${(Math.cos(Date.now() / 600 + starX / 30 + starY / 30) + 1) * 0.95})`); // 更高亮度
                 grad.addColorStop(1, "white");
 
                 ctx.fillStyle = grad;
-                ctx.globalAlpha = 0.7;
+                ctx.globalAlpha = 0.6; // 增加透明度让星星更明显
 
-                // 绘制光晕
-                ctx.beginPath();
-                ctx.arc(starCanvasX, starCanvasY, 15 * scale, 0, 2 * Math.PI);
-                ctx.fill();
+                // 绘制光晕区域，按照petalContainer.js的方式
+                ctx.fillRect(boxX, boxY, boxSize, boxSize);
+                ctx.globalAlpha = 1;
 
-                // 绘制星星核心
-                ctx.fillStyle = "#fff";
-                ctx.shadowBlur = 8 * scale;
+                // 绘制更刺眼的星星核心
+                ctx.fillStyle = "#ffffff"; // 纯白色更刺眼
+                ctx.shadowBlur = 8 * scale; // 添加发光效果
                 ctx.shadowColor = "#ffffff";
                 ctx.beginPath();
-                ctx.arc(starCanvasX, starCanvasY, 2.5 * scale, 0, 2 * Math.PI);
+                ctx.arc(starCanvasX, starCanvasY, 1.5 * scale, 0, 2 * Math.PI); // 稍微增大星星核心
                 ctx.fill();
                 ctx.shadowBlur = 0;
                 ctx.closePath();
-                ctx.globalAlpha = 1;
             }
         }
 
@@ -853,7 +845,7 @@ const gameState = {
     equipmentSlots: 10,
     equippedPetals: Array(10).fill(null),
     availablePetals: [],
-    petalImages: {},
+    // petalImages: {}, // 不再使用图片
         roomPlayers: {},
     petal_num : 5,
     heartbeatInterval: null,
@@ -945,29 +937,7 @@ const chatTypeSelector = document.getElementById('chatTypeSelector');
 const chatTypeButtons = chatTypeSelector.querySelectorAll('.chat-type-button');
 
 // 资源列表 - 需要加载的图片（根据实际文件名修改）
-const resources = [
-    // 花瓣图片（使用实际文件名）
-    '01.png', '02.png', '03.png', '04.png', '05.png', '06.png', '07.png',
-    '11.png', '12.png', '13.png', '14.png', '15.png', '16.png', '17.png',
-    '31.png', '32.png', '33.png', '34.png', '35.png', '36.png', '37.png',
-    '41.png', '42.png', '43.png', '44.png', '45.png', '46.png', '47.png',
-    '51.png', '52.png', '53.png', '54.png', '55.png', '56.png', '57.png', // thunder (类型5)
-    '61.png', '62.png', '63.png', '64.png', '65.png', '66.png', '67.png', // venom (类型6)
-    '71.png', '72.png', '73.png', '74.png', '75.png', '76.png', '77.png', // shield (类型7)
-    '81.png', '82.png', '83.png', '84.png', '85.png', '86.png', '87.png', // bomb (类型8)
-    '91.png', '92.png', '93.png', '94.png', '95.png', '96.png', '97.png', // magnet (类型9)
-    '101.png', '102.png', '103.png', '104.png', '105.png', '106.png', '107.png', // thirdeye (类型10)
-    // 怪物图片
-    'hornet.png', 'centipede0.png', 'centipede1.png', 'rock.png', 'ladybug.png',
-    'thunderelement.png', 'venomspider.png', 'shieldguardian.png', 'bombbeetle.png',
-    // 其他图片
-    'flower.png', 'backgroundmini.png', 'background.png', 'logo.png',
-    // UI元素
-    'bag.png', 'absorb.png', 'gallery.png', 'ready.png', 'none.png',
-    // 游戏内花瓣图片
-    'wing.png', 'missile.png', 'basic.png', 'leaf.png', 'hornetMissile.png',
-    'thunder.png', 'venom.png', 'shield.png', 'bomb.png', 'magnet.png', 'thirdeye.png'
-];
+// 不再加载图片资源，直接使用Canvas绘制
 
 // 音频系统初始化
 function initAudioSystem() {
@@ -1991,30 +1961,8 @@ function addPlayerCard(name, build, isCurrentPlayer, isReady = false) {
 
 // 加载资源
 function loadResources() {
-    gameState.totalResources = resources.length;
-    gameState.loadedResources = 0;
-
-    resources.forEach(resource => {
-        const img = new Image();
-        img.onload = () => {
-            gameState.loadedResources++;
-            const progress = (gameState.loadedResources / gameState.totalResources) * 100;
-            progressFill.style.width = `${progress}%`;
-            loadingText.textContent = `${Math.round(progress)}%`;
-
-            if (gameState.loadedResources === gameState.totalResources) {
-                setTimeout(() => {
-                    loadingScreen.style.display = 'none';
-                }, 500);
-            }
-        };
-        img.onerror = () => {
-            console.error(`Failed to load resource: ${resource}`);
-            gameState.loadedResources++;
-        };
-        img.src = resource;
-        gameState.petalImages[resource] = img;
-    });
+    // 不再加载图片资源，直接隐藏加载屏幕
+    loadingScreen.style.display = 'none';
 }
 
 // 使用Canvas绘制花瓣项
