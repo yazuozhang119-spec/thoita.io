@@ -62,7 +62,6 @@ body {
         linear-gradient(rgba(29, 154, 91, 0.8) 1.5px, transparent 1.5px),
         linear-gradient(90deg, rgba(29, 154, 91, 0.8) 1.5px, transparent 1.5px);
     background-size: 30px 30px;
-    animation: gridMove 13.3s linear infinite;
     display: flex;
     flex-direction: column;
     justify-content: center;
