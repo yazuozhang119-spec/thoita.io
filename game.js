@@ -2,6 +2,612 @@
 const memoizedColors = {};
 const damageFlash = false;
 
+
+levelColors = {
+        1: { border: '#66c258', bg: '#7eef6d' },  // common
+        2: { border: '#cfba4b', bg: '#ffe65d' },  // unusual
+        3: { border: '#3e42b8', bg: '#4d52e3' },  // rare
+        4: { border: '#6d19b4', bg: '#861fde' },  // epic
+        5: { border: '#b41919', bg: '#de1f1f' },  // legendary
+        6: { border: '#19b1b4', bg: '#1fdbde' },  // mythic
+        7: { border: '#cf235f', bg: '#ff2b75' },  // ultra
+        8: { border: '#23cf84', bg: '#2bffa3' },  // super
+        9: { border: '#3b3a3b', bg: '#494849' },  // omega
+        10: { border: '#cf4500', bg: '#ff5500' }, // fabled
+        11: { border: '#53447e', bg: '#67549c', fancy: { border: '#53447e', hue: 256, light: 47, sat: 30, spread: 20, period: 1.5 } }, // divine
+        12: { border: '#904bb0', bg: '#b25dd9', fancy: { border: '#904bb0', hue: 281, light: 61, sat: 62, spread: 12, period: 2, stars: 1 } }, // supreme
+        13: { border: '#000000', bg: '#5e004f', fancy: { border: '#151515', hue: 285, light: 20, sat: 100, spread: 35, period: 1.5, stars: 2 } }, // omnipotent
+        14: { border: '#035005', bg: '#046307', fancy: { border: '#035005', hue: 122, light: 25, sat: 100, spread: 60, period: 1.5, stars: 2 } }, // astral
+        15: { border: '#4f6bd1', bg: '#608efc', fancy: { border: '#4f6bd1', hue: 225, light: 69, sat: 100, spread: 10, period: 1, stars: 2 } }, // celestial
+        16: { border: '#a16649', bg: '#c77e5b', fancy: { border: '#a16649', hue: 19, light: 57, sat: 49, spread: 15, period: 1.5, stars: 2 } }, // seraphic
+        17: { border: '#cfcfcf', bg: '#ffffff', fancy: { border: '#cfcfcf', hue: 180, light: 93, sat: 100, spread: 80, period: 1.5, stars: 2 } }, // transcendent
+        18: { border: '#d1a3ba', bg: '#f6c5de', fancy: { border: '#d1a3ba', hue: 341, light: 89, sat: 100, spread: 40, period: 1, stars: 2 } }, // ethereal
+        19: { border: '#974d63', bg: '#7f0226', fancy: { border: '#974d63', hue: 343, light: 26, sat: 97, spread: 20, period: 0.75, stars: 2 } }  // galactic
+    };
+
+
+// Fancy效果辅助函数
+function createFancyGradient(gradientFill, fancyData, time) {
+    const hue = fancyData.hue ?? 0;
+    const sat = fancyData.sat ?? 100;
+    const light = fancyData.light ?? 100;
+    const spread = fancyData.spread ?? 30;
+    const period = fancyData.period ?? 1.5;
+
+    // 使用时间来创建动态渐变效果
+    let stop = (time / 3000) % period - period;
+    let curoffset = 0;
+
+    // 总是在0位置添加一个颜色
+    const zeropoint = (0 - stop) / (period / 4);
+    gradientFill.addColorStop(0, `hsl(${linearOscillate(zeropoint * Math.PI / 2) * spread + hue}, ${sat}%, ${light}%)`);
+
+    // 总是在1位置添加一个颜色
+    const onepoint = (1 - stop) / (period / 4);
+    gradientFill.addColorStop(1, `hsl(${linearOscillate(onepoint * Math.PI / 2) * spread + hue}, ${sat}%, ${light}%)`);
+
+    // 添加中间的渐变停止点
+    for (; stop < 1; stop += period / 4) {
+        if (stop > 0) {
+            gradientFill.addColorStop(stop, `hsl(${linearOscillate(curoffset) * spread + hue}, ${sat}%, ${light}%)`);
+        }
+        curoffset += (Math.PI / 2);
+    }
+}
+
+function linearOscillate(x) {
+    x = x % (Math.PI * 2);
+    if (x < Math.PI) return ((2 * x / Math.PI) - 1);
+    else return (3 - (2 * x / Math.PI));
+}
+
+
+// 花瓣动画循环
+function startPetalAnimation() {
+    function animate() {
+        // 查找所有需要动画的canvas
+        const animatedCanvases = document.querySelectorAll('canvas[data-animated="true"]');
+
+        animatedCanvases.forEach(canvas => {
+            // 重新绘制这个canvas
+            const petal = {
+                type: parseInt(canvas.dataset.petalType),
+                level: parseInt(canvas.dataset.petalLevel)
+            };
+            const options = {
+                displaySize: parseFloat(canvas.dataset.displaySize),
+                resolution: parseFloat(canvas.dataset.resolution)
+            };
+
+            // 检查canvas是否还在DOM中
+            if (document.body.contains(canvas)) {
+                drawStaticPetalItem(petal, canvas, options);
+            }
+        });
+
+        // 继续动画循环
+        if (animatedCanvases.length > 0) {
+            requestAnimationFrame(animate);
+        } else {
+            window.petalAnimationRunning = false;
+        }
+    }
+
+    animate();
+}
+
+// 静态绘制函数（实际绘制逻辑）
+function drawStaticPetalItem(petal, canvas, options) {
+    const ctx = canvas.getContext('2d');
+
+    // 设置默认参数（以55px为基准）
+    const defaults = {
+        displaySize: 55,      // 显示尺寸（像素）
+        resolution: 4,        // 分辨率倍数
+    };
+
+    // 合并用户提供的选项
+    const config = { ...defaults, ...options };
+    const displaySize = config.displaySize;
+    const resolution = config.resolution;
+
+    // 计算实际分辨率
+    const width = displaySize * resolution;
+    const height = displaySize * resolution;
+
+    // 根据displaySize动态计算所有参数（以55px为基准）
+    const scale = displaySize / 55;
+    const borderWidth = 7 * scale;
+    const petalScale = 33 * scale;
+    const petalY = 8 * scale;
+    const fontSize = 10 * scale;
+    const textY = 49 * scale;
+
+    // 设置canvas实际分辨率
+    canvas.width = width;
+    canvas.height = height;
+
+    // 设置显示尺寸
+    canvas.style.width = displaySize + 'px';
+    canvas.style.height = displaySize + 'px';
+
+    // 清空画布
+    ctx.clearRect(0, 0, width, height);
+
+    // 启用抗锯齿和图像平滑
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    // 完全按照原始petalRenderMap复制到drawPetalItem函数内部
+        const localPetalRenderMap = {
+        basic: (p) => {
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.fillStyle = blendColor('#ffffff', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#cfcfcf', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+        },
+        missile: (p) => {
+            p.radius = p.radius * 0.7;
+            let bodyColor = blendColor("#333333", "#FF0000", blendAmount(p));
+            if (checkForFirstFrame(p)) {
+                bodyColor = "#FFFFFF";
+            }
+            ctx.lineJoin = 'round';
+            ctx.rotate(Math.PI * 3 / 4);
+            ctx.beginPath();
+            ctx.fillStyle = bodyColor;
+            ctx.strokeStyle = bodyColor;
+            ctx.lineWidth = p.radius / 1.5;
+            ctx.moveTo(0, -p.radius * Math.sqrt(3));
+            ctx.lineTo(p.radius * Math.sqrt(3) * .48, p.radius / 2 * Math.sqrt(3));
+            ctx.lineTo(-p.radius * Math.sqrt(3) * .48, p.radius / 2 * Math.sqrt(3));
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.rotate(-Math.PI *3 / 4);
+        },
+        leaf: (p) => {
+            p.radius = p.radius * 0.7;
+            const divCoef = 1.305;
+            ctx.lineWidth = p.radius/divCoef/2.5;
+            ctx.fillStyle = blendColor('#39b54a', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#2e933c', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+            ctx.rotate(Math.PI / 4 - 0.2);
+            ctx.beginPath();
+            ctx.moveTo(0, 1.854*p.radius/divCoef);
+            // bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y)
+            ctx.quadraticCurveTo(-2.88*p.radius/divCoef*.87, 0.31*p.radius/divCoef, 0, -2.325*p.radius/divCoef);
+            ctx.moveTo(0, 1.854*p.radius/divCoef);
+            ctx.quadraticCurveTo(2.88*p.radius/divCoef*.87, 0.31*p.radius/divCoef, 0, -2.325*p.radius/divCoef);
+            // tail
+            ctx.moveTo(0, 1.948*p.radius/divCoef);
+            ctx.lineTo(0, 2.536*p.radius/divCoef);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+            ctx.beginPath();
+            // curve in the middle
+            ctx.moveTo(0, (1.948-1)*p.radius/divCoef);
+            ctx.quadraticCurveTo(-0.18*p.radius/divCoef, -0.1885*p.radius/divCoef, 0, (-2.325+1.05)*p.radius/divCoef);
+            ctx.stroke();
+            ctx.closePath();
+            ctx.rotate(-Math.PI / 4 + 0.2);
+        },
+        wing: (p) => {
+            const divCoef = 1.35;
+            ctx.lineWidth = p.radius/divCoef/1.9;
+            ctx.fillStyle = blendColor('#ffffff', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#cdcdcd', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius*1.01, -Math.PI * 0.18, Math.PI * 0.818);
+            ctx.arcTo(p.radius * 0.42, p.radius * 0.6, p.radius*0.85, -p.radius * 0.53, p.radius * 1.7);
+            ctx.stroke();
+            ctx.fill();
+            ctx.closePath();
+        },
+        lighting: (p) => { // thunder -> lighting
+            ctx.strokeStyle = blendColor('#21c4b9', '#FF0000', blendAmount(p));
+            ctx.fillStyle = blendColor('#29f2e5', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#ffffff";
+                ctx.strokeStyle = "#ffffff";
+            }
+            ctx.lineWidth = p.radius * 0.2;
+            ctx.beginPath();
+            for(let i = 0; i<10; i++){
+                let ang = i * Math.PI/5;
+                ctx.lineTo(Math.cos(ang) * p.radius * 0.7, Math.sin(ang) * p.radius * 0.7)
+                ctx.lineTo(Math.cos(ang + Math.PI/10) * p.radius * 1.4, Math.sin(ang + Math.PI/10) * p.radius * 1.4)
+            }
+            ctx.lineTo(p.radius * 0.7, 0)
+            ctx.fill();
+            ctx.stroke();
+        },
+        iris: (p) => { // venom -> iris
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.fillStyle = blendColor('#ce76db', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#a760b1', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+        },
+        shell: (p) => { // shield -> shell
+            ctx.strokeStyle = blendColor('#ccb36d', '#FF0000', blendAmount(p));
+            ctx.fillStyle = blendColor('#fcdd86', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#ffffff";
+                ctx.strokeStyle = "#ffffff";
+            }
+            ctx.lineWidth = p.radius * 0.2;
+            ctx.beginPath();
+            ctx.lineTo(p.radius * -0.73, p.radius * -0.375);
+            ctx.lineTo(p.radius * 0.39, p.radius * -1.15)
+            ctx.arcTo(p.radius * 3.3, p.radius * 0.21, p.radius * 0.14, p.radius * 1.19, p.radius * 1.24)
+            ctx.lineTo(p.radius * 0.14, p.radius * 1.19);
+            ctx.lineTo(p.radius * 0.14, p.radius * 1.19);
+            ctx.lineTo(p.radius * -0.78, p.radius * 0.24);
+            ctx.quadraticCurveTo(p.radius * -0.94, p.radius * -0.06, p.radius * -0.73, p.radius * -0.375)
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+            ctx.lineWidth = p.radius * 0.16
+            ctx.beginPath();
+            ctx.lineTo(p.radius * -0.45, p.radius * -0.24);
+            ctx.lineTo(p.radius * 0.44, p.radius * -0.585);
+            ctx.stroke();
+            ctx.closePath();
+            ctx.beginPath();
+            ctx.lineTo(p.radius * -0.37, p.radius * -0.115);
+            ctx.lineTo(p.radius * 0.62, p.radius * -0.19);
+            ctx.stroke();
+            ctx.closePath();
+            ctx.beginPath();
+            ctx.lineTo(p.radius * -0.39, p.radius * 0.05);
+            ctx.lineTo(p.radius * 0.57, p.radius * 0.31);
+            ctx.stroke();
+            ctx.closePath();
+            ctx.beginPath();
+            ctx.lineTo(p.radius * -0.47, p.radius * 0.16);
+            ctx.lineTo(p.radius * 0.31, p.radius * 0.656);
+            ctx.stroke();
+            ctx.closePath();
+        },
+        bomb: (p) => { // 新设计的bomb花瓣
+            ctx.lineWidth = 3;
+            ctx.fillStyle = blendColor('#2c2c2c', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#1a1a1a', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+            // 绘制圆形主体
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+            // 绘制引线
+            ctx.beginPath();
+            ctx.moveTo(p.radius * 0.6, -p.radius * 0.6);
+            ctx.quadraticCurveTo(p.radius * 0.8, -p.radius * 0.9, p.radius * 1.1, -p.radius * 0.8);
+            ctx.stroke();
+            ctx.closePath();
+            // 绘制火花
+            ctx.fillStyle = blendColor('#ff6b35', '#FF0000', blendAmount(p));
+            ctx.beginPath();
+            ctx.arc(p.radius * 1.1, -p.radius * 0.8, p.radius * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+        },
+        hornet_missile: (p) => {
+            ctx.lineWidth = 3;
+            ctx.fillStyle = blendColor('#ffd700', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#ffb347', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+            ctx.beginPath();
+            ctx.moveTo(0, -p.radius);
+            ctx.lineTo(p.radius * 0.7, 0);
+            ctx.lineTo(p.radius * 0.5, p.radius);
+            ctx.lineTo(-p.radius * 0.5, p.radius);
+            ctx.lineTo(-p.radius * 0.7, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        },
+        magnet: (p) => {
+            ctx.fillStyle = blendColor('#a44343', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#853636', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+            ctx.lineWidth = p.radius / 6;
+            ctx.lineCap = "butt";
+            ctx.beginPath();
+            ctx.moveTo(p.radius * -0.25, p.radius * 0.38);
+            ctx.quadraticCurveTo(p.radius * -0.47, p.radius * 0.22, p.radius * -0.42, p.radius * 0.08)
+            ctx.quadraticCurveTo(p.radius * -0.28, p.radius * -0.25, p.radius * 0.05, p.radius * -0.48);
+            ctx.quadraticCurveTo(p.radius * 0.32, p.radius * -1.12, p.radius * -0.39, p.radius * -1.05)
+            ctx.quadraticCurveTo(p.radius * -1.78, p.radius * 0.1, p.radius * -0.66, p.radius * 0.96)
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+            ctx.fillStyle = blendColor('#4343a4', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#363685', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+            ctx.beginPath();
+            ctx.moveTo(p.radius * -0.68, p.radius * 0.95);
+            ctx.quadraticCurveTo(p.radius * 0.65, p.radius * 1.65, p.radius * 1.1, p.radius * -0.06);
+            ctx.quadraticCurveTo(p.radius * 0.9, p.radius * -0.75, p.radius * 0.4, p.radius * -0.24);
+            ctx.quadraticCurveTo(p.radius * 0.18, p.radius * 0.7, p.radius * -0.25, p.radius * 0.38);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+            ctx.lineCap = "round";
+        },
+        thirdeye: (p) => {
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.fillStyle = blendColor("#000000", '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor("#000000", '#FF0000', blendAmount(p));
+            if (checkForFirstFrame(p)) {
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF"
+            }
+            ctx.beginPath();
+            ctx.lineTo(0, -p.radius * 0.9);
+            ctx.quadraticCurveTo(p.radius * 0.9, 0, 0, p.radius * 0.9);
+            ctx.quadraticCurveTo(-p.radius * 0.9, 0, 0, -p.radius * 0.9);
+            ctx.fill();
+            ctx.stroke()
+            ctx.fillStyle = blendColor("#ffffff", '#FF0000', blendAmount(p));
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+        }
+    };
+
+    // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
+    const levelColors = {
+        1: { border: '#66c258', bg: '#7eef6d' },  // common
+        2: { border: '#cfba4b', bg: '#ffe65d' },  // unusual
+        3: { border: '#3e42b8', bg: '#4d52e3' },  // rare
+        4: { border: '#6d19b4', bg: '#861fde' },  // epic
+        5: { border: '#b41919', bg: '#de1f1f' },  // legendary
+        6: { border: '#19b1b4', bg: '#1fdbde' },  // mythic
+        7: { border: '#cf235f', bg: '#ff2b75' },  // ultra
+        8: { border: '#23cf84', bg: '#2bffa3' },  // super
+        9: { border: '#3b3a3b', bg: '#494849' },  // omega
+        10: { border: '#cf4500', bg: '#ff5500' }, // fabled
+        11: { border: '#53447e', bg: '#67549c', fancy: { border: '#53447e', hue: 256, light: 47, sat: 30, spread: 20, period: 1.5 } }, // divine
+        12: { border: '#904bb0', bg: '#b25dd9', fancy: { border: '#904bb0', hue: 281, light: 61, sat: 62, spread: 12, period: 2, stars: 1 } }, // supreme
+        13: { border: '#000000', bg: '#5e004f', fancy: { border: '#151515', hue: 285, light: 20, sat: 100, spread: 35, period: 1.5, stars: 2 } }, // omnipotent
+        14: { border: '#035005', bg: '#046307', fancy: { border: '#035005', hue: 122, light: 25, sat: 100, spread: 60, period: 1.5, stars: 2 } }, // astral
+        15: { border: '#4f6bd1', bg: '#608efc', fancy: { border: '#4f6bd1', hue: 225, light: 69, sat: 100, spread: 10, period: 1, stars: 2 } }, // celestial
+        16: { border: '#a16649', bg: '#c77e5b', fancy: { border: '#a16649', hue: 19, light: 57, sat: 49, spread: 15, period: 1.5, stars: 2 } }, // seraphic
+        17: { border: '#cfcfcf', bg: '#ffffff', fancy: { border: '#cfcfcf', hue: 180, light: 93, sat: 100, spread: 80, period: 1.5, stars: 2 } }, // transcendent
+        18: { border: '#d1a3ba', bg: '#f6c5de', fancy: { border: '#d1a3ba', hue: 341, light: 89, sat: 100, spread: 40, period: 1, stars: 2 } }, // ethereal
+        19: { border: '#974d63', bg: '#7f0226', fancy: { border: '#974d63', hue: 343, light: 26, sat: 97, spread: 20, period: 0.75, stars: 2 } }  // galactic
+    };
+
+    const levelColor = levelColors[petal.level] || levelColors[1];
+
+    // 按照petalContainer.js的方式处理背景和边框
+    let gradientFill;
+
+    // 检查是否需要使用fancy效果（从12级开始）
+    if (levelColor.fancy && petal.level >= 12) {
+        gradientFill = ctx.createLinearGradient(-width/2, -height/2, width/2, height/2);
+        createFancyGradient(gradientFill, levelColor.fancy, Date.now() / 1000);
+        ctx.fillStyle = gradientFill;
+        // 边框颜色使用fancy.border
+        ctx.strokeStyle = levelColor.fancy.border;
+    } else {
+        ctx.fillStyle = levelColor.bg;
+        ctx.strokeStyle = levelColor.border;
+    }
+
+    // 绘制背景矩形（按照petalContainer.js的方式，使用roundRect）
+    ctx.lineWidth = borderWidth * resolution;
+    const boxSize = Math.min(width, height) * 0.9;
+    const boxX = (width - boxSize) / 2;
+    const boxY = (height - boxSize) / 2;
+
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxSize, boxSize, boxSize * 0.015); // 圆角很小，模仿petalContainer.js
+    ctx.fill();
+    ctx.closePath();
+
+    // 如果有fancy效果且stars不为undefined，绘制星星（完全按照petalContainer.js的方式）
+    if (levelColor.fancy && levelColor.fancy.stars !== undefined && petal.level >= 12) {
+        ctx.save();
+
+        // 创建裁剪区域
+        ctx.beginPath();
+        ctx.roundRect(boxX - boxSize * 0.09, boxY - boxSize * 0.09, boxSize * 1.18, boxSize * 1.18, boxSize * 0.036);
+        ctx.closePath();
+        // 注意：不使用clip，而是直接绘制
+
+        // 使用基于时间的动态星星，不需要存储状态
+        const currentTime = Date.now() / 1000;
+        const starCount = levelColor.fancy.stars;
+
+        for (let starnum = 0; starnum < starCount; starnum++) {
+            // 基于时间计算星星位置，确保移动
+            const timeOffset = starnum * 2; // 每颗星星的时间偏移
+            const starX = ((currentTime * 30 + timeOffset * 50) % (boxSize + 100)) - boxSize/2 - 50;
+            const starY = ((currentTime * 20 + timeOffset * 30) % (boxSize + 100)) - boxSize/2 - 50;
+
+            // 只在可见区域内绘制星星
+            if (starX > -boxSize/2 && starX < boxSize/2 && starY > -boxSize/2 && starY < boxSize/2) {
+                // 计算星星在画布上的实际位置
+                const starCanvasX = starX + width/2;
+                const starCanvasY = starY + height/2;
+
+                // 创建径向渐变
+                var grad = ctx.createRadialGradient(
+                    starCanvasX, starCanvasY, 15 * scale,
+                    starCanvasX, starCanvasY, 0
+                );
+                grad.addColorStop(0, "transparent");
+                grad.addColorStop(0.7, `rgba(255,255,255,${(Math.sin(currentTime * 3 + starnum) + 1) * 0.8})`);
+                grad.addColorStop(1, "white");
+
+                ctx.fillStyle = grad;
+                ctx.globalAlpha = 0.7;
+
+                // 绘制光晕
+                ctx.beginPath();
+                ctx.arc(starCanvasX, starCanvasY, 15 * scale, 0, 2 * Math.PI);
+                ctx.fill();
+
+                // 绘制星星核心
+                ctx.fillStyle = "#fff";
+                ctx.shadowBlur = 8 * scale;
+                ctx.shadowColor = "#ffffff";
+                ctx.beginPath();
+                ctx.arc(starCanvasX, starCanvasY, 2.5 * scale, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.closePath();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        ctx.restore();
+    }
+
+    // 绘制边框
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxSize, boxSize, boxSize * 0.015);
+    ctx.stroke();
+    ctx.closePath();
+
+    // 如果有fancy效果，额外绘制一个半透明的边框（完全按照petalContainer.js）
+    if (levelColor.fancy && petal.level >= 12) {
+        ctx.globalAlpha *= 0.5;
+        ctx.beginPath();
+        ctx.roundRect(boxX - boxSize * 0.09, boxY - boxSize * 0.09, boxSize * 1.18, boxSize * 1.18, boxSize * 0.036);
+        ctx.fillStyle = gradientFill;
+        ctx.fill();
+        ctx.closePath();
+        ctx.globalAlpha = 1;
+    }
+
+    // 绘制花瓣图案
+    const petalSize = petalScale * resolution;  // 动态花瓣大小
+    const petalX = (width - petalSize) / 2;
+    const finalPetalY = petalY * resolution;  // 动态Y位置
+
+    // 创建专用的花瓣渲染函数
+    function renderPetalForItem(type, x, y, size, level) {
+        ctx.save();
+        ctx.translate(x + petalSize/2, y + petalSize/2);
+
+
+        // 临时设置全局ctx为当前canvas上下文
+        window.ctx = ctx;
+
+        // 创建花瓣对象以兼容petalRenderMap
+        const petalData = {
+            type: type,
+            radius: 9 / 55 * displaySize * resolution,  // 基础半径
+            level: level,
+            ticksSinceLastDamaged: 1000,
+            lastTicksSinceLastDamaged: 1000
+        };
+
+        // 根据类型获取对应的渲染函数（小写）
+        const typeMap = {
+            0: 'missile',
+            1: 'basic',
+            3: 'leaf',
+            4: 'wing',
+            5: 'lighting',
+            6: 'iris',
+            7: 'shell',
+            8: 'bomb',
+            9: 'magnet',
+            10: 'thirdeye'
+        };
+
+        const renderType = typeMap[type] || 'basic';
+        const renderFunc = localPetalRenderMap[renderType];
+
+        if (renderFunc) {
+            renderFunc(petalData);
+        }
+
+
+        ctx.restore();
+    }
+
+    // 渲染花瓣
+    renderPetalForItem(petal.type, petalX, finalPetalY, petalSize, petal.level);
+
+    // 绘制花瓣名称
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = `bold ${fontSize * resolution}px Arial`;  // 动态字体大小
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+
+    // 根据花瓣类型获取对应的中文名称
+    const petalNames = {
+        0: '导弹',
+        1: '基础',
+        2: '未使用',
+        3: '叶子',
+        4: '翅膀',
+        5: '闪电',
+        6: '鸢尾花',
+        7: '贝壳',
+        8: '炸弹',
+        9: '磁铁',
+        10: '第三只眼'
+    };
+
+    // 获取花瓣名称，处理各种异常情况
+    let displayName;
+    if (petal.type === undefined || petal.type === null) {
+        displayName = '未知';
+    } else {
+        displayName = petalNames[petal.type] || `类型${petal.type}`;
+    }
+
+    ctx.fillText(displayName, width / 2, textY * resolution);  // 动态文字Y位置
+}
+
 function blendColor(color1, color2, t) {
     const memoizedIndex = color1 + '_' + color2 + '_' + t;
     if (memoizedColors[memoizedIndex] !== undefined) {
@@ -184,6 +790,32 @@ const config = {
 };
 
 // 游戏状态
+// 获取等级名称 - 19级新系统
+function getLevelName(level) {
+    const levelNames = {
+        1: "common",
+        2: "unusual",
+        3: "rare",
+        4: "epic",
+        5: "legendary",
+        6: "mythic",
+        7: "ultra",
+        8: "super",
+        9: "omega",
+        10: "fabled",
+        11: "divine",
+        12: "supreme",
+        13: "omnipotent",
+        14: "astral",
+        15: "celestial",
+        16: "seraphic",
+        17: "paradisiac",
+        18: "protean",
+        19: "unsurpassed"
+    };
+    return levelNames[level] || "unknown";
+}
+
 const gameState = {
     playerId: null,
     connected: false,
@@ -735,8 +1367,8 @@ function updateAbsorbPetalSelection() {
         row.className = 'absorb-petal-row';
         row.style.display = 'flex';
         row.style.alignItems = 'center';
-        row.style.marginBottom = '8px';
-        row.style.gap = '8px';
+        row.style.marginBottom = '-3px';
+        row.style.gap = '5px';
 
         // 查找该种类的所有花瓣（按等级分组）
         const petalsByLevel = {};
@@ -746,13 +1378,13 @@ function updateAbsorbPetalSelection() {
             }
         });
 
-        // 显示1-7级，空缺的显示空白
-        for (let level = 1; level <= 7; level++) {
+        // 显示1-19级，空缺的显示空白 - 19级新系统
+        for (let level = 1; level <= 19; level++) {
             const petalContainer = document.createElement('div');
             petalContainer.className = 'absorb-petal-container';
             petalContainer.style.position = 'relative';
-            petalContainer.style.width = '60px';
-            petalContainer.style.height = '60px';
+            petalContainer.style.width = '36px';
+            petalContainer.style.height = '36px';
 
             if (petalsByLevel[level]) {
                 const petal = petalsByLevel[level];
@@ -761,11 +1393,11 @@ function updateAbsorbPetalSelection() {
                 // 为第七级花瓣添加特殊的CSS类
                   item.draggable = true;
                 item.dataset.index = petal.originalIndex;
-                item.title = `类型: ${petal.type}, 等级: ${petal.level}, 数量: ${petal.count}`;
+                item.title = `类型: ${petal.type}, 等级: ${petal.level} (${getLevelName(petal.level)}), 数量: ${petal.count}`;
 
                 // 使用canvas绘制花瓣
                 const canvas = document.createElement('canvas');
-                drawPetalItem(petal, canvas, {displaySize:58});
+                drawPetalItem(petal, canvas, {displaySize:34});
                 item.appendChild(canvas);
 
                 // 添加数量标签
@@ -787,8 +1419,8 @@ function updateAbsorbPetalSelection() {
                 // 空缺位置显示空白占位符
                 const placeholder = document.createElement('div');
                 placeholder.className = 'absorb-petal-placeholder';
-                placeholder.style.width = '60px';
-                placeholder.style.height = '60px';
+                placeholder.style.width = '33px';
+                placeholder.style.height = '33px';
                 placeholder.style.border = '1px dashed rgba(255, 255, 255, 0.2)';
                 placeholder.style.borderRadius = '3px';
                 placeholder.style.display = 'flex';
@@ -969,14 +1601,10 @@ function updateAbsorbSlotDisplay(slotIndex) {
 
     if (petal) {
         slot.classList.add('filled');
-        // 为第七级花瓣添加特殊的CSS类
-        if (petal.level === 7) {
-            slot.classList.add('level-7');
-        }
 
         // 使用canvas绘制花瓣
         const canvas = document.createElement('canvas');
-        drawPetalItem(petal, canvas, { displaySize: 58 });
+        drawPetalItem(petal, canvas, { displaySize: 33 });
         slot.appendChild(canvas);
 
         // 显示数量标签
@@ -1046,8 +1674,8 @@ function startAbsorb() {
     }
 
     // 检查是否尝试合成最高等级花瓣
-    if (gameState.currentAbsorbLevel >= 7) {
-        alert('7级花瓣已达到最高等级，无法继续合成!');
+    if (gameState.currentAbsorbLevel >= 19) {
+        alert('19级花瓣已达到最高等级，无法继续合成!');
         return;
     }
 
@@ -1256,18 +1884,45 @@ function updateRoomPlayers() {
         Object.keys(gameState.roomInfo).forEach(playerId => {
             if (playerId !== gameState.playerId) {
                 const player = gameState.roomInfo[playerId];
-                addPlayerCard(player.name, player.build, false);
+                addPlayerCard(player.name, player.build, false, player.is_ready);
             }
         });
     }
 }
 
 // 添加玩家卡片
-function addPlayerCard(name, build, isCurrentPlayer) {
+function addPlayerCard(name, build, isCurrentPlayer, isReady = false) {
     const playerCard = document.createElement('div');
     playerCard.className = 'player-card';
     if (isCurrentPlayer) {
         playerCard.classList.add('current-player');
+    }
+
+    // 设置playerCard为相对定位，以便对钩可以正确定位
+    playerCard.style.position = 'relative';
+
+    // 添加准备状态对钩
+    if (isReady) {
+        const readyCheck = document.createElement('div');
+        readyCheck.className = 'ready-check';
+        readyCheck.innerHTML = '✓';
+        readyCheck.style.cssText = `
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: #4CAF50;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 10;
+        `;
+        playerCard.appendChild(readyCheck);
     }
 
     const playerName = document.createElement('div');
@@ -1306,7 +1961,7 @@ function addPlayerCard(name, build, isCurrentPlayer) {
 
                 // 添加等级徽章
 
-                petalIcon.title = `类型: ${petalType}, 等级: ${petalLevel}`;
+                petalIcon.title = `类型: ${petalType}, 等级: ${petalLevel} (${getLevelName(petalLevel)})`;
                 playerBuild.appendChild(petalIcon);
             }
         });
@@ -1364,8 +2019,6 @@ function loadResources() {
 
 // 使用Canvas绘制花瓣项
 function drawPetalItem(petal, canvas, options = {}) {
-    const ctx = canvas.getContext('2d');
-
     // 设置默认参数（以55px为基准）
     const defaults = {
         displaySize: 55,      // 显示尺寸（像素）
@@ -1377,399 +2030,29 @@ function drawPetalItem(petal, canvas, options = {}) {
     const displaySize = config.displaySize;
     const resolution = config.resolution;
 
-    // 计算实际分辨率
-    const width = displaySize * resolution;
-    const height = displaySize * resolution;
+    // 如果是12级以上的花瓣，启动动画循环
+    if (petal.level >= 12 && levelColors[petal.level]?.fancy) {
+        // 标记这个canvas需要动画
+        canvas.dataset.animated = 'true';
+        canvas.dataset.petalType = petal.type;
+        canvas.dataset.petalLevel = petal.level;
+        canvas.dataset.displaySize = displaySize;
+        canvas.dataset.resolution = resolution;
 
-    // 根据displaySize动态计算所有参数（以55px为基准）
-    const scale = displaySize / 55;
-    const borderWidth = 7 * scale;
-    const petalScale = 33 * scale;
-    const petalY = 8 * scale;
-    const fontSize = 10 * scale;
-    const textY = 49 * scale;
-
-    // 设置canvas实际分辨率
-    canvas.width = width;
-    canvas.height = height;
-
-    // 设置显示尺寸
-    canvas.style.width = displaySize + 'px';
-    canvas.style.height = displaySize + 'px';
-
-    // 清空画布
-    ctx.clearRect(0, 0, width, height);
-
-    // 启用抗锯齿和图像平滑
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-
-    // 完全按照原始petalRenderMap复制到drawPetalItem函数内部
-    const localPetalRenderMap = {
-        basic: (p) => {
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.fillStyle = blendColor('#ffffff', '#FF0000', blendAmount(p));
-            ctx.strokeStyle = blendColor('#cfcfcf', '#FF0000', blendAmount(p));
-            if(checkForFirstFrame(p)){
-                ctx.fillStyle = "#FFFFFF";
-                ctx.strokeStyle = "#FFFFFF";
-            }
-            ctx.beginPath();
-            ctx.arc(0, 0, p.radius, 0, Math.PI*2);
-            ctx.fill();
-            ctx.stroke();
-            ctx.closePath();
-        },
-        missile: (p) => {
-            p.radius = p.radius * 0.7;
-            let bodyColor = blendColor("#333333", "#FF0000", blendAmount(p));
-            if (checkForFirstFrame(p)) {
-                bodyColor = "#FFFFFF";
-            }
-            ctx.lineJoin = 'round';
-            ctx.rotate(Math.PI * 3 / 4);
-            ctx.beginPath();
-            ctx.fillStyle = bodyColor;
-            ctx.strokeStyle = bodyColor;
-            ctx.lineWidth = p.radius / 1.5;
-            ctx.moveTo(0, -p.radius * Math.sqrt(3));
-            ctx.lineTo(p.radius * Math.sqrt(3) * .48, p.radius / 2 * Math.sqrt(3));
-            ctx.lineTo(-p.radius * Math.sqrt(3) * .48, p.radius / 2 * Math.sqrt(3));
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-            ctx.rotate(-Math.PI *3 / 4);
-        },
-        leaf: (p) => {
-            p.radius = p.radius * 0.7;
-            const divCoef = 1.35;
-            ctx.lineWidth = p.radius/divCoef/2.5;
-            ctx.fillStyle = blendColor('#39b54a', '#FF0000', blendAmount(p));
-            ctx.strokeStyle = blendColor('#2e933c', '#FF0000', blendAmount(p));
-            if(checkForFirstFrame(p)){
-                ctx.fillStyle = "#FFFFFF";
-                ctx.strokeStyle = "#FFFFFF";
-            }
-            ctx.rotate(Math.PI / 4 - 0.2);
-            ctx.beginPath();
-            ctx.moveTo(0, 1.854*p.radius/divCoef);
-            // bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y)
-            ctx.quadraticCurveTo(-2.88*p.radius/divCoef*.87, 0.31*p.radius/divCoef, 0, -2.325*p.radius/divCoef);
-            ctx.moveTo(0, 1.854*p.radius/divCoef);
-            ctx.quadraticCurveTo(2.88*p.radius/divCoef*.87, 0.31*p.radius/divCoef, 0, -2.325*p.radius/divCoef);
-            // tail
-            ctx.moveTo(0, 1.948*p.radius/divCoef);
-            ctx.lineTo(0, 2.536*p.radius/divCoef);
-            ctx.fill();
-            ctx.stroke();
-            ctx.closePath();
-            ctx.beginPath();
-            // curve in the middle
-            ctx.moveTo(0, (1.948-1)*p.radius/divCoef);
-            ctx.quadraticCurveTo(-0.18*p.radius/divCoef, -0.1885*p.radius/divCoef, 0, (-2.325+1.05)*p.radius/divCoef);
-            ctx.stroke();
-            ctx.closePath();
-            ctx.rotate(-Math.PI / 4 + 0.2);
-        },
-        wing: (p) => {
-            const divCoef = 1.35;
-            ctx.lineWidth = p.radius/divCoef/1.9;
-            ctx.fillStyle = blendColor('#ffffff', '#FF0000', blendAmount(p));
-            ctx.strokeStyle = blendColor('#cdcdcd', '#FF0000', blendAmount(p));
-            if(checkForFirstFrame(p)){
-                ctx.fillStyle = "#FFFFFF";
-                ctx.strokeStyle = "#FFFFFF";
-            }
-            ctx.beginPath();
-            ctx.arc(0, 0, p.radius*1.01, -Math.PI * 0.18, Math.PI * 0.818);
-            ctx.arcTo(p.radius * 0.42, p.radius * 0.6, p.radius*0.85, -p.radius * 0.53, p.radius * 1.7);
-            ctx.stroke();
-            ctx.fill();
-            ctx.closePath();
-        },
-        lighting: (p) => { // thunder -> lighting
-            ctx.strokeStyle = blendColor('#21c4b9', '#FF0000', blendAmount(p));
-            ctx.fillStyle = blendColor('#29f2e5', '#FF0000', blendAmount(p));
-            if(checkForFirstFrame(p)){
-                ctx.fillStyle = "#ffffff";
-                ctx.strokeStyle = "#ffffff";
-            }
-            ctx.lineWidth = p.radius * 0.2;
-            ctx.beginPath();
-            for(let i = 0; i<10; i++){
-                let ang = i * Math.PI/5;
-                ctx.lineTo(Math.cos(ang) * p.radius * 0.7, Math.sin(ang) * p.radius * 0.7)
-                ctx.lineTo(Math.cos(ang + Math.PI/10) * p.radius * 1.4, Math.sin(ang + Math.PI/10) * p.radius * 1.4)
-            }
-            ctx.lineTo(p.radius * 0.7, 0)
-            ctx.fill();
-            ctx.stroke();
-        },
-        iris: (p) => { // venom -> iris
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.fillStyle = blendColor('#ce76db', '#FF0000', blendAmount(p));
-            ctx.strokeStyle = blendColor('#a760b1', '#FF0000', blendAmount(p));
-            if(checkForFirstFrame(p)){
-                ctx.fillStyle = "#FFFFFF";
-                ctx.strokeStyle = "#FFFFFF";
-            }
-            ctx.beginPath();
-            ctx.arc(0, 0, p.radius, 0, Math.PI*2);
-            ctx.fill();
-            ctx.stroke();
-            ctx.closePath();
-        },
-        shell: (p) => { // shield -> shell
-            ctx.strokeStyle = blendColor('#ccb36d', '#FF0000', blendAmount(p));
-            ctx.fillStyle = blendColor('#fcdd86', '#FF0000', blendAmount(p));
-            if(checkForFirstFrame(p)){
-                ctx.fillStyle = "#ffffff";
-                ctx.strokeStyle = "#ffffff";
-            }
-            ctx.lineWidth = p.radius * 0.2;
-            ctx.beginPath();
-            ctx.lineTo(p.radius * -0.73, p.radius * -0.375);
-            ctx.lineTo(p.radius * 0.39, p.radius * -1.15)
-            ctx.arcTo(p.radius * 3.3, p.radius * 0.21, p.radius * 0.14, p.radius * 1.19, p.radius * 1.24)
-            ctx.lineTo(p.radius * 0.14, p.radius * 1.19);
-            ctx.lineTo(p.radius * 0.14, p.radius * 1.19);
-            ctx.lineTo(p.radius * -0.78, p.radius * 0.24);
-            ctx.quadraticCurveTo(p.radius * -0.94, p.radius * -0.06, p.radius * -0.73, p.radius * -0.375)
-            ctx.fill();
-            ctx.stroke();
-            ctx.closePath();
-            ctx.lineWidth = p.radius * 0.16
-            ctx.beginPath();
-            ctx.lineTo(p.radius * -0.45, p.radius * -0.24);
-            ctx.lineTo(p.radius * 0.44, p.radius * -0.585);
-            ctx.stroke();
-            ctx.closePath();
-            ctx.beginPath();
-            ctx.lineTo(p.radius * -0.37, p.radius * -0.115);
-            ctx.lineTo(p.radius * 0.62, p.radius * -0.19);
-            ctx.stroke();
-            ctx.closePath();
-            ctx.beginPath();
-            ctx.lineTo(p.radius * -0.39, p.radius * 0.05);
-            ctx.lineTo(p.radius * 0.57, p.radius * 0.31);
-            ctx.stroke();
-            ctx.closePath();
-            ctx.beginPath();
-            ctx.lineTo(p.radius * -0.47, p.radius * 0.16);
-            ctx.lineTo(p.radius * 0.31, p.radius * 0.656);
-            ctx.stroke();
-            ctx.closePath();
-        },
-        bomb: (p) => { // 新设计的bomb花瓣
-            ctx.lineWidth = 3;
-            ctx.fillStyle = blendColor('#2c2c2c', '#FF0000', blendAmount(p));
-            ctx.strokeStyle = blendColor('#1a1a1a', '#FF0000', blendAmount(p));
-            if(checkForFirstFrame(p)){
-                ctx.fillStyle = "#FFFFFF";
-                ctx.strokeStyle = "#FFFFFF";
-            }
-            // 绘制圆形主体
-            ctx.beginPath();
-            ctx.arc(0, 0, p.radius * 0.8, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-            ctx.closePath();
-            // 绘制引线
-            ctx.beginPath();
-            ctx.moveTo(p.radius * 0.6, -p.radius * 0.6);
-            ctx.quadraticCurveTo(p.radius * 0.8, -p.radius * 0.9, p.radius * 1.1, -p.radius * 0.8);
-            ctx.stroke();
-            ctx.closePath();
-            // 绘制火花
-            ctx.fillStyle = blendColor('#ff6b35', '#FF0000', blendAmount(p));
-            ctx.beginPath();
-            ctx.arc(p.radius * 1.1, -p.radius * 0.8, p.radius * 0.15, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.closePath();
-        },
-        hornet_missile: (p) => {
-            ctx.lineWidth = 3;
-            ctx.fillStyle = blendColor('#ffd700', '#FF0000', blendAmount(p));
-            ctx.strokeStyle = blendColor('#ffb347', '#FF0000', blendAmount(p));
-            if(checkForFirstFrame(p)){
-                ctx.fillStyle = "#FFFFFF";
-                ctx.strokeStyle = "#FFFFFF";
-            }
-            ctx.beginPath();
-            ctx.moveTo(0, -p.radius);
-            ctx.lineTo(p.radius * 0.7, 0);
-            ctx.lineTo(p.radius * 0.5, p.radius);
-            ctx.lineTo(-p.radius * 0.5, p.radius);
-            ctx.lineTo(-p.radius * 0.7, 0);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-        },
-        magnet: (p) => {
-            ctx.fillStyle = blendColor('#a44343', '#FF0000', blendAmount(p));
-            ctx.strokeStyle = blendColor('#853636', '#FF0000', blendAmount(p));
-            if(checkForFirstFrame(p)){
-                ctx.fillStyle = "#FFFFFF";
-                ctx.strokeStyle = "#FFFFFF";
-            }
-            ctx.lineWidth = p.radius / 6;
-            ctx.lineCap = "butt";
-            ctx.beginPath();
-            ctx.moveTo(p.radius * -0.25, p.radius * 0.38);
-            ctx.quadraticCurveTo(p.radius * -0.47, p.radius * 0.22, p.radius * -0.42, p.radius * 0.08)
-            ctx.quadraticCurveTo(p.radius * -0.28, p.radius * -0.25, p.radius * 0.05, p.radius * -0.48);
-            ctx.quadraticCurveTo(p.radius * 0.32, p.radius * -1.12, p.radius * -0.39, p.radius * -1.05)
-            ctx.quadraticCurveTo(p.radius * -1.78, p.radius * 0.1, p.radius * -0.66, p.radius * 0.96)
-            ctx.fill();
-            ctx.stroke();
-            ctx.closePath();
-            ctx.fillStyle = blendColor('#4343a4', '#FF0000', blendAmount(p));
-            ctx.strokeStyle = blendColor('#363685', '#FF0000', blendAmount(p));
-            if(checkForFirstFrame(p)){
-                ctx.fillStyle = "#FFFFFF";
-                ctx.strokeStyle = "#FFFFFF";
-            }
-            ctx.beginPath();
-            ctx.moveTo(p.radius * -0.68, p.radius * 0.95);
-            ctx.quadraticCurveTo(p.radius * 0.65, p.radius * 1.65, p.radius * 1.1, p.radius * -0.06);
-            ctx.quadraticCurveTo(p.radius * 0.9, p.radius * -0.75, p.radius * 0.4, p.radius * -0.24);
-            ctx.quadraticCurveTo(p.radius * 0.18, p.radius * 0.7, p.radius * -0.25, p.radius * 0.38);
-            ctx.fill();
-            ctx.stroke();
-            ctx.closePath();
-            ctx.lineCap = "round";
-        },
-        thirdeye: (p) => {
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.fillStyle = blendColor("#000000", '#FF0000', blendAmount(p));
-            ctx.strokeStyle = blendColor("#000000", '#FF0000', blendAmount(p));
-            if (checkForFirstFrame(p)) {
-                ctx.fillStyle = "#FFFFFF";
-                ctx.strokeStyle = "#FFFFFF"
-            }
-            ctx.beginPath();
-            ctx.lineTo(0, -p.radius * 0.9);
-            ctx.quadraticCurveTo(p.radius * 0.9, 0, 0, p.radius * 0.9);
-            ctx.quadraticCurveTo(-p.radius * 0.9, 0, 0, -p.radius * 0.9);
-            ctx.fill();
-            ctx.stroke()
-            ctx.fillStyle = blendColor("#ffffff", '#FF0000', blendAmount(p));
-            ctx.beginPath();
-            ctx.arc(0, 0, p.radius * 0.4, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.closePath();
+        // 启动动画循环（如果还没有启动）
+        if (!window.petalAnimationRunning) {
+            window.petalAnimationRunning = true;
+            startPetalAnimation();
         }
-    };
-
-    // 根据等级设置边框和背景颜色
-    const levelColors = {
-        1: { border: '#66c258', bg: '#7eef6d' },  // 绿色
-        2: { border: '#cfba4b', bg: '#ffe65d' },  // 黄色
-        3: { border: '#3b41c5', bg: '#4d54e1' },  // 蓝色
-        4: { border: '#6d19b4', bg: '#861fde' },  // 紫色
-        5: { border: '#b41919', bg: '#de1f1f' },  // 红色
-        6: { border: '#19b1b4', bg: '#1fdbde' },  // 天蓝
-        7: { border: '#414547', bg: '#535351' }        // 棕黑
-    };
-
-    const levelColor = levelColors[petal.level] || levelColors[1];
-
-    // 绘制背景
-    ctx.fillStyle = levelColor.bg;
-    ctx.fillRect(0, 0, width, height);
-
-    // 绘制粗边框
-    ctx.strokeStyle = levelColor.border;
-    ctx.lineWidth = borderWidth * resolution;  // 动态边框宽度
-    const borderOffset = 2 * scale  * resolution;
-    ctx.strokeRect(borderOffset, borderOffset, width - borderOffset * 2, height - borderOffset * 2);
-
-    // 绘制花瓣图案
-    const petalSize = petalScale * resolution;  // 动态花瓣大小
-    const petalX = (width - petalSize) / 2;
-    const finalPetalY = petalY * resolution;  // 动态Y位置
-
-    // 创建专用的花瓣渲染函数
-    function renderPetalForItem(type, x, y, size, level) {
-        ctx.save();
-        ctx.translate(x + petalSize/2, y + petalSize/2);
-
-
-        // 临时设置全局ctx为当前canvas上下文
-        window.ctx = ctx;
-
-        // 创建花瓣对象以兼容petalRenderMap
-        const petalData = {
-            type: type,
-            radius: 9 / 55 * displaySize * resolution,  // 基础半径
-            level: level,
-            ticksSinceLastDamaged: 1000,
-            lastTicksSinceLastDamaged: 1000
-        };
-
-        // 根据类型获取对应的渲染函数（小写）
-        const typeMap = {
-            0: 'missile',
-            1: 'basic',
-            3: 'leaf',
-            4: 'wing',
-            5: 'lighting',
-            6: 'iris',
-            7: 'shell',
-            8: 'bomb',
-            9: 'magnet',
-            10: 'thirdeye'
-        };
-
-        const renderType = typeMap[type] || 'basic';
-        const renderFunc = localPetalRenderMap[renderType];
-
-        if (renderFunc) {
-            renderFunc(petalData);
-        }
-
-
-        ctx.restore();
-    }
-
-    // 渲染花瓣
-    renderPetalForItem(petal.type, petalX, finalPetalY, petalSize, petal.level);
-
-    // 绘制花瓣名称
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = `bold ${fontSize * resolution}px Arial`;  // 动态字体大小
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-
-    // 根据花瓣类型获取对应的中文名称
-    const petalNames = {
-        0: '导弹',
-        1: '基础',
-        2: '未使用',
-        3: '叶子',
-        4: '翅膀',
-        5: '闪电',
-        6: '鸢尾花',
-        7: '贝壳',
-        8: '炸弹',
-        9: '磁铁',
-        10: '第三只眼'
-    };
-
-    // 获取花瓣名称，处理各种异常情况
-    let displayName;
-    if (petal.type === undefined || petal.type === null) {
-        displayName = '未知';
     } else {
-        displayName = petalNames[petal.type] || `类型${petal.type}`;
+        // 标记为不需要动画
+        canvas.dataset.animated = 'false';
     }
 
-    ctx.fillText(displayName, width / 2, textY * resolution);  // 动态文字Y位置
+    // 直接调用静态绘制函数
+    drawStaticPetalItem(petal, canvas, config);
 }
-
+ 
 // 在现有上下文中绘制掉落物花瓣（简化版本，不影响全局状态）
 function drawPetalInContext(petal, ctx, displaySize) {
     // 保存原始canvas状态
@@ -2060,15 +2343,27 @@ function drawPetalInContext(petal, ctx, displaySize) {
         }
     };
 
-    // 根据等级设置边框和背景颜色
+    // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
     const levelColors = {
-        1: { border: '#66c258', bg: '#7eef6d' },  // 绿色
-        2: { border: '#cfba4b', bg: '#ffe65d' },  // 黄色
-        3: { border: '#3b41c5', bg: '#4d54e1' },  // 蓝色
-        4: { border: '#6d19b4', bg: '#861fde' },  // 紫色
-        5: { border: '#b41919', bg: '#de1f1f' },  // 红色
-        6: { border: '#19b1b4', bg: '#1fdbde' },  // 天蓝
-        7: { border: '#414547', bg: '#535351' }        // 棕黑
+        1: { border: '#66c258', bg: '#7eef6d' },  // common
+        2: { border: '#cfba4b', bg: '#ffe65d' },  // unusual
+        3: { border: '#3e42b8', bg: '#4d52e3' },  // rare
+        4: { border: '#6d19b4', bg: '#861fde' },  // epic
+        5: { border: '#b41919', bg: '#de1f1f' },  // legendary
+        6: { border: '#19b1b4', bg: '#1fdbde' },  // mythic
+        7: { border: '#cf235f', bg: '#ff2b75' },  // ultra
+        8: { border: '#23cf84', bg: '#2bffa3' },  // super
+        9: { border: '#3b3a3b', bg: '#494849' },  // omega
+        10: { border: '#cf4500', bg: '#ff5500' }, // fabled
+        11: { border: '#53447e', bg: '#67549c', fancy: { border: '#53447e', hue: 256, light: 47, sat: 30, spread: 20, period: 1.5 } }, // divine
+        12: { border: '#904bb0', bg: '#b25dd9', fancy: { border: '#904bb0', hue: 281, light: 61, sat: 62, spread: 12, period: 2, stars: 1 } }, // supreme
+        13: { border: '#000000', bg: '#5e004f', fancy: { border: '#151515', hue: 285, light: 20, sat: 100, spread: 35, period: 1.5, stars: 2 } }, // omnipotent
+        14: { border: '#035005', bg: '#046307', fancy: { border: '#035005', hue: 122, light: 25, sat: 100, spread: 60, period: 1.5, stars: 2 } }, // astral
+        15: { border: '#4f6bd1', bg: '#608efc', fancy: { border: '#4f6bd1', hue: 225, light: 69, sat: 100, spread: 10, period: 1, stars: 2 } }, // celestial
+        16: { border: '#a16649', bg: '#c77e5b', fancy: { border: '#a16649', hue: 19, light: 57, sat: 49, spread: 15, period: 1.5, stars: 2 } }, // seraphic
+        17: { border: '#cfcfcf', bg: '#ffffff', fancy: { border: '#cfcfcf', hue: 180, light: 93, sat: 100, spread: 80, period: 1.5, stars: 2 } }, // transcendent
+        18: { border: '#d1a3ba', bg: '#f6c5de', fancy: { border: '#d1a3ba', hue: 341, light: 89, sat: 100, spread: 40, period: 1, stars: 2 } }, // ethereal
+        19: { border: '#974d63', bg: '#7f0226', fancy: { border: '#974d63', hue: 343, light: 26, sat: 97, spread: 20, period: 0.75, stars: 2 } }  // galactic
     };
 
     const levelColor = levelColors[petal.level] || levelColors[1];
@@ -2077,6 +2372,7 @@ function drawPetalInContext(petal, ctx, displaySize) {
     ctx.fillStyle = levelColor.bg;
     ctx.fillRect(-width/2, -height/2, width, height);
 
+    
     // 绘制粗边框
     ctx.strokeStyle = levelColor.border;
     ctx.lineWidth = borderWidth * resolution;  // 动态边框宽度
@@ -2246,79 +2542,76 @@ function showLobby() {
 function initializeEquipmentSlots() {
     equipmentSlots.innerHTML = '';
 
-    // 创建两行，每行5个槽位
-    for (let row = 0; row < 2; row++) {
-        const rowDiv = document.createElement('div');
-        rowDiv.className = 'equipment-row';
+    // 创建一行，10个槽位
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'equipment-row';
 
-        for (let col = 0; col < 5; col++) {
-            const slotIndex = row * 5 + col;
-            const slot = document.createElement('div');
-            slot.className = 'equipment-slot';
-            slot.dataset.index = slotIndex;
+    for (let slotIndex = 0; slotIndex < 10; slotIndex++) {
+        const slot = document.createElement('div');
+        slot.className = 'equipment-slot';
+        slot.dataset.index = slotIndex;
 
-            // 添加拖拽事件监听
-            slot.addEventListener('dragover', handleDragOver);
-            slot.addEventListener('dragenter', handleDragEnter);
-            slot.addEventListener('dragleave', handleDragLeave);
-            slot.addEventListener('drop', handleDrop);
+        // 添加拖拽事件监听
+        slot.addEventListener('dragover', handleDragOver);
+        slot.addEventListener('dragenter', handleDragEnter);
+        slot.addEventListener('dragleave', handleDragLeave);
+        slot.addEventListener('drop', handleDrop);
 
-            // 添加基础的拖拽事件监听（用于装备了花瓣的情况）
-            slot.addEventListener('mousedown', (e) => {
-                const petal = gameState.equippedPetals[slotIndex];
-                if (petal && petal.type !== undefined && petal.level !== undefined) {
-                    slot.draggable = true;
-                } else {
-                    slot.draggable = false;
+        // 添加基础的拖拽事件监听（用于装备了花瓣的情况）
+        slot.addEventListener('mousedown', (e) => {
+            const petal = gameState.equippedPetals[slotIndex];
+            if (petal && petal.type !== undefined && petal.level !== undefined) {
+                slot.draggable = true;
+            } else {
+                slot.draggable = false;
+            }
+        });
+
+        slot.addEventListener('dragstart', (e) => {
+            const petal = gameState.equippedPetals[slotIndex];
+            if (petal && petal.type !== undefined && petal.level !== undefined) {
+                const dragData = {
+                    type: 'equipment',
+                    slotIndex: slotIndex,
+                    petal: petal
+                };
+                const dragString = JSON.stringify(dragData);
+
+                // 设置拖拽数据
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', dragString);
+                e.dataTransfer.setData('sourceIndex', slotIndex.toString());
+
+                // 设置拖拽图像（使用槽位本身）
+                try {
+                    e.dataTransfer.setDragImage(slot, 25, 25);
+                } catch (error) {
+                    console.log('设置拖拽图像失败，使用默认图像');
                 }
-            });
 
-            slot.addEventListener('dragstart', (e) => {
-                const petal = gameState.equippedPetals[slotIndex];
-                if (petal && petal.type !== undefined && petal.level !== undefined) {
-                    const dragData = {
-                        type: 'equipment',
-                        slotIndex: slotIndex,
-                        petal: petal
-                    };
-                    const dragString = JSON.stringify(dragData);
+                slot.classList.add('dragging');
+                console.log('拖拽数据已设置，拖拽数据长度:', dragString.length);
+            } else {
+                console.log(`槽位 ${slotIndex} 为空，阻止拖拽`);
+                e.preventDefault();
+            }
+        });
 
-                    // 设置拖拽数据
-                    e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData('text/plain', dragString);
-                    e.dataTransfer.setData('sourceIndex', slotIndex.toString());
+        slot.addEventListener('dragend', (e) => {
+            slot.classList.remove('dragging');
+        });
 
-                    // 设置拖拽图像（使用槽位本身）
-                    try {
-                        e.dataTransfer.setDragImage(slot, 25, 25);
-                    } catch (error) {
-                        console.log('设置拖拽图像失败，使用默认图像');
-                    }
+        // 添加提示文本
+        const hint = document.createElement('div');
+        hint.textContent = slotIndex + 1;
+        hint.style.color = 'rgba(255, 255, 255, 0.5)';
+        hint.style.fontSize = '12px';
+        slot.appendChild(hint);
 
-                    slot.classList.add('dragging');
-                    console.log('拖拽数据已设置，拖拽数据长度:', dragString.length);
-                } else {
-                    console.log(`槽位 ${slotIndex} 为空，阻止拖拽`);
-                    e.preventDefault();
-                }
-            });
-
-            slot.addEventListener('dragend', (e) => {
-                slot.classList.remove('dragging');
-            });
-
-            // 添加提示文本
-            const hint = document.createElement('div');
-            hint.textContent = slotIndex + 1;
-            hint.style.color = 'rgba(255, 255, 255, 0.5)';
-            hint.style.fontSize = '12px';
-            slot.appendChild(hint);
-
-            rowDiv.appendChild(slot);
-        }
-
-        equipmentSlots.appendChild(rowDiv);
+        rowDiv.appendChild(slot);
     }
+
+    equipmentSlots.appendChild(rowDiv);
 }
 
 // 自动装备保存的构筑
@@ -2436,11 +2729,11 @@ function calculateTotalAvailablePetals() {
         const petalKey = `petal${i}`;
         const petalString = gameState.serverBuild[petalKey];
 
-        if (petalString && petalString.length === 28) {
+        if (petalString && petalString.length === 76) {
             const petalType = i;
 
             // 每4个数字表示一个等级的花瓣数量
-            for (let level = 1; level <= 7; level++) {
+            for (let level = 1; level <= 19; level++) {
                 const startIndex = (level - 1) * 4;
                 const countStr = petalString.substring(startIndex, startIndex + 4);
                 const count = parseInt(countStr, 10);
@@ -2576,14 +2869,9 @@ function updateEquipmentSlots() {
                 slot.classList.add('equipped');
                 slot.draggable = true; // 使装备的花瓣可拖拽
 
-                // 为第七级花瓣添加特殊的CSS类
-                if (petal.level === 7) {
-                    slot.classList.add('level-7');
-                }
-
                 // 使用canvas绘制花瓣
                 const canvas = document.createElement('canvas');
-                drawPetalItem(petal, canvas, {displaySize:58});
+                drawPetalItem(petal, canvas, {displaySize:48});
                 slot.appendChild(canvas);
 
                 // 拖拽事件已在初始化时设置，无需重复设置
@@ -2767,11 +3055,11 @@ function parseServerBuild(buildData) {
         const petalKey = `petal${i}`;
         const petalString = buildData[petalKey];
 
-        if (petalString && petalString.length === 28) {
+        if (petalString && petalString.length === 76) {
             const petalType = i; // petal0对应类型0（missile），以此类推
 
-            // 每4个数字表示一个等级的花瓣数量，共7个等级
-            for (let level = 1; level <= 7; level++) {
+            // 每4个数字表示一个等级的花瓣数量，共19个等级
+            for (let level = 1; level <= 19; level++) {
                 const startIndex = (level - 1) * 4;
                 const countStr = petalString.substring(startIndex, startIndex + 4);
                 const count = parseInt(countStr, 10);
@@ -2846,14 +3134,10 @@ function equipPetal(petalIndex, slotIndex) {
         }
         slot.innerHTML = '';
         slot.classList.add('equipped');
-        // 为第七级花瓣添加特殊的CSS类
-        if (petal.level === 7) {
-            slot.classList.add('level-7');
-        }
 
         // 使用canvas绘制花瓣
         const canvas = document.createElement('canvas');
-        drawPetalItem(petal, canvas);
+        drawPetalItem(petal, canvas, {displaySize: 48});
         slot.appendChild(canvas);
 
         // 减少可用花瓣数量
@@ -3025,7 +3309,7 @@ function updateBagContent() {
         row.className = 'petal-row';
         row.style.display = 'flex';
         row.style.alignItems = 'center';
-        row.style.marginBottom = '10px';
+        row.style.marginBottom = '5px';
         row.style.gap = '5px';
 
         // 查找该种类的所有花瓣（按等级分组）
@@ -3036,13 +3320,13 @@ function updateBagContent() {
             }
         });
 
-        // 显示1-7级，空缺的显示空白
-        for (let level = 1; level <= 7; level++) {
+        // 显示1-19级，空缺的显示空白 - 19级新系统
+        for (let level = 1; level <= 19; level++) {
             const petalContainer = document.createElement('div');
             petalContainer.className = 'bag-petal-container';
             petalContainer.style.position = 'relative';
-            petalContainer.style.width = '55px';
-            petalContainer.style.height = '55px';
+            petalContainer.style.width = '36px';
+            petalContainer.style.height = '36px';
 
             if (petalsByLevel[level]) {
                 const petal = petalsByLevel[level];
@@ -3050,14 +3334,14 @@ function updateBagContent() {
                 item.className = 'petal-item';
                 item.draggable = true;
                 item.dataset.index = petal.originalIndex;
-                item.title = `类型: ${petal.type}, 等级: ${petal.level}, 数量: ${petal.count}`;
+                item.title = `类型: ${petal.type}, 等级: ${petal.level} (${getLevelName(petal.level)}), 数量: ${petal.count}`;
 
                 // 创建canvas元素
                 const canvas = document.createElement('canvas');
                 item.appendChild(canvas);
 
                 // 使用canvas绘制花瓣
-                drawPetalItem(petal, canvas, {displaySize:54});
+                drawPetalItem(petal, canvas, {displaySize:34.5});
 
                 // 添加数量标签
                 const countBadge = document.createElement('div');
@@ -3073,8 +3357,8 @@ function updateBagContent() {
                 // 空缺位置显示空白占位符
                 const placeholder = document.createElement('div');
                 placeholder.className = 'bag-petal-placeholder';
-                placeholder.style.width = '55px';
-                placeholder.style.height = '55px';
+                placeholder.style.width = '33px';
+                placeholder.style.height = '33px';
                 placeholder.style.border = '1px dashed rgba(255, 255, 255, 0.2)';
                 placeholder.style.borderRadius = '3px';
                 placeholder.style.display = 'flex';
@@ -3647,7 +3931,7 @@ function gameLoop(timestamp) {
         // 更新wave进度（客户端计时）
         updateWaveProgress();
 
-        // 绘制背景元素
+        // 绘制背景网格
         drawBackground();
 
         // 绘制游戏对象
@@ -3663,9 +3947,8 @@ function gameLoop(timestamp) {
     // 恢复变换
     ctx.restore();
 
-    // 绘制血条和小花朵（不受游戏变换影响）
-    // 注释掉原来的血条，现在所有花朵血条都在左上角显示
-    drawHealthBarWithFlower();
+    // 绘制所有玩家的血条和小花朵（包括自己和其他玩家）
+    drawAllPlayersHealthBars();
 
 
     // 继续游戏循环
@@ -3712,6 +3995,114 @@ function drawHealthBarWithFlower() {
     const flowerY = barY + barHeight / 2; // 垂直居中对齐血条
 
     drawMiniFlower(flowerX, flowerY, flowerSize);
+}
+
+// 绘制所有玩家的血条和小花朵（包括自己和其他玩家）
+function drawAllPlayersHealthBars() {
+    // 起始位置（左上角）- 当前玩家使用原有位置
+    let startY = 130; // 从130开始，给当前玩家的血条留出空间
+    const startX = 60;
+    const verticalSpacing = 45; // 每个玩家之间的垂直间距
+
+    // 绘制当前玩家的血条和花朵（保持原有位置）
+    drawHealthBarWithFlower();
+
+    // 绘制其他玩家的血条和花朵
+    if (gameState.flowers && gameState.flowers.length > 0) {
+        let playerCount = 0; // 用于计算显示位置
+        gameState.flowers.forEach((flower, index) => {
+            // 只绘制有效花朵（有健康数据的）
+            if (flower && flower.health !== null && flower.health !== undefined) {
+                // 计算该玩家的屏幕位置
+                const playerCenterX = config.baseCanvasWidth / 2;
+                const playerCenterY = config.baseCanvasHeight / 2;
+                const screenX = playerCenterX + (flower.position.x - gameState.playerPosition.x);
+                const screenY = playerCenterY + (flower.position.y - gameState.playerPosition.y);
+
+                // 只绘制在屏幕范围内的其他玩家（可选，避免太远的玩家也显示）
+                const maxDistance = Math.max(config.baseCanvasWidth, config.baseCanvasHeight);
+                const distance = Math.sqrt(
+                    Math.pow(screenX - playerCenterX, 2) +
+                    Math.pow(screenY - playerCenterY, 2)
+                );
+
+                if (distance < maxDistance) {
+                    // 计算该玩家在左上角显示的位置
+                    const displayY = startY + (playerCount * verticalSpacing);
+
+                    // 绘制其他玩家的血条和小花朵
+                    drawOtherPlayerHealthBarAndFlower(startX, displayY, flower);
+
+                    playerCount++; // 增加玩家计数
+                }
+            }
+        });
+    }
+}
+
+// 绘制其他玩家的血条和小花朵（在左上角显示）
+function drawOtherPlayerHealthBarAndFlower(barX, barY, flower) {
+    // 血条参数
+    const barWidth = 120;
+    const barHeight = 14;
+    const borderWidth = 2;
+    const borderRadius = 7;
+
+    // 获取血量数据
+    const currentHealth = flower.health || 100;
+    const maxHealth = flower.max_health || 100;
+
+    // 只有当血量数据有效时才绘制
+    if (currentHealth === null || maxHealth === null || maxHealth <= 0) {
+        return;
+    }
+
+    // 获取血量百分比
+    const healthPercent = Math.max(0, Math.min(1, currentHealth / maxHealth));
+    const healthWidth = barWidth * healthPercent;
+
+    // 绘制血条背景（深色）
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.lineWidth = borderWidth;
+
+    // 绘制带圆角的背景
+    ctx.beginPath();
+    ctx.roundRect(barX, barY, barWidth, barHeight, borderRadius);
+    ctx.fill();
+    ctx.stroke();
+
+    // 绘制血条填充
+    if (healthWidth > 0) {
+        ctx.fillStyle = '#ff3333';
+        ctx.beginPath();
+        ctx.roundRect(barX, barY, healthWidth, barHeight, borderRadius - borderWidth/2);
+        ctx.fill();
+    }
+
+    // 在血条左侧绘制小花朵
+    const flowerSize = 18;
+    const miniFlowerX = barX - flowerSize - 10; // 在血条左侧
+    const miniFlowerY = barY + barHeight / 2; // 垂直居中
+
+    // 创建玩家对象用于绘制迷你花朵
+    const playerData = {
+        hp: currentHealth,
+        maxHp: maxHealth,
+        health: currentHealth,
+        maxHealth: maxHealth
+    };
+
+    // 绘制其他玩家的迷你花朵
+    drawOtherPlayerMiniFlower(miniFlowerX, miniFlowerY, flowerSize, playerData);
+
+    // 显示玩家名称（如果有）
+    if (flower.name || flower.id) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.font = '12px Arial';
+        const playerName = flower.name || `Player ${flower.id}`;
+        ctx.fillText(playerName, barX, barY - 5);
+    }
 }
 
 
@@ -3940,34 +4331,40 @@ function drawMiniFlower(x, y, size) {
 function drawBackground() {
     // 绘制简单的背景网格
     ctx.strokeStyle = '#1d9a5b';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.5;
 
-    const gridSize = 50;
-    const offsetX = gameState.playerPosition.x % gridSize;
-    const offsetY = gameState.playerPosition.y % gridSize;
+    const gridSize = 30;
+    const offsetX = (gameState.playerPosition.x % gridSize) - gridSize;
+    const offsetY = (gameState.playerPosition.y % gridSize) - gridSize;
 
-    // 使用基准画布尺寸而不是当前画布尺寸
-    const baseWidth = config.baseCanvasWidth;
-    const baseHeight = config.baseCanvasHeight;
+    // 使用缩放后的实际显示区域尺寸
+    // 考虑游戏的等比例缩放和居中偏移
+    const actualWidth = config.baseCanvasWidth / gameState.scale;
+    const actualHeight = config.baseCanvasHeight / gameState.scale;
 
-    for (let x = -offsetX; x < baseWidth; x += gridSize) {
+    // 计算偏移量以考虑居中显示
+    const offsetLeft = (config.baseCanvasWidth - actualWidth) / 2;
+    const offsetTop = (config.baseCanvasHeight - actualHeight) / 2;
+
+    for (let x = -offsetX; x < actualWidth; x += gridSize) {
         ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, baseHeight);
+        ctx.moveTo(x + offsetLeft, offsetTop);
+        ctx.lineTo(x + offsetLeft, actualHeight + offsetTop);
         ctx.stroke();
     }
 
-    for (let y = -offsetY; y < baseHeight; y += gridSize) {
+    for (let y = -offsetY; y < actualHeight; y += gridSize) {
         ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(baseWidth, y);
+        ctx.moveTo(offsetLeft, y + offsetTop);
+        ctx.lineTo(actualWidth + offsetLeft, y + offsetTop);
         ctx.stroke();
     }
+
     // 绘制游戏边界
     if (gameState.boundaryRadius > 0) {
-        // 使用基准画布尺寸计算边界位置
-        const playerCenterX = config.baseCanvasWidth / 2;
-        const playerCenterY = config.baseCanvasHeight / 2;
+        // 使用实际显示区域计算边界位置
+        const playerCenterX = actualWidth / 2 + offsetLeft;
+        const playerCenterY = actualHeight / 2 + offsetTop;
 
         // 计算边界在屏幕上的位置
         const boundaryX = playerCenterX - gameState.playerPosition.x;

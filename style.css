@@ -14,12 +14,12 @@ body {
     position: relative;
     width: 100vw;
     height: 100vh;
-    background-color: #2a2a2a;
+    background-color: #1ea761;
     overflow: hidden;
 }
 
 #gameCanvas {
-    background-color: #0a4d0a;
+    background-color: #1ea761;
     cursor: crosshair;
     display: block;
     image-rendering: auto;
@@ -57,13 +57,29 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: #1ea761;
+    background-image:
+        linear-gradient(rgba(29, 154, 91, 0.8) 1.5px, transparent 1.5px),
+        linear-gradient(90deg, rgba(29, 154, 91, 0.8) 1.5px, transparent 1.5px);
+    background-size: 30px 30px;
+    animation: gridMove 13.3s linear infinite;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     color: white;
     z-index: 10;
+    box-sizing: border-box;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+@keyframes gridMove {
+    0% {
+        background-position: 0 0;
+    }
+    100% {
+        background-position: 250px 250px;
+    }
 }
 
 #startScreen h1 {
@@ -76,9 +92,12 @@ body {
     padding: 10px 20px;
     font-size: 18px;
     border-radius: 5px;
-    border: none;
+    border: 2px solid rgba(255, 255, 255, 0.3);
     margin-bottom: 20px;
     width: 300px;
+    box-sizing: border-box;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
 }
 
 #startButton {
@@ -130,6 +149,8 @@ body {
     align-items: center;
     color: white;
     z-index: 20;
+    box-sizing: border-box;
+    border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 #gameOver h2 {
@@ -161,7 +182,7 @@ body {
     font-size: 9px;
     background-color: #3498DB;
     color: white;
-    border: none;
+    border: 2px solid rgba(255, 255, 255, 0.4);
     border-radius: 6px;
     cursor: pointer;
     transition: background-color 0.3s;
@@ -172,10 +193,47 @@ body {
     padding: 3px;
     line-height: 1.1;
     margin: 0 auto;
+    box-sizing: border-box;
 }
 
 .lobby-button:hover {
     background-color: #2980B9;
+}
+
+#bagButton {
+    background-color: #5a9fdb;
+    border-color: #4a8fc8; /* 稍微更深的边框色 */
+    border-width: 3px;
+    font-size: 11px;
+}
+
+#bagButton:hover {
+    background-color: #4a8fc8;
+    border-color: #3a7fb8;
+}
+
+#absorbLobbyButton {
+    background-color: #da9b5b;
+    border-color: #ca8b4b; /* 稍微更深的边框色 */
+    border-width: 3px;
+    font-size: 11px;
+}
+
+#absorbLobbyButton:hover {
+    background-color: #ca8b4b;
+    border-color: #ba7b3b;
+}
+
+#galleryButton {
+    background-color: #dbd74b;
+    border-color: #cbc73b; /* 稍微更深的边框色 */
+    border-width: 3px;
+    font-size: 11px;
+}
+
+#galleryButton:hover {
+    background-color: #cbc73b;
+    border-color: #bbb72b;
 }
 
 #petalSelection {
@@ -190,7 +248,7 @@ body {
 .petal-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 2px;
+    gap: 5px;
     margin-bottom: 5px;
     padding-bottom: 5px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -208,8 +266,8 @@ body {
 
 
 .petal-item {
-    width: 55px;
-    height: 55px;
+    width: 36px;
+    height: 36px;
     background-color: rgba(255, 255, 255, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.5);
     border-radius: 3px;
@@ -217,7 +275,7 @@ body {
     transition: all 0.2s;
     position: relative;
     overflow: hidden;
-    padding: 2px;
+    padding: 1px;
     box-sizing: border-box;
     display: flex;
     justify-content: center;
@@ -242,19 +300,19 @@ body {
 
 
 .equipment-slot {
-    width: 60px;
-    height: 60px;
+    width: 50px;
+    height: 50px;
     background-color: rgba(255, 255, 255, 0.1);
     border: 2px dashed rgba(255, 255, 255, 0.3);
     border-radius: 5px;
-    margin: 4px;
+    margin: 2px;
     transition: all 0.3s;
     display: flex;
     justify-content: center;
     align-items: center;
     position: relative;
     overflow: hidden;
-    padding: 2px;
+    padding: 1px;
     box-sizing: border-box;
 }
 
@@ -271,10 +329,13 @@ body {
 
 #equipmentSlots {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
     align-items: center;
     margin: 10px 0;
     max-width: 600px;
+    gap: 5px;
 }
 
 .equipment-row {
@@ -291,16 +352,17 @@ body {
     height: 100vh;
     margin: 0;
     position: relative;
+    background-color: transparent; /* 透明，继承父容器的网格背景 */
 }
 
 #bagWindow {
     display: none;
     position: absolute;
-    top: 50%;
-    left: 25%;
+    top: 71%;
+    left: 20%;
     transform: translate(-50%, -50%);
-    width: 35%;
-    height: 85%;
+    width: 30%;
+    height: 55%;
     background-color: rgba(50, 50, 50, 0.9);
     border-radius: 10px;
     padding: 20px;
@@ -308,6 +370,8 @@ body {
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    box-sizing: border-box;
+    border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 #bagWindow::-webkit-scrollbar {
@@ -332,17 +396,20 @@ body {
 #absorbWindow, #galleryWindow {
     display: none;
     position: absolute;
-    top: 50%;
-    left: 30%;
+    top: 71%;
+    left: 20%;
     transform: translate(-50%, -50%);
-    width: 45%;
-    height: 85%;
+    width: 30%;
+    height: 55%;
     background-color: rgba(50, 50, 50, 0.9);
     border-radius: 10px;
     padding: 20px;
     z-index: 15;
     overflow: hidden;
+    box-sizing: border-box;
+    border: 2px solid rgba(255, 255, 255, 0.3);
 }
+
 
 .close-button {
     position: absolute;
@@ -370,6 +437,8 @@ body {
     align-items: center;
     color: white;
     z-index: 25;
+    box-sizing: border-box;
+    border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 #progressBar {
@@ -464,11 +533,12 @@ body {
     font-size: 12px;
     background-color: #444;
     color: white;
-    border: none;
+    border: 2px solid rgba(255, 255, 255, 0.4);
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s;
     margin: 2px 0;
+    box-sizing: border-box;
 }
 
 .room-button:hover {
@@ -484,8 +554,9 @@ body {
     border-radius: 10px;
     padding: 20px;
     margin-top: 10px;
-    width: 100%;
-    max-width: 800px;
+    width: 70%;
+    box-sizing: border-box;
+    border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 #roomPlayers {
@@ -557,8 +628,8 @@ body {
 
 #absorbSlotsContainer {
     position: relative;
-    width: 280px;
-    height: 200px;
+    width: 200px;
+    height: 140px;
     margin: 10px auto;
 }
 
@@ -570,8 +641,8 @@ body {
 
 .absorb-slot {
     position: absolute;
-    width: 60px;
-    height: 60px;
+    width: 36px;
+    height: 36px;
     background-color: rgba(255, 255, 255, 0.1);
     border: 2px dashed rgba(255, 255, 255, 0.3);
     border-radius: 5px;
@@ -580,7 +651,7 @@ body {
     align-items: center;
     transition: all 0.3s;
     cursor: pointer;
-    padding: 2px;
+    padding: 1px;
     box-sizing: border-box;
 }
 
@@ -625,42 +696,43 @@ body {
     position: relative;
     width: 100%;
     height: 100%;
+    transform-origin: 42.5% 45%; /* 五个点的几何中心 */
 }
 
-/* 正五边形排列的5个合成槽 - 扩大间距并左上移动 */
+/* 正五边形排列的5个合成槽 - 向左移动 */
 .absorb-slot[data-index="0"] {
     top: 5%;
-    left: 35%;
+    left: 25%;
     transform: translate(-50%, -50%);
 }
 
 .absorb-slot[data-index="1"] {
     top: 35%;
-    left: 65%;
+    left: 55%;
     transform: translate(-50%, -50%);
 }
 
 .absorb-slot[data-index="2"] {
     top: 80%;
-    left: 55%;
+    left: 45%;
     transform: translate(-50%, -50%);
 }
 
 .absorb-slot[data-index="3"] {
     top: 80%;
-    left: 15%;
+    left: 5%;
     transform: translate(-50%, -50%);
 }
 
 .absorb-slot[data-index="4"] {
     top: 35%;
-    left: 5%;
+    left: -5%;
     transform: translate(-50%, -50%);
 }
 
 #absorbCenter {
     position: absolute;
-    top: 40%;
+    top: 50%;
     right: -20px;
     transform: translateY(-50%);
     text-align: center;
@@ -668,19 +740,20 @@ body {
 
 #absorbActionButton {
     width: 60px;
-    height: 60px;
+    height: 40px;
     background-color: #3498DB;
     color: white;
-    border: none;
+    border: 2px solid rgba(255, 255, 255, 0.4);
     border-radius: 5px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 14px;
     transition: background-color 0.3s;
     white-space: nowrap;
     padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
 }
 
 #absorbActionButton:hover:not(:disabled) {
@@ -705,6 +778,7 @@ body {
     z-index: 20;
     text-align: center;
     min-width: 200px;
+    box-sizing: border-box;
 }
 
 #resultContent {
@@ -747,9 +821,11 @@ body {
     gap: 8px;
     justify-content: flex-start;
     overflow-y: auto;
-    overflow-x: hidden;
-    padding: 10px;
-    max-height: 300px;
+    overflow-x: auto;
+    padding: 0px;
+    height: 30%;
+    max-height: 180px;
+    max-width: 100%;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
     background-color: rgba(0, 0, 0, 0.2);
@@ -759,6 +835,7 @@ body {
 
 .petal-selection::-webkit-scrollbar {
     width: 6px;
+    height: 6px;
 }
 
 .petal-selection::-webkit-scrollbar-track {
@@ -777,8 +854,8 @@ body {
 }
 
 .absorb-petal-item {
-    width: 60px;
-    height: 60px;
+    width: 36px;
+    height: 36px;
     background-color: rgba(255, 255, 255, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.5);
     border-radius: 3px;
@@ -789,7 +866,7 @@ body {
     transition: all 0.2s;
     position: relative;
     overflow: hidden;
-    padding: 2px;
+    padding: 1px;
     box-sizing: border-box;
 }
 
@@ -847,16 +924,17 @@ body {
 
 @keyframes orbitRotation {
     from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    to { transform: rotate(720deg); }
 }
 
 .pentagon-slots.rotating .absorb-slot {
     animation: counterRotation 2s linear forwards;
+    transform-origin: 112.5% 35%; /* 使用相同的几何中心 */
 }
 
 @keyframes counterRotation {
     from { transform: rotate(0deg); }
-    to { transform: rotate(-360deg); }
+    to { transform: rotate(-720deg); }
 }
 
 /* 合成动画进行中的样式 */
@@ -878,17 +956,19 @@ body {
     font-size: 14px;
     font-weight: bold;
     color: white;
-    border: none;
+    border: 3px solid rgba(255, 255, 255, 0.4);
     border-radius: 5px;
     cursor: pointer;
     transition: all 0.3s ease;
     text-transform: uppercase;
     letter-spacing: 1px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    box-sizing: border-box;
 }
 
 #newRoomButton {
     background-color: #3498DB;
+    border-color: #2488CB; /* 更深的蓝色边框 */
 }
 
 #newRoomButton:hover {
@@ -899,6 +979,7 @@ body {
 
 #findRoomButton {
     background-color: #2ECC71;
+    border-color: #1EBC61; /* 更深的绿色边框 */
 }
 
 #findRoomButton:hover {
@@ -909,6 +990,7 @@ body {
 
 #privateRoomButton {
     background-color: #9B59B6;
+    border-color: #8B49A6; /* 更深的紫色边框 */
 }
 
 #privateRoomButton:hover {
@@ -928,9 +1010,9 @@ body {
     margin-top: 10px;
     padding: 12px 28px;
     font-size: 16px;
-    background-color: #4CAF50;
+    background-color: #1dd129;
     color: white;
-    border: none;
+    border: 3px solid #14921c;
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s;
@@ -970,6 +1052,7 @@ body {
     flex-direction: column;
     z-index: 100;
     font-family: 'Arial', sans-serif;
+    box-sizing: border-box;
 }
 
 #chatHeader {
@@ -1045,12 +1128,13 @@ body {
 #chatInput {
     flex: 1;
     background-color: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.4);
     border-radius: 3px;
     padding: 5px 8px;
     color: white;
     font-size: 12px;
     outline: none;
+    box-sizing: border-box;
 }
 
 #chatInput:focus {
@@ -1185,11 +1269,12 @@ body {
     top: 50px;
     right: 0;
     background-color: rgba(0, 0, 0, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.4);
     border-radius: 8px;
     padding: 10px;
     min-width: 150px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-sizing: border-box;
 }
 
 .volume-slider {
@@ -1288,4 +1373,11 @@ body {
 
 .equipment-slot {
     transition: all 0.2s ease;
+}
+
+
+/* 通用按钮样式 - 添加边框 */
+button {
+    box-sizing: border-box;
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
