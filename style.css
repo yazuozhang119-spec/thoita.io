@@ -1,0 +1,1291 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #1a1a1a;
+    font-family: 'Arial', sans-serif;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+#gameContainer {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background-color: #2a2a2a;
+    overflow: hidden;
+}
+
+#gameCanvas {
+    background-color: #0a4d0a;
+    cursor: crosshair;
+    display: block;
+    image-rendering: auto;
+    image-rendering: -webkit-optimize-contrast;
+}
+
+#ui {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+#healthBar {
+    display: none; /* 隐藏HTML血条，使用canvas渲染的血条 */
+}
+
+#healthFill {
+    display: none; /* 隐藏HTML血条填充部分 */
+}
+
+#fps {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    color: white;
+    font-size: 16px;
+}
+
+#startScreen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    z-index: 10;
+}
+
+#startScreen h1 {
+    font-size: 48px;
+    margin-bottom: 30px;
+    text-shadow: 0 0 10px rgba(0, 255, 0, 0.7);
+}
+
+#playerName {
+    padding: 10px 20px;
+    font-size: 18px;
+    border-radius: 5px;
+    border: none;
+    margin-bottom: 20px;
+    width: 300px;
+}
+
+#startButton {
+    padding: 12px 30px;
+    font-size: 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#startButton:hover {
+    background-color: #45a049;
+}
+
+#inventory {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.inventorySlot {
+    width: 50px;
+    height: 50px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-size: 12px;
+}
+
+#gameOver {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    z-index: 20;
+}
+
+#gameOver h2 {
+    font-size: 36px;
+    margin-bottom: 20px;
+}
+
+#restartButton {
+    padding: 10px 20px;
+    font-size: 18px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+/* 新添加的样式 */
+#buttonContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+}
+
+.lobby-button {
+    width: 50px;
+    height: 50px;
+    font-size: 9px;
+    background-color: #3498DB;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 3px;
+    line-height: 1.1;
+    margin: 0 auto;
+}
+
+.lobby-button:hover {
+    background-color: #2980B9;
+}
+
+#petalSelection {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 20px 0;
+    max-width: 600px;
+    justify-content: center;
+}
+
+.petal-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    margin-bottom: 5px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.petal-type-header {
+    width: 100%;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #4CAF50;
+    font-size: 14px;
+}
+
+/* 调整花瓣项的大小和间距 */
+
+
+.petal-item {
+    width: 55px;
+    height: 55px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 3px;
+    cursor: grab;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    padding: 2px;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.petal-item canvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 3px;
+}
+
+
+.petal-item:hover {
+    transform: scale(1.1);
+    border-color: #3498DB;
+}
+
+.petal-item.dragging {
+    opacity: 0.5;
+}
+
+
+.equipment-slot {
+    width: 60px;
+    height: 60px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 5px;
+    margin: 4px;
+    transition: all 0.3s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    padding: 2px;
+    box-sizing: border-box;
+}
+
+
+.equipment-slot.drag-over {
+    background-color: rgba(76, 175, 80, 0.3);
+    border: 2px solid #4CAF50;
+}
+
+.equipment-slot.equipped {
+    border: 2px solid #4CAF50;
+    background-color: rgba(76, 175, 80, 0.2);
+}
+
+#equipmentSlots {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 10px 0;
+    max-width: 600px;
+}
+
+.equipment-row {
+    display: flex;
+    justify-content: center;
+    margin: 10px 0;
+}
+
+#lobbyUI {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    position: relative;
+}
+
+#bagWindow {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 25%;
+    transform: translate(-50%, -50%);
+    width: 35%;
+    height: 85%;
+    background-color: rgba(50, 50, 50, 0.9);
+    border-radius: 10px;
+    padding: 20px;
+    z-index: 15;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+#bagWindow::-webkit-scrollbar {
+    width: 8px;
+}
+
+#bagWindow::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+#bagWindow::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+#bagWindow::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+#absorbWindow, #galleryWindow {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 30%;
+    transform: translate(-50%, -50%);
+    width: 45%;
+    height: 85%;
+    background-color: rgba(50, 50, 50, 0.9);
+    border-radius: 10px;
+    padding: 20px;
+    z-index: 15;
+    overflow: hidden;
+}
+
+.close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #ff4757;
+    border: none;
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+#loadingScreen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    z-index: 25;
+}
+
+#progressBar {
+    width: 300px;
+    height: 20px;
+    background-color: #333;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 20px 0;
+}
+
+#progressFill {
+    height: 100%;
+    background-color: #4CAF50;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+/* 新增样式 - 房间选择和大厅布局 */
+#lobbyLayout {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+#leftPanel {
+    width: 60px;
+    background-color: transparent;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: flex-end;
+    padding-left: 2px;
+    padding-right: 2px;
+    padding-bottom: 10px;
+}
+
+#mainPanel {
+    flex: 1;
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: transparent;
+    justify-content: center;
+}
+
+#mainPanel h2 {
+    font-size: 24px;
+    margin-bottom: 16px;
+    color: white;
+    text-shadow: 0 0 6px rgba(0, 255, 0, 0.5);
+}
+
+#roomSelection h3 {
+    font-size: 16px;
+    margin-bottom: 10px;
+    color: white;
+}
+
+#roomInfo h3 {
+    font-size: 14px;
+    margin-bottom: 10px;
+    color: white;
+}
+
+#roomSelection {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+#roomSelectionMain {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+    align-items: center;
+}
+
+.room-buttons-row {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+}
+
+.room-button {
+    padding: 8px 12px;
+    font-size: 12px;
+    background-color: #444;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    margin: 2px 0;
+}
+
+.room-button:hover {
+    background-color: #555;
+}
+
+.room-button.active {
+    background-color: #4CAF50;
+}
+
+#roomInfo {
+    background-color: rgba(60, 60, 60, 0.7);
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 10px;
+    width: 100%;
+    max-width: 800px;
+}
+
+#roomPlayers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+}
+
+.player-card {
+    background-color: rgba(80, 80, 80, 0.8);
+    border-radius: 8px;
+    padding: 10px;
+    width: 120px;
+    text-align: center;
+    margin: 5px;
+    transition: all 0.3s ease;
+}
+
+.player-card.current-player {
+    background-color: rgba(76, 175, 80, 0.9);
+    border: 2px solid #4CAF50;
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.6);
+    transform: scale(1.05);
+}
+
+.player-name {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: white;
+}
+
+.player-build {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 3px;
+}
+
+.petal-icon {
+    width: 25px;
+    height: 25px;
+    background-color: rgba(100, 100, 100, 0.5);
+    border-radius: 3px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 8px;
+    overflow: hidden;
+    position: relative;
+}
+
+.petal-icon img {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.petal-level-badge {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    border-radius: 2px;
+    font-size: 8px;
+    padding: 0 2px;
+    line-height: 1;
+}
+
+#absorbSlotsContainer {
+    position: relative;
+    width: 280px;
+    height: 200px;
+    margin: 10px auto;
+}
+
+.pentagon-slots {
+    position: relative;
+    width: 100%;
+    height: 150px;
+}
+
+.absorb-slot {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s;
+    cursor: pointer;
+    padding: 2px;
+    box-sizing: border-box;
+}
+
+
+.absorb-slot.drag-over {
+    background-color: rgba(76, 175, 80, 0.3);
+    border: 2px solid #4CAF50;
+}
+
+.absorb-slot.filled {
+    border: 2px solid #4CAF50;
+    background-color: rgba(76, 175, 80, 0.2);
+}
+
+.absorb-slot.filled .remove-petal {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ff4757;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    display: none;
+}
+
+.absorb-slot.filled:hover .remove-petal {
+    display: block;
+}
+
+.absorb-slot img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* 正五边形排列 - 基于圆心计算 */
+.pentagon-slots {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+/* 正五边形排列的5个合成槽 - 扩大间距并左上移动 */
+.absorb-slot[data-index="0"] {
+    top: 5%;
+    left: 35%;
+    transform: translate(-50%, -50%);
+}
+
+.absorb-slot[data-index="1"] {
+    top: 35%;
+    left: 65%;
+    transform: translate(-50%, -50%);
+}
+
+.absorb-slot[data-index="2"] {
+    top: 80%;
+    left: 55%;
+    transform: translate(-50%, -50%);
+}
+
+.absorb-slot[data-index="3"] {
+    top: 80%;
+    left: 15%;
+    transform: translate(-50%, -50%);
+}
+
+.absorb-slot[data-index="4"] {
+    top: 35%;
+    left: 5%;
+    transform: translate(-50%, -50%);
+}
+
+#absorbCenter {
+    position: absolute;
+    top: 40%;
+    right: -20px;
+    transform: translateY(-50%);
+    text-align: center;
+}
+
+#absorbActionButton {
+    width: 60px;
+    height: 60px;
+    background-color: #3498DB;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+    white-space: nowrap;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#absorbActionButton:hover:not(:disabled) {
+    background-color: #2980B9;
+}
+
+#absorbActionButton:disabled {
+    background-color: #777;
+    cursor: not-allowed;
+}
+
+/* 合成结果样式 */
+#absorbResult {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(40, 40, 40, 0.95);
+    border: 2px solid #4CAF50;
+    border-radius: 10px;
+    padding: 20px;
+    z-index: 20;
+    text-align: center;
+    min-width: 200px;
+}
+
+#resultContent {
+    margin: 15px 0;
+}
+
+.result-petal {
+    display: inline-block;
+    margin: 10px;
+    text-align: center;
+}
+
+.result-petal img {
+    width: 50px;
+    height: 50px;
+}
+
+#closeResult {
+    padding: 8px 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+/* 花瓣选择区域 */
+.petal-selection-area {
+    margin-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding-top: 15px;
+    min-height: 320px;
+    display: flex;
+    flex-direction: column;
+}
+
+.petal-selection {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: flex-start;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 10px;
+    max-height: 300px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.petal-selection::-webkit-scrollbar {
+    width: 6px;
+}
+
+.petal-selection::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.petal-selection::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    transition: background 0.2s;
+}
+
+.petal-selection::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.absorb-petal-item {
+    width: 60px;
+    height: 60px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 3px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    padding: 2px;
+    box-sizing: border-box;
+}
+
+.absorb-petal-item:hover {
+    transform: scale(1.1);
+    border-color: #3498DB;
+}
+
+.absorb-petal-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.absorb-petal-count {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    border-radius: 3px;
+    font-size: 8px;
+    padding: 1px 3px;
+}
+
+.bag-petal-count {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    border-radius: 3px;
+    font-size: 8px;
+    padding: 1px 3px;
+}
+
+
+.slot-petal-count {
+    position: absolute;
+    bottom: 2px;
+    left: 2px;
+    background-color: rgba(255, 215, 0, 0.9);
+    color: #000;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 4px;
+    box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+}
+
+/* 公转动画 - 五个槽围绕中心旋转 */
+.pentagon-slots.rotating {
+    animation: orbitRotation 2s linear forwards;
+}
+
+@keyframes orbitRotation {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.pentagon-slots.rotating .absorb-slot {
+    animation: counterRotation 2s linear forwards;
+}
+
+@keyframes counterRotation {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(-360deg); }
+}
+
+/* 合成动画进行中的样式 */
+.absorb-slot.absorbing {
+    border-color: #FFD700 !important;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8) !important;
+}
+
+#absorbActionButton:disabled {
+    background-color: #777 !important;
+    cursor: not-allowed !important;
+}
+
+
+
+
+.room-action-button {
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+#newRoomButton {
+    background-color: #3498DB;
+}
+
+#newRoomButton:hover {
+    background-color: #2980B9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+#findRoomButton {
+    background-color: #2ECC71;
+}
+
+#findRoomButton:hover {
+    background-color: #27AE60;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+#privateRoomButton {
+    background-color: #9B59B6;
+}
+
+#privateRoomButton:hover {
+    background-color: #8E44AD;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.room-action-button:disabled {
+    background-color: #7F8C8D;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+#readyButton {
+    margin-top: 10px;
+    padding: 12px 28px;
+    font-size: 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#readyButton:hover {
+    background-color: #45a049;
+}
+
+#readyButton:disabled {
+    background-color: #777;
+    cursor: not-allowed;
+}
+
+#waveBar {
+    position: absolute;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 400px;
+    text-align: center;
+    color: white;
+    z-index: 5;
+}
+
+/* 聊天界面样式 */
+#chatContainer {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 350px;
+    height: 300px;
+    background-color: rgba(40, 40, 40, 0.9);
+    border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    font-family: 'Arial', sans-serif;
+}
+
+#chatHeader {
+    background-color: rgba(76, 175, 80, 0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px 8px 0 0;
+    font-weight: bold;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#chatMessages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    color: white;
+    font-size: 12px;
+}
+
+.chat-message {
+    margin-bottom: 8px;
+    padding: 4px 8px;
+    border-radius: 5px;
+    word-wrap: break-word;
+}
+
+.chat-message.system {
+    background-color: rgba(255, 193, 7, 0.2);
+    border-left: 3px solid #FFC107;
+}
+
+.chat-message.global {
+    background-color: rgba(33, 150, 243, 0.2);
+    border-left: 3px solid #2196F3;
+}
+
+.chat-message.room {
+    background-color: rgba(76, 175, 80, 0.2);
+    border-left: 3px solid #4CAF50;
+}
+
+.chat-message.private {
+    background-color: rgba(233, 30, 99, 0.2);
+    border-left: 3px solid #E91E63;
+}
+
+.chat-message.error {
+    background-color: rgba(244, 67, 54, 0.2);
+    border-left: 3px solid #F44336;
+    color: #FFCDD2;
+}
+
+.chat-player-name {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.chat-timestamp {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-left: 5px;
+}
+
+#chatInputContainer {
+    display: flex;
+    padding: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#chatInput {
+    flex: 1;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    padding: 5px 8px;
+    color: white;
+    font-size: 12px;
+    outline: none;
+}
+
+#chatInput:focus {
+    border-color: #4CAF50;
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+#chatSendButton {
+    margin-left: 5px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+#chatSendButton:hover {
+    background-color: #45a049;
+}
+
+#chatClose {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 5px;
+}
+
+#chatClose:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+
+.chat-closed {
+    display: none;
+}
+
+#chatOpenButton {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+#chatOpenButton:hover {
+    background-color: #45a049;
+    transform: scale(1.1);
+}
+
+/* 聊天类型选择器 */
+#chatTypeSelector {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 5px;
+}
+
+.chat-type-button {
+    padding: 2px 6px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    color: white;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.chat-type-button.active {
+    background-color: #4CAF50;
+    border-color: #4CAF50;
+}
+
+.chat-type-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.chat-type-button.active:hover {
+    background-color: #45a049;
+}
+
+/* 音量控制样式 */
+#volumeControl {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+.volume-button {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.7);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.volume-button:hover {
+    background-color: rgba(0, 0, 0, 0.8);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.1);
+}
+
+.volume-slider-container {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    padding: 10px;
+    min-width: 150px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.volume-slider {
+    width: 120px;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.3);
+    outline: none;
+    border-radius: 3px;
+    margin: 5px 0;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #4CAF50;
+    cursor: pointer;
+    border-radius: 50%;
+    border: 2px solid white;
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: #4CAF50;
+    cursor: pointer;
+    border-radius: 50%;
+    border: 2px solid white;
+}
+
+#volumeValue {
+    color: white;
+    font-size: 12px;
+    text-align: center;
+    display: block;
+    margin-top: 5px;
+}
+
+#waveText {
+    font-size: 18px;
+    margin-bottom: 5px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+#waveProgressContainer {
+    width: 100%;
+    height: 20px;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+#waveProgressFill {
+    height: 100%;
+    width: 0%;
+    transition: width 0.5s ease;
+    position: relative;
+}
+
+#waveProgressFill.green {
+    background: linear-gradient(90deg, #4CAF50, #45a049);
+}
+
+#waveProgressFill.red {
+    background: linear-gradient(90deg, #ff3333, #cc0000);
+}
+
+.wave-phase-indicator {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.7);
+}
+
+#spawnPhaseIndicator {
+    left: 50%;
+}
+
+/* 背包拖拽样式 */
+#bagContent.drag-over-bag {
+    background-color: rgba(76, 175, 80, 0.1);
+    border: 2px dashed #4CAF50;
+    border-radius: 5px;
+}
+
+/* 装备槽拖拽样式 */
+.equipment-slot.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+}
+
+.equipment-slot {
+    transition: all 0.2s ease;
+}

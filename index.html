@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <meta charset="latin-1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Florr.io 网页版</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui">
+            <div id="healthBar">
+                <div id="healthFill"></div>
+            </div>
+            <div id="fps">FPS: 0</div>
+            <div id="inventory">
+                <!-- 装备的花瓣将通过JavaScript动态生成 -->
+            </div>
+        </div>
+        <div id="waveBar">
+            <div id="waveText">Wave: 1</div>
+            <div id="waveProgressContainer">
+                <div id="waveProgressFill" class="green"></div>
+                <div id="spawnPhaseIndicator" class="wave-phase-indicator"></div>
+            </div>
+        </div>
+
+        <div id="startScreen">
+            <h1>thoita.io</h1>
+            <input type="text" id="playerName" placeholder="输入你的名字" value="Player">
+            <button id="startButton">开始游戏</button>
+
+            <div id="lobbyUI" style="display:none;">
+                <div id="lobbyLayout">
+                    <div id="leftPanel">
+                        <div id="buttonContainer">
+                            <button class="lobby-button" id="bagButton">Bag</button>
+                            <button class="lobby-button" id="absorbLobbyButton">Absorb</button>
+                            <button class="lobby-button" id="galleryButton">Gallery</button>
+                        </div>
+                    </div>
+
+                    <div id="mainPanel">
+                        <div id="equipmentSlots">
+                            <!-- 装备槽将通过JS动态生成 -->
+                        </div>
+
+                        <div id="roomButtons" style="display: flex; gap: 10px; margin-bottom: 10px; justify-content: center;">
+                        <button id="newRoomButton" class="room-action-button">NEW</button>
+                        <button id="findRoomButton" class="room-action-button">FIND</button>
+                        <button id="privateRoomButton" class="room-action-button">PRIVATE</button>
+                    </div>
+                    <button id="readyButton">Ready</button>
+
+                        <div id="roomInfo">
+                            <h3>房间信息</h3>
+                            <div id="roomPlayers">
+                                <!-- 房间内其他玩家将通过JS动态生成 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="bagWindow">
+            <button class="close-button" id="closeBag">X</button>
+            <h2>背包</h2>
+            <div id="bagContent">
+                <!-- 背包内容将通过JS动态生成 -->
+            </div>
+        </div>
+
+        <div id="absorbWindow">
+            <button class="close-button" id="closeAbsorb">X</button>
+            <h2>花瓣合成</h2>
+
+            <!-- 五边形排列的五个合成槽位 -->
+            <div id="absorbSlotsContainer">
+                <div class="pentagon-slots">
+                    <div class="absorb-slot" data-index="0"></div>
+                    <div class="absorb-slot" data-index="1"></div>
+                    <div class="absorb-slot" data-index="2"></div>
+                    <div class="absorb-slot" data-index="3"></div>
+                    <div class="absorb-slot" data-index="4"></div>
+                </div>
+                <div id="absorbCenter">
+                    <button id="absorbActionButton" disabled>合成</button>
+                </div>
+            </div>
+
+            <!-- 合成结果显示区域 -->
+            <div id="absorbResult" style="display: none;">
+                <h3>合成结果</h3>
+                <div id="resultContent"></div>
+                <button id="closeResult">关闭</button>
+            </div>
+
+            <!-- 花瓣选择区域 -->
+            <div class="petal-selection-area">
+                <div id="absorbPetalSelection" class="petal-selection">
+                    <!-- 花瓣将通过JavaScript动态生成 -->
+                </div>
+            </div>
+        </div>
+
+        <div id="galleryWindow">
+            <button class="close-button" id="closeGallery">X</button>
+            <h2>图鉴</h2>
+            <p>图鉴功能暂未实现</p>
+        </div>
+
+        <div id="gameOver">
+            <h2>游戏结束</h2>
+            <button id="restartButton">重新开始</button>
+        </div>
+
+        <div id="loadingScreen">
+            <h2>加载资源</h2>
+            <div id="progressBar">
+                <div id="progressFill"></div>
+            </div>
+            <div id="loadingText">0%</div>
+        </div>
+
+        <!-- 聊天界面 -->
+        <div id="chatContainer">
+            <div id="chatHeader">
+                <span id="chatTitle">聊天</span>
+                <div>
+                    <button id="chatClose">×</button>
+                </div>
+            </div>
+            <div id="chatMessages"></div>
+            <div id="chatTypeSelector">
+                <button class="chat-type-button active" data-type="room">房间</button>
+                <button class="chat-type-button" data-type="global">全局</button>
+                <button class="chat-type-button" data-type="private">私聊</button>
+            </div>
+            <div id="chatInputContainer">
+                <input type="text" id="chatInput" placeholder="输入消息..." maxlength="200">
+                <button id="chatSendButton">发送</button>
+            </div>
+        </div>
+
+        <!-- 重新打开聊天按钮 -->
+        <button id="chatOpenButton" style="display: none;">💬</button>
+
+        <!-- 音量控制 -->
+        <div id="volumeControl">
+            <button id="volumeToggle" class="volume-button">🔊</button>
+            <div id="volumeSlider" class="volume-slider-container" style="display: none;">
+                <input type="range" id="volumeRange" min="0" max="100" value="50" class="volume-slider">
+                <span id="volumeValue">50%</span>
+                <button id="testAudioBtn" style="margin-top: 5px; padding: 2px 6px; font-size: 10px; width: 100%;">测试音频</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="flower.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
