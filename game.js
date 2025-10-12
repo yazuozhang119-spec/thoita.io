@@ -52,41 +52,413 @@ function linearOscillate(x) {
 }
 
 
-// 花瓣动画循环
+// 全局动画状态管理
+const animationState = {
+    isRunning: false,
+    elements: new Map(), // 缓存Canvas元素和参数
+    lastFrameTime: 0,
+    targetFPS: 25, // 动画FPS - 平衡性能和效果流畅度
+    frameInterval: 1000 / 25, // 帧间隔时间
+    animationId: null
+};
+
+// 优化后的花瓣动画系统
 function startPetalAnimation() {
-    function animate() {
-        // 查找所有需要动画的canvas
+    if (animationState.isRunning) {
+        console.log('动画已在运行中');
+        return;
+    }
+
+    console.log('启动优化后的花瓣动画系统');
+    animationState.isRunning = true;
+    window.petalAnimationRunning = true;
+
+    // 定期清理渲染缓存以防止内存泄漏
+    if (!animationState.cleanupInterval) {
+        animationState.cleanupInterval = setInterval(() => {
+            renderCache.cleanup();
+        }, 30000); // 每30秒清理一次
+    }
+
+    // 初始化并缓存所有Canvas元素
+    function initializeAnimationElements() {
         const animatedCanvases = document.querySelectorAll('canvas[data-animated="true"]');
 
-        animatedCanvases.forEach(canvas => {
-            // 重新绘制这个canvas
-            const petal = {
-                type: parseInt(canvas.dataset.petalType),
-                level: parseInt(canvas.dataset.petalLevel)
-            };
-            const options = {
-                displaySize: parseFloat(canvas.dataset.displaySize),
-                resolution: parseFloat(canvas.dataset.resolution)
-            };
+        // 清理旧的缓存
+        const removedElements = [];
+        for (const [canvas, data] of animationState.elements) {
+            if (!document.body.contains(canvas)) {
+                removedElements.push(canvas);
+            }
+        }
+        removedElements.forEach(canvas => animationState.elements.delete(canvas));
 
-            // 检查canvas是否还在DOM中
-            if (document.body.contains(canvas)) {
-                drawStaticPetalItem(petal, canvas, options);
+        // 添加新元素到缓存
+        animatedCanvases.forEach(canvas => {
+            if (!animationState.elements.has(canvas)) {
+                animationState.elements.set(canvas, {
+                    petal: {
+                        type: parseInt(canvas.dataset.petalType),
+                        level: parseInt(canvas.dataset.petalLevel)
+                    },
+                    options: {
+                        displaySize: parseFloat(canvas.dataset.displaySize),
+                        resolution: parseFloat(canvas.dataset.resolution)
+                    },
+                    lastDrawTime: 0,
+                    needsRedraw: true
+                });
             }
         });
 
-        // 继续动画循环
-        if (animatedCanvases.length > 0) {
-            requestAnimationFrame(animate);
-        } else {
-            window.petalAnimationRunning = false;
-        }
+        console.log(`已缓存 ${animationState.elements.size} 个动画元素`);
     }
 
-    animate();
+    // 优化的动画循环
+    function animate(currentTime) {
+        if (!animationState.isRunning) return;
+
+        // 帧率控制
+        if (currentTime - animationState.lastFrameTime < animationState.frameInterval) {
+            animationState.animationId = requestAnimationFrame(animate);
+            return;
+        }
+
+        animationState.lastFrameTime = currentTime;
+
+        // 批量处理所有Canvas元素
+        let drawCount = 0;
+        for (const [canvas, data] of animationState.elements) {
+            if (!document.body.contains(canvas)) {
+                animationState.elements.delete(canvas);
+                continue;
+            }
+
+            // 重绘频率控制 - 确保动态效果流畅
+            const timeSinceLastDraw = currentTime - data.lastDrawTime;
+            const minDrawInterval = 40; // 40ms最小重绘间隔 (约25FPS)
+
+            if (data.needsRedraw || timeSinceLastDraw > minDrawInterval) {
+                try {
+                    drawStaticPetalItem(data.petal, canvas, data.options);
+                    data.lastDrawTime = currentTime;
+                    data.needsRedraw = false;
+                    drawCount++;
+                } catch (error) {
+                    console.warn('绘制花瓣时出错:', error);
+                    animationState.elements.delete(canvas);
+                }
+            }
+        }
+
+        // 如果没有元素需要动画，停止动画循环
+        if (animationState.elements.size === 0) {
+            console.log('没有动画元素，停止动画循环');
+            stopPetalAnimation();
+            return;
+        }
+
+        // 继续动画循环
+        animationState.animationId = requestAnimationFrame(animate);
+    }
+
+    // 初始化并启动动画
+    initializeAnimationElements();
+    if (animationState.elements.size > 0) {
+        animationState.animationId = requestAnimationFrame(animate);
+    } else {
+        console.log('未找到需要动画的Canvas元素');
+        animationState.isRunning = false;
+        window.petalAnimationRunning = false;
+    }
 }
 
-// 静态绘制函数（实际绘制逻辑）
+// 停止花瓣动画
+function stopPetalAnimation() {
+    if (animationState.animationId) {
+        cancelAnimationFrame(animationState.animationId);
+        animationState.animationId = null;
+    }
+
+    // 清理缓存清理定时器
+    if (animationState.cleanupInterval) {
+        clearInterval(animationState.cleanupInterval);
+        animationState.cleanupInterval = null;
+    }
+
+    animationState.isRunning = false;
+    window.petalAnimationRunning = false;
+    console.log('花瓣动画已停止');
+}
+
+// 手动触发重绘（当花瓣变化时调用）
+function invalidatePetalAnimation(canvas) {
+    if (animationState.elements.has(canvas)) {
+        animationState.elements.get(canvas).needsRedraw = true;
+    }
+}
+
+// 调整动画性能设置
+function setAnimationFPS(fps) {
+    animationState.targetFPS = Math.max(1, Math.min(60, fps));
+    animationState.frameInterval = 1000 / animationState.targetFPS;
+    console.log(`动画FPS设置为: ${animationState.targetFPS}`);
+}
+
+// 性能监控和控制面板
+const performanceMonitor = {
+    isEnabled: false,
+    frameCount: 0,
+    lastFpsUpdate: 0,
+    currentFps: 0,
+
+    // 启用性能监控
+    enable() {
+        this.isEnabled = true;
+        this.frameCount = 0;
+        this.lastFpsUpdate = performance.now();
+        console.log('性能监控已启用');
+    },
+
+    // 禁用性能监控
+    disable() {
+        this.isEnabled = false;
+        console.log('性能监控已禁用');
+    },
+
+    // 更新FPS计数
+    update() {
+        if (!this.isEnabled) return;
+
+        this.frameCount++;
+        const now = performance.now();
+        const elapsed = now - this.lastFpsUpdate;
+
+        if (elapsed >= 1000) {
+            this.currentFps = Math.round((this.frameCount * 1000) / elapsed);
+            this.frameCount = 0;
+            this.lastFpsUpdate = now;
+
+            // 显示FPS信息
+            if (this.fpsDisplay) {
+                this.fpsDisplay.textContent = `FPS: ${this.currentFps}`;
+                this.fpsDisplay.style.color = this.currentFps >= 30 ? '#4CAF50' :
+                                          this.currentFps >= 20 ? '#FF9800' : '#f44336';
+            }
+        }
+    },
+
+    // 创建性能控制面板
+    createControlPanel() {
+        if (this.controlPanel) return;
+
+        this.controlPanel = document.createElement('div');
+        this.controlPanel.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            z-index: 10000;
+            min-width: 200px;
+        `;
+
+        // FPS显示
+        this.fpsDisplay = document.createElement('div');
+        this.fpsDisplay.style.cssText = `
+            font-weight: bold;
+            margin-bottom: 10px;
+        `;
+        this.fpsDisplay.textContent = 'FPS: --';
+        this.controlPanel.appendChild(this.fpsDisplay);
+
+  // 游戏主循环FPS控制
+        const gameFpsLabel = document.createElement('label');
+        gameFpsLabel.textContent = `游戏主循环FPS: ${config.maxFps}`;
+        gameFpsLabel.style.cssText = `
+            display: block;
+            margin-bottom: 5px;
+        `;
+        this.controlPanel.appendChild(gameFpsLabel);
+
+        const gameFpsSlider = document.createElement('input');
+        gameFpsSlider.type = 'range';
+        gameFpsSlider.min = '15';
+        gameFpsSlider.max = '120';
+        gameFpsSlider.value = config.maxFps;
+        gameFpsSlider.style.cssText = `
+            width: 100%;
+            margin-bottom: 10px;
+        `;
+        gameFpsSlider.addEventListener('input', (e) => {
+            const fps = parseInt(e.target.value);
+            config.maxFps = fps;
+            gameFpsLabel.textContent = `游戏主循环FPS: ${fps}`;
+            console.log(`游戏主循环FPS设置为: ${fps}`);
+        });
+        this.controlPanel.appendChild(gameFpsSlider);
+
+        // 动画FPS控制
+        const animFpsLabel = document.createElement('label');
+        animFpsLabel.textContent = `花瓣动画FPS: ${animationState.targetFPS}`;
+        animFpsLabel.style.cssText = `
+            display: block;
+            margin-bottom: 5px;
+        `;
+        this.controlPanel.appendChild(animFpsLabel);
+
+        const animFpsSlider = document.createElement('input');
+        animFpsSlider.type = 'range';
+        animFpsSlider.min = '1';
+        animFpsSlider.max = '60';
+        animFpsSlider.value = animationState.targetFPS;
+        animFpsSlider.style.cssText = `
+            width: 100%;
+            margin-bottom: 10px;
+        `;
+        animFpsSlider.addEventListener('input', (e) => {
+            const fps = parseInt(e.target.value);
+            setAnimationFPS(fps);
+            animFpsLabel.textContent = `花瓣动画FPS: ${fps}`;
+        });
+        this.controlPanel.appendChild(animFpsSlider);
+
+        // 帧率诊断信息
+        const diagnosticInfo = document.createElement('div');
+        diagnosticInfo.style.cssText = `
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            font-size: 11px;
+            line-height: 1.4;
+        `;
+        this.controlPanel.appendChild(diagnosticInfo);
+
+        // 更新诊断信息
+        const updateDiagnosticInfo = () => {
+            if (!diagnosticInfo.parentElement) return;
+
+            const refreshRate = screen.refreshRate || '未知';
+            const isChrome = navigator.userAgent.includes('Chrome');
+            const isFirefox = navigator.userAgent.includes('Firefox');
+            const animatedCount = document.querySelectorAll('canvas[data-animated="true"]').length;
+
+            diagnosticInfo.innerHTML = `
+                <div style="font-weight: bold; margin-bottom: 5px;">帧率诊断信息:</div>
+                <div>显示器刷新率: ${refreshRate}Hz</div>
+                <div>浏览器: ${isChrome ? 'Chrome' : isFirefox ? 'Firefox' : '其他'}</div>
+                <div>Canvas元素: ${animatedCount}个</div>
+                <div>渲染优化: ${animationState.targetFPS < 60 ? '已启用' : '标准'}</div>
+                <div style="margin-top: 5px; font-size: 10px; opacity: 0.8;">
+                    提示: 50FPS可能因浏览器省电模式或V-Sync
+                </div>
+            `;
+        };
+
+        updateDiagnosticInfo();
+        setInterval(updateDiagnosticInfo, 2000); // 每2秒更新一次
+
+        // 缓存清理按钮
+        const clearCacheBtn = document.createElement('button');
+        clearCacheBtn.textContent = '清理缓存';
+        clearCacheBtn.style.cssText = `
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 5px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        `;
+        clearCacheBtn.addEventListener('click', () => {
+            renderCache.cleanup();
+            console.log('手动清理缓存完成');
+        });
+        this.controlPanel.appendChild(clearCacheBtn);
+
+        // 关闭按钮
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '关闭面板';
+        closeBtn.style.cssText = `
+            width: 100%;
+            padding: 5px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        `;
+        closeBtn.addEventListener('click', () => {
+            this.hideControlPanel();
+        });
+        this.controlPanel.appendChild(closeBtn);
+
+        document.body.appendChild(this.controlPanel);
+        this.enable();
+    },
+
+    // 隐藏控制面板
+    hideControlPanel() {
+        if (this.controlPanel) {
+            document.body.removeChild(this.controlPanel);
+            this.controlPanel = null;
+            this.disable();
+        }
+    }
+};
+
+// 全局函数：显示/隐藏性能控制面板
+function togglePerformancePanel() {
+    if (performanceMonitor.controlPanel) {
+        performanceMonitor.hideControlPanel();
+    } else {
+        performanceMonitor.createControlPanel();
+    }
+}
+
+
+  
+// 渲染缓存系统
+const renderCache = {
+    // 缓存计算参数，避免重复计算
+    paramsCache: new Map(),
+    // 缓存颜色计算结果
+    colorCache: new Map(),
+    // 缓存等级名称
+    levelNameCache: new Map(),
+
+    // 获取或计算参数
+    getParams(displaySize) {
+        if (!this.paramsCache.has(displaySize)) {
+            const scale = displaySize / 55;
+            const params = {
+                scale: scale,
+                borderWidth: 7 * scale,
+                petalScale: 33 * scale,
+                petalY: 8 * scale,
+                fontSize: 10 * scale,
+                textY: 49 * scale
+            };
+            this.paramsCache.set(displaySize, params);
+        }
+        return this.paramsCache.get(displaySize);
+    },
+
+    // 清理缓存（如果缓存过大）
+    cleanup() {
+        if (this.paramsCache.size > 50) this.paramsCache.clear();
+        if (this.colorCache.size > 200) this.colorCache.clear();
+        if (this.levelNameCache.size > 100) this.levelNameCache.clear();
+    }
+};
+
+// 优化的静态绘制函数
 function drawStaticPetalItem(petal, canvas, options) {
     const ctx = canvas.getContext('2d');
 
@@ -105,21 +477,17 @@ function drawStaticPetalItem(petal, canvas, options) {
     const width = displaySize * resolution;
     const height = displaySize * resolution;
 
-    // 根据displaySize动态计算所有参数（以55px为基准）
-    const scale = displaySize / 55;
-    const borderWidth = 7 * scale;
-    const petalScale = 33 * scale;
-    const petalY = 8 * scale;
-    const fontSize = 10 * scale;
-    const textY = 49 * scale;
+    // 获取缓存的计算参数
+    const params = renderCache.getParams(displaySize);
+    const { scale, borderWidth, petalScale, petalY, fontSize, textY } = params;
 
-    // 设置canvas实际分辨率
-    canvas.width = width;
-    canvas.height = height;
-
-    // 设置显示尺寸
-    canvas.style.width = displaySize + 'px';
-    canvas.style.height = displaySize + 'px';
+    // 只在canvas尺寸变化时设置
+    if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+        canvas.style.width = displaySize + 'px';
+        canvas.style.height = displaySize + 'px';
+    }
 
     // 清空画布
     ctx.clearRect(0, 0, width, height);
@@ -574,27 +942,29 @@ function drawStaticPetalItem(petal, canvas, options) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
 
-    // 根据花瓣类型获取对应的中文名称
-    const petalNames = {
-        0: '导弹',
-        1: '基础',
-        2: '未使用',
-        3: '叶子',
-        4: '翅膀',
-        5: '闪电',
-        6: '鸢尾花',
-        7: '贝壳',
-        8: '炸弹',
-        9: '磁铁',
-        10: '第三只眼'
-    };
-
-    // 获取花瓣名称，处理各种异常情况
+    // 获取花瓣名称（使用缓存优化）
     let displayName;
     if (petal.type === undefined || petal.type === null) {
         displayName = '未知';
     } else {
-        displayName = petalNames[petal.type] || `类型${petal.type}`;
+        // 使用缓存的花瓣名称
+        const petalNameKey = `petal_${petal.type}`;
+        if (!renderCache.petalNameCache) {
+            renderCache.petalNameCache = new Map([
+                [0, '导弹'],
+                [1, '基础'],
+                [2, '未使用'],
+                [3, '叶子'],
+                [4, '翅膀'],
+                [5, '闪电'],
+                [6, '鸢尾花'],
+                [7, '贝壳'],
+                [8, '炸弹'],
+                [9, '磁铁'],
+                [10, '第三只眼']
+            ]);
+        }
+        displayName = renderCache.petalNameCache.get(petal.type) || `类型${petal.type}`;
     }
 
     ctx.fillText(displayName, width / 2, textY * resolution);  // 动态文字Y位置
@@ -782,30 +1152,35 @@ const config = {
 };
 
 // 游戏状态
-// 获取等级名称 - 19级新系统
+// 获取等级名称 - 19级新系统（优化版，使用缓存）
 function getLevelName(level) {
-    const levelNames = {
-        1: "common",
-        2: "unusual",
-        3: "rare",
-        4: "epic",
-        5: "legendary",
-        6: "mythic",
-        7: "ultra",
-        8: "super",
-        9: "omega",
-        10: "fabled",
-        11: "divine",
-        12: "supreme",
-        13: "omnipotent",
-        14: "astral",
-        15: "celestial",
-        16: "seraphic",
-        17: "paradisiac",
-        18: "protean",
-        19: "unsurpassed"
-    };
-    return levelNames[level] || "unknown";
+    // 使用缓存系统
+    if (!renderCache.levelNameCache.has(level)) {
+        const levelNames = {
+            1: "common",
+            2: "unusual",
+            3: "rare",
+            4: "epic",
+            5: "legendary",
+            6: "mythic",
+            7: "ultra",
+            8: "super",
+            9: "omega",
+            10: "fabled",
+            11: "divine",
+            12: "supreme",
+            13: "omnipotent",
+            14: "astral",
+            15: "celestial",
+            16: "seraphic",
+            17: "paradisiac",
+            18: "protean",
+            19: "unsurpassed"
+        };
+        const name = levelNames[level] || "unknown";
+        renderCache.levelNameCache.set(level, name);
+    }
+    return renderCache.levelNameCache.get(level);
 }
 
 const gameState = {
@@ -2000,6 +2375,7 @@ function drawPetalItem(petal, canvas, options = {}) {
     // 直接调用静态绘制函数
     drawStaticPetalItem(petal, canvas, config);
 }
+
  
 // 在现有上下文中绘制掉落物花瓣（简化版本，不影响全局状态）
 function drawPetalInContext(petal, ctx, displaySize) {
@@ -3864,6 +4240,9 @@ function gameLoop(timestamp) {
         }
     }
     gameState.lastFrameTime = timestamp;
+
+    // 更新性能监控
+    performanceMonitor.update();
 
     // 清除画布（使用实际像素尺寸）
     ctx.fillStyle = config.backgroundColor;
@@ -6513,10 +6892,32 @@ window.showPerformanceStats = function() {
     console.log(`   实体数量: ${gameState.petals.length + gameState.mobs.length + gameState.collectDrops.length}`);
 };
 
-// 快捷键：按V键切换渲染模式
+// 快捷键系统
 document.addEventListener('keydown', (e) => {
     if (e.key === 'v' || e.key === 'V') {
         window.toggleRenderingMode();
+    } else if (e.key === 'p' || e.key === 'P') {
+        // P键：打开/关闭性能控制面板
+        togglePerformancePanel();
+    } else if (e.key === 'F5') {
+        // F5键：重置动画系统
+        e.preventDefault();
+        stopPetalAnimation();
+        setTimeout(() => {
+            startPetalAnimation();
+        }, 100);
+        console.log('动画系统已重置');
+    } else if (e.key === 'F11') {
+        // F11键：帧率诊断
+        e.preventDefault();
+        console.log('=== 帧率诊断信息 ===');
+        console.log(`显示器刷新率: ${screen.refreshRate || '未知'}Hz`);
+        console.log(`当前FPS: ${gameState.fps || '未知'}`);
+        console.log(`目标FPS: ${config.maxFps}`);
+        console.log(`动画FPS: ${animationState.targetFPS}`);
+        console.log(`Canvas元素数量: ${animationState.elements.size}`);
+        console.log(`浏览器: ${navigator.userAgent.split(' ')[0]}`);
+        console.log('===================');
     }
 });
 
