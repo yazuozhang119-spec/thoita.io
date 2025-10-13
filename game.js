@@ -1096,8 +1096,8 @@ function initAudioSystem() {
         }
 
         // 尝试多种音频格式
-        const backgroundFormats = ['background.mp3'];
-        const deathFormats = ['death.mp3'];
+        const backgroundFormats = ['/static/background.mp3'];
+        const deathFormats = ['/static/death.mp3'];
 
         // 创建背景音乐对象
         gameState.backgroundMusic = createAudioWithFallback('背景音乐', backgroundFormats);
