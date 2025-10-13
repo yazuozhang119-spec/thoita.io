@@ -47,6 +47,7 @@
                             <!-- 装备槽将通过JS动态生成 -->
                         </div>
 
+                        <div id="selectRoomMessage" style="color: white; font-size: 16px; margin-bottom: 15px; text-align: center; display: none;">请选择房间</div>
                         <div id="roomButtons" style="display: flex; gap: 10px; margin-bottom: 10px; justify-content: center;">
                         <button id="newRoomButton" class="room-action-button">新建房间</button>
                         <button id="findRoomButton" class="room-action-button">寻找</button>
@@ -55,8 +56,30 @@
                     <button id="readyButton">Ready</button>
 
                         <div id="roomInfo">
-                            <h3>房间信息</h3>
+                            <div id="noRoomMessage" style="color: rgba(255, 255, 255, 0.6); font-size: 14px; text-align: center; padding: 20px;">没有房间信息</div>
+                            <div id="roomWaveSettings" style="display: none;">
+                                <div class="wave-setting-container">
+                                    <label for="startWaveSlider"></label>
+                                    <div class="slider-container">
+                                        <input type="range" id="startWaveSlider" min="0" max="1" value="1" class="wave-slider">
+                                        <div class="slider-value-display">
+                                            <span id="startWaveValue">1</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="wave-info-container">
+                                    <div class="wave-info-item">
+                                        <span class="wave-info-label">房间起始波次:</span>
+                                        <span id="roomStartWave" class="wave-info-value">1</span>
+                                    </div>
+                                    <div class="wave-info-item">
+                                        <span class="wave-info-label">你的起始波次:</span>
+                                        <span id="playerStartWave" class="wave-info-value">1</span>
+                                    </div>
+                                </div>
+                            </div>
                             <div id="roomPlayers">
+                                <h4>房间玩家</h4>
                                 <!-- 房间内其他玩家将通过JS动态生成 -->
                             </div>
                         </div>
@@ -157,7 +180,8 @@
                 <button id="testAudioBtn" style="margin-top: 5px; padding: 2px 6px; font-size: 10px; width: 100%;">测试音频</button>
             </div>
         </div>
-    </div>
+
+        </div>
 
     <script src="flower.js"></script>
     <script src="game.js"></script>
