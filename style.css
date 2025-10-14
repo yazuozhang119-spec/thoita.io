@@ -560,9 +560,9 @@ body {
 }
 
 #roomPlayers {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
     align-items: flex-start;
     width: 100%;
     padding: 10px 0;
@@ -577,9 +577,10 @@ body {
     text-align: center;
     margin: 10px;
     transition: all 0.3s ease;
-    flex: 0 0 auto;
-    display: inline-block;
+    flex: 0 0 auto !important;
+    display: inline-block !important;
     transform: scale(1.05);
+    float: none !important;
 }
 
 .player-card.current-player {

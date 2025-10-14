@@ -1096,8 +1096,8 @@ function initAudioSystem() {
         }
 
         // 尝试多种音频格式
-        const backgroundFormats = ['/static/background.mp3'];
-        const deathFormats = ['/static/death.mp3'];
+        const backgroundFormats = ['background.mp3'];
+        const deathFormats = ['death.mp3'];
 
         // 创建背景音乐对象
         gameState.backgroundMusic = createAudioWithFallback('背景音乐', backgroundFormats);
@@ -1849,7 +1849,6 @@ function updateWaveBar(waveData) {
         is_spawn_phase: waveData.is_spawn_phase
     };
 
-    console.log('收到新的wave信息:', gameState.wave);
 }
 
 // 客户端计算wave进度的函数
@@ -2255,7 +2254,6 @@ function updateRoomInfo() {
 // 更新房间内玩家显示
 function updateRoomPlayers() {
     roomPlayers.innerHTML = '';
-    console.log(gameState.roomInfo)
 
     // 首先添加当前玩家（总是显示在第一个）
     const currentPlayerBuild = gameState.equippedPetals.map(petal => {
@@ -4131,7 +4129,6 @@ function handleServerMessage(data) {
                         else if (typeIdx === 19) {
                             // 花朵类型 (19)
                             gameState.flowers.push(baseObject);
-                            console.log(baseObject)
                         } else if (typeIdx === 20) {
                             // 掉落物类型 (20)
                             gameState.collectDrops.push(baseObject);
@@ -4973,7 +4970,6 @@ function drawObject(obj) {
             ctx.restore()
 
         } else if (obj.name && obj.name.includes('flower')) {
-            console.log('绘制花朵')
             // 花朵对象 - 完全使用flower.js绘制，参考drawPlayer函数
             const flowerSize = Math.max(width, height) / 2;  // 这是半径
 
