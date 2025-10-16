@@ -896,7 +896,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -1017,7 +1017,10 @@ const gameState = {
     fpsHistory: [],
     maxFpsHistoryLength: 60, // 保存60帧的历史记录用于计算平均FPS
     lastPerformanceUpdate: 0,
-    performanceUpdateInterval: 500 // 每500ms更新一次性能显示
+    performanceUpdateInterval: 500, // 每500ms更新一次性能显示
+    // 视野相关状态
+    viewWidth: 1200, // 默认视野宽度
+    viewHeight: 800  // 默认视野高度
 };
 
 // DOM 元素
@@ -1662,6 +1665,7 @@ function initGame() {
     canvas.addEventListener('mousemove', handleMouseMove);
     canvas.addEventListener('mousedown', handleMouseDown);
     canvas.addEventListener('mouseup', handleMouseUp);
+    canvas.addEventListener('wheel', handleWheel);
     canvas.addEventListener('contextmenu', e => e.preventDefault());
 
     // 加载资源
@@ -3824,6 +3828,13 @@ function startGame() {
     updateInventoryDisplay();
     waveBar.style.display = 'block';
 
+    // 初始化视野设置（确保花朵在屏幕中心）
+    gameState.viewWidth = 1200;
+    gameState.viewHeight = 800;
+
+    // 更新画布缩放和偏移
+    updateCanvasOffset();
+
     // 停止所有非游戏界面的canvas动画（背包、合成界面等）
     stopNonGameCanvasAnimations();
 
@@ -4209,8 +4220,20 @@ function handleServerMessage(data) {
                 addChatMessage('错误', message.error, 'error');
                 break;
 
+            case 'ERROR':
+                console.log('服务器错误:', message.message);
+                break;
+
+            case 'HEARTBEAT_RESPONSE':
+                // 心跳响应，无需处理
+                break;
+
             case 'CHAT_CLEAR':
                 clearChatMessages();
+                break;
+
+            case 'VIEW_ADJUSTED':
+                handleViewAdjusted(message);
                 break;
 
             default:
@@ -4243,11 +4266,12 @@ function handleMouseMove(event) {
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
 
-    // 将鼠标坐标转换到基准画布坐标系（移除缩放）
-    const adjustedMouseX = mouseX - gameState.offsetX;
-    const adjustedMouseY = mouseY - gameState.offsetY;
+    // 将鼠标坐标转换到游戏坐标系（考虑缩放和偏移）
+    // 首先移除偏移量，然后除以缩放比例
+    const adjustedMouseX = (mouseX - gameState.offsetX) / gameState.scale;
+    const adjustedMouseY = (mouseY - gameState.offsetY) / gameState.scale;
 
-    // 计算相对于玩家中心的位置（使用基准画布尺寸）
+    // 计算相对于玩家中心的位置（使用画布尺寸）
     const playerCenterX = config.baseCanvasWidth / 2;
     const playerCenterY = config.baseCanvasHeight / 2;
 
@@ -4298,6 +4322,117 @@ function handleMouseUp(event) {
         data: [0, 0, gameState.playerState],
         id: gameState.playerId
     });
+}
+
+// 处理鼠标滚轮事件 - 调整视野大小
+function handleWheel(event) {
+    if (!gameState.connected) return;
+
+    // 阻止页面滚动
+    event.preventDefault();
+
+    // 如果在大厅界面，显示提示信息
+    if (gameState.isLobby) {
+        console.log('请先开始游戏后再调整视野大小');
+        return;
+    }
+
+    // 获取滚轮滚动方向
+    let delta = 0;
+    if (event.deltaY !== 0) {
+        delta = event.deltaY > 0 ? 1 : -1;
+    }
+
+    // 只有delta不为0时才调整视野
+    if (delta !== 0) {
+        // 立即调整本地视野（提供即时反馈）
+        adjustLocalViewSize(delta);
+
+        // 发送视野调整请求到服务器
+        const adjustViewData = {
+            COMMAND: 'ADJUST_VIEW',
+            client_name: gameState.playerName,
+            delta: delta,
+            id: gameState.playerId
+        };
+
+        sendToServer(adjustViewData);
+    }
+}
+
+// 本地视野调整（提供即时反馈）
+function adjustLocalViewSize(delta) {
+    // 计算新的视野大小
+    const adjustFactor = 50; // 每次滚动调整的像素数
+    const sizeChange = delta * adjustFactor;
+
+    // 调整视野大小，保持宽高比
+    let newWidth = gameState.viewWidth + sizeChange;
+    let newHeight = gameState.viewHeight + (sizeChange * 800 / 1200); // 保持16:10的宽高比
+
+    // 限制在最小和最大尺寸之间
+    newWidth = Math.max(600, Math.min(2400, newWidth));
+    newHeight = Math.max(600 * (800/1200), Math.min(2400 * (800/1200), newHeight));
+
+    // 更新游戏状态
+    gameState.viewWidth = newWidth;
+    gameState.viewHeight = newHeight;
+
+    // 立即更新画布缩放
+    updateCanvasOffset();
+}
+
+// 处理视野调整响应（服务器确认）
+function handleViewAdjusted(message) {
+    if (message.view_width && message.view_height) {
+        // 服务器确认视野调整成功，可以用于同步状态
+        if (message.message) {
+            console.log('服务器确认:', message.message);
+        }
+    }
+}
+
+// 更新画布偏移和缩放（用于视野调整）
+function updateCanvasOffset() {
+    const container = document.getElementById('gameContainer');
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+
+    // 计算容器与视野的宽高比
+    const containerRatio = containerWidth / containerHeight;
+    const viewRatio = gameState.viewWidth / gameState.viewHeight;
+
+    let actualViewWidth, actualViewHeight;
+
+    if (containerRatio > viewRatio) {
+        // 容器更宽，以高度为准，扩展视野宽度
+        actualViewHeight = gameState.viewHeight;
+        actualViewWidth = gameState.viewHeight * containerRatio;
+    } else {
+        // 容器更高，以宽度为准，扩展视野高度
+        actualViewWidth = gameState.viewWidth;
+        actualViewHeight = gameState.viewWidth / containerRatio;
+    }
+
+    // 使用调整后的视野大小计算缩放比例
+    const scaleX = containerWidth / actualViewWidth;
+    const scaleY = containerHeight / actualViewHeight;
+    const newScale = Math.min(scaleX, scaleY);
+
+    // 更新游戏状态中的缩放信息
+    gameState.scale = newScale;
+    gameState.scaleX = newScale;
+    gameState.scaleY = newScale;
+
+    // 更新配置中的基准画布尺寸为调整后的视野大小
+    config.baseCanvasWidth = actualViewWidth;
+    config.baseCanvasHeight = actualViewHeight;
+
+    // 计算偏移量以居中显示
+    const scaledWidth = actualViewWidth * newScale;
+    const scaledHeight = actualViewHeight * newScale;
+    gameState.offsetX = (containerWidth - scaledWidth) / 2;
+    gameState.offsetY = (containerHeight - scaledHeight) / 2;
 }
 
 // 游戏主循环（性能优化：添加帧率限制）
@@ -4777,34 +4912,31 @@ function drawBackground() {
     const offsetX = (gameState.playerPosition.x % gridSize) - gridSize;
     const offsetY = (gameState.playerPosition.y % gridSize) - gridSize;
 
-    // 使用缩放后的实际显示区域尺寸
-    // 考虑游戏的等比例缩放和居中偏移
-    const actualWidth = config.baseCanvasWidth / gameState.scale;
-    const actualHeight = config.baseCanvasHeight / gameState.scale;
+    // 使用画布的实际尺寸作为显示区域
+    const canvasWidth = config.baseCanvasWidth;
+    const canvasHeight = config.baseCanvasHeight;
 
-    // 计算偏移量以考虑居中显示
-    const offsetLeft = (config.baseCanvasWidth - actualWidth) / 2;
-    const offsetTop = (config.baseCanvasHeight - actualHeight) / 2;
-
-    for (let x = -offsetX; x < actualWidth; x += gridSize) {
+    // 绘制垂直线
+    for (let x = -offsetX; x < canvasWidth; x += gridSize) {
         ctx.beginPath();
-        ctx.moveTo(x + offsetLeft, offsetTop);
-        ctx.lineTo(x + offsetLeft, actualHeight + offsetTop);
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvasHeight);
         ctx.stroke();
     }
 
-    for (let y = -offsetY; y < actualHeight; y += gridSize) {
+    // 绘制水平线
+    for (let y = -offsetY; y < canvasHeight; y += gridSize) {
         ctx.beginPath();
-        ctx.moveTo(offsetLeft, y + offsetTop);
-        ctx.lineTo(actualWidth + offsetLeft, y + offsetTop);
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvasWidth, y);
         ctx.stroke();
     }
 
     // 绘制游戏边界
     if (gameState.boundaryRadius > 0) {
-        // 使用实际显示区域计算边界位置
-        const playerCenterX = actualWidth / 2 + offsetLeft;
-        const playerCenterY = actualHeight / 2 + offsetTop;
+        // 使用画布尺寸计算边界位置
+        const playerCenterX = canvasWidth / 2;
+        const playerCenterY = canvasHeight / 2;
 
         // 计算边界在屏幕上的位置
         const boundaryX = playerCenterX - gameState.playerPosition.x;
@@ -4850,7 +4982,7 @@ function drawGameObjects() {
 
 // 绘制单个对象
 function drawObject(obj) {
-    // 使用基准画布尺寸计算屏幕坐标
+    // 使用画布尺寸计算屏幕坐标
     const playerCenterX = config.baseCanvasWidth / 2;
     const playerCenterY = config.baseCanvasHeight / 2;
 
@@ -4900,7 +5032,7 @@ function drawObject(obj) {
                 }
             }
 
-            drawVectorPetal(screenX, screenY, petalSize, -obj.angle * Math.PI / 180, petalType);
+            drawVectorPetal(screenX, screenY, petalSize, -obj.angle, petalType);
         } else if (obj.name && (obj.name.includes('hornet') || obj.name.includes('centipede') ||
                    obj.name.includes('rock') || obj.name.includes('ladybug') || obj.name.includes('mob') ||
                    obj.name.includes('bombbeetle') || obj.name.includes('shield') ||
@@ -4920,7 +5052,7 @@ function drawObject(obj) {
             else if (obj.name.includes('shield')) monsterType = 'shield';
 
 
-            drawVectorMonster(screenX, screenY, mobSize, monsterType, -obj.angle * Math.PI / 180);
+            drawVectorMonster(screenX, screenY, mobSize, monsterType, -obj.angle);
         } else if (obj.name && obj.name.includes('drop')) {
             // 收集物 - 使用服务器传输的原始大小，但size应该是直径
             const dropSize = Math.max(width, height) / 2;  // 这是半径
@@ -5056,7 +5188,7 @@ function drawPlayer() {
     if (typeof Flower !== 'undefined') {
         const playerFlower = new Flower('player');
 
-        // 设置玩家属性
+        // 设置玩家属性 - 玩家始终在屏幕中心
         playerFlower.x = config.baseCanvasWidth / 2;
         playerFlower.y = config.baseCanvasHeight / 2;
         playerFlower.radius = (gameState.playerSize || config.playerSize) / 2; // 服务器发送直径值，转换为半径
@@ -5135,25 +5267,31 @@ function resizeCanvas() {
     const containerHeight = container.clientHeight;
     const dpr = gameState.devicePixelRatio;
 
-    // 直接设置画布大小为屏幕大小
-    config.baseCanvasWidth = containerWidth;
-    config.baseCanvasHeight = containerHeight;
+    // 根据游戏状态设置不同的基准尺寸
+    if (gameState.isLobby) {
+        // 大厅模式：使用容器大小
+        config.baseCanvasWidth = containerWidth;
+        config.baseCanvasHeight = containerHeight;
 
-    // 计算缩放比例，保持等比例（使用较小的缩放值）
-    const scaleX = containerWidth / 1200;  // 基于原始游戏宽度
-    const scaleY = containerHeight / 800;  // 基于原始游戏高度
-    const scale = Math.min(scaleX, scaleY);  // 使用较小的缩放比例保持比例
+        // 计算缩放比例，保持等比例（使用较小的缩放值）
+        const scaleX = containerWidth / 1200;  // 基于原始游戏宽度
+        const scaleY = containerHeight / 800;  // 基于原始游戏高度
+        const scale = Math.min(scaleX, scaleY);  // 使用较小的缩放比例保持比例
 
-    // 更新游戏状态中的缩放信息
-    gameState.scale = scale;     // 等比例缩放
-    gameState.scaleX = scale;    // X轴缩放（与Y相同）
-    gameState.scaleY = scale;    // Y轴缩放（与X相同）
+        // 更新游戏状态中的缩放信息
+        gameState.scale = scale;
+        gameState.scaleX = scale;
+        gameState.scaleY = scale;
 
-    // 计算偏移量以居中显示
-    const scaledWidth = config.baseCanvasWidth * scale;
-    const scaledHeight = config.baseCanvasHeight * scale;
-    gameState.offsetX = (containerWidth - scaledWidth) / 2;
-    gameState.offsetY = (containerHeight - scaledHeight) / 2;
+        // 计算偏移量以居中显示
+        const scaledWidth = config.baseCanvasWidth * scale;
+        const scaledHeight = config.baseCanvasHeight * scale;
+        gameState.offsetX = (containerWidth - scaledWidth) / 2;
+        gameState.offsetY = (containerHeight - scaledHeight) / 2;
+    } else {
+        // 游戏模式：使用视野大小
+        updateCanvasOffset();
+    }
 
     // 设置画布CSS尺寸（显示尺寸）
     canvas.style.width = containerWidth + 'px';
@@ -5197,7 +5335,7 @@ function resizeCanvas() {
         }
     }
 
-    console.log(`DPR: ${dpr}, 缩放比例: ${scale.toFixed(3)}, 偏移: (${gameState.offsetX.toFixed(1)}, ${gameState.offsetY.toFixed(1)})`);
+    console.log(`DPR: ${dpr}, 缩放比例: ${gameState.scale.toFixed(3)}, 偏移: (${gameState.offsetX.toFixed(1)}, ${gameState.offsetY.toFixed(1)})`);
 }
 
 // 血条渲染函数（flower.js 兼容）
