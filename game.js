@@ -3937,6 +3937,12 @@ function parseServerBuild(buildData) {
 
 function updateInventoryDisplay() {
     const inventory = document.getElementById('inventory');
+    // 强制设置横向排列样式
+    inventory.style.display = 'flex';
+    inventory.style.flexDirection = 'row';
+    inventory.style.flexWrap = 'nowrap';
+    inventory.style.alignItems = 'center';
+    inventory.style.justifyContent = 'center';
     inventory.innerHTML = '';
 
     // 显示装备的花瓣
