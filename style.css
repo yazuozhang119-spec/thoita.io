@@ -350,7 +350,10 @@ body {
     width: 100vw;
     height: 100vh;
     margin: 0;
-    position: relative;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 5;
     background-color: transparent; /* 透明，继承父容器的网格背景 */
 }
 
@@ -1037,10 +1040,12 @@ body {
 
 #waveBar {
     position: absolute;
-    top: 60px;
+    top: 5vh; /* 使用视口高度的5% */
     left: 50%;
     transform: translateX(-50%);
-    width: 400px;
+    width: 40vw; /* 使用视口宽度的40% */
+    max-width: 400px; /* 最大宽度限制 */
+    min-width: 300px; /* 最小宽度限制 */
     text-align: center;
     color: white;
     z-index: 5;
@@ -1526,6 +1531,223 @@ button {
     color: #4CAF50;
     font-weight: normal;
     font-size: 11px;
+}
+
+/* 认证表单样式 */
+.auth-form {
+    background-color: rgba(40, 40, 40, 0.9);
+    border-radius: 15px;
+    padding: 30px;
+    width: 350px;
+    max-width: 90vw;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    box-sizing: border-box;
+}
+
+.auth-form h2 {
+    color: white;
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 24px;
+    text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+    font-weight: 600;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px 15px;
+    font-size: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.form-group input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.form-group input:focus {
+    border-color: #4CAF50;
+    background-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+}
+
+.form-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    font-size: 14px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    color: white;
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto;
+    margin-right: 8px;
+    cursor: pointer;
+}
+
+.auth-button {
+    width: 100%;
+    padding: 14px;
+    font-size: 18px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.auth-button:hover {
+    background: linear-gradient(135deg, #45a049, #3d8b40);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.auth-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(76, 175, 80, 0.3);
+}
+
+.auth-switch {
+    text-align: center;
+    margin-top: 20px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+}
+
+.auth-switch a {
+    color: #4CAF50;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.auth-switch a:hover {
+    color: #45a049;
+    text-decoration: underline;
+}
+
+.auth-error {
+    background-color: rgba(244, 67, 54, 0.9);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 14px;
+    border: 1px solid rgba(244, 67, 54, 0.5);
+    box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+    animation: errorFadeIn 0.3s ease;
+}
+
+@keyframes errorFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.auth-success {
+    background-color: rgba(76, 175, 80, 0.9);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 14px;
+    border: 1px solid rgba(76, 175, 80, 0.5);
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+    animation: successFadeIn 0.3s ease;
+}
+
+@keyframes successFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 加载动画 */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top: 3px solid #4CAF50;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 表单验证提示 */
+.form-validation-error {
+    border-color: #f44336 !important;
+    box-shadow: 0 0 8px rgba(244, 67, 54, 0.3) !important;
+}
+
+.form-validation-success {
+    border-color: #4CAF50 !important;
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.3) !important;
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+    .auth-form {
+        width: 95%;
+        padding: 20px;
+        margin: 10px;
+    }
+
+    .auth-form h2 {
+        font-size: 20px;
+        margin-bottom: 20px;
+    }
+
+    .form-group input {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+
+    .auth-button {
+        padding: 12px;
+        font-size: 16px;
+    }
 }
 
 

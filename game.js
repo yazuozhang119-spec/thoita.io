@@ -2,6 +2,306 @@
 const memoizedColors = {};
 const damageFlash = false;
 
+// 掉落物矢量图缓存系统
+const dropImageCache = new Map();
+const MAX_CACHE_SIZE = 1000; // 最大缓存数量
+
+// 生成缓存键 - 考虑设备像素比
+function getDropCacheKey(petalType, petalLevel, baseSize) {
+    const scale = window.devicePixelRatio || 1;
+    const roundedScale = Math.round(scale * 10) / 10;
+    return `${petalType}_${petalLevel}_${baseSize}_dpr${roundedScale}`;
+}
+
+// 计算所有缩放因子
+function calculateScaleFactors() {
+    // 安全检查，确保gameState已初始化
+    if (!window.gameState) {
+        return {
+            devicePixelRatio: window.devicePixelRatio || 1,
+            gameScale: 1,
+            combinedScale: window.devicePixelRatio || 1
+        };
+    }
+    return {
+        devicePixelRatio: window.gameState.devicePixelRatio || 1,
+        gameScale: window.gameState.scale || 1,
+        combinedScale: (window.gameState.devicePixelRatio || 1) * (window.gameState.scale || 1)
+    };
+}
+
+// 计算缓存所需的缩放因子（只包含设备像素比，不包含游戏全局缩放）
+function calculateCacheScaleFactors() {
+    // 安全检查，确保gameState已初始化
+    if (!window.gameState) {
+        return {
+            devicePixelRatio: window.devicePixelRatio || 1,
+            gameScale: 1, // 缓存时不包含游戏全局缩放
+            combinedScale: window.devicePixelRatio || 1
+        };
+    }
+    return {
+        devicePixelRatio: window.gameState.devicePixelRatio || 1,
+        gameScale: 1, // 缓存时不包含游戏全局缩放
+        combinedScale: window.gameState.devicePixelRatio || 1
+    };
+}
+
+// 创建掉落物缓存图片
+function createDropImage(petalType, petalLevel, baseSize) {
+    const scale = window.devicePixelRatio || 1;
+    const cacheKey = getDropCacheKey(petalType, petalLevel, baseSize);
+
+    // 更新统计
+    window.dropCacheStats.totalDrops++;
+
+    // 检查缓存
+    if (dropImageCache.has(cacheKey)) {
+        window.dropCacheStats.hits++;
+        return dropImageCache.get(cacheKey);
+    }
+
+    // 缓存未命中
+    window.dropCacheStats.misses++;
+
+    // 如果缓存太大，清理最旧的一半
+    if (dropImageCache.size >= MAX_CACHE_SIZE) {
+        const entries = Array.from(dropImageCache.entries());
+        for (let i = 0; i < MAX_CACHE_SIZE / 2; i++) {
+            dropImageCache.delete(entries[i][0]);
+        }
+    }
+
+    // 计算缓存尺寸（高分辨率以确保清晰度）
+    const canvasSize = baseSize * 4 * scale; // 考虑设备像素比
+
+    // 创建离屏canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasSize;
+    canvas.height = canvasSize;
+    const ctx = canvas.getContext('2d');
+
+    // 设置高质量渲染
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    // 居中绘制，按缩放后的尺寸绘制
+    ctx.save();
+    ctx.translate(canvasSize / 2, canvasSize / 2);
+
+    // 创建临时花瓣对象
+    const tempPetal = {
+        radius: (baseSize) * scale, // 考虑设备像素比
+        level: petalLevel,
+        type: petalType,
+        dead: false,
+        render: { hp: 1 }
+    };
+
+    // 绘制花瓣到离屏canvas（使用缩放后的尺寸）
+    drawPetalInContext(tempPetal, ctx, baseSize * scale);
+    ctx.restore();
+
+    // 转换为图片并缓存
+    const imageUrl = canvas.toDataURL('image/png');
+    const img = new Image();
+    img.src = imageUrl;
+
+    // 等待图片加载完成
+    img.onload = () => {
+        // 图片加载完成后，更新缓存
+        dropImageCache.set(cacheKey, img);
+    };
+
+    // 立即返回图片对象（异步加载）
+    dropImageCache.set(cacheKey, img);
+
+    return img;
+}
+
+// 缓存性能监控
+window.dropCacheStats = {
+    hits: 0,
+    misses: 0,
+    totalDrops: 0,
+
+    getHitRate() {
+        return this.totalDrops > 0 ? (this.hits / this.totalDrops * 100).toFixed(1) : 0;
+    },
+
+    getCacheSize() {
+        return dropImageCache.size;
+    },
+
+    reset() {
+        this.hits = 0;
+        this.misses = 0;
+        this.totalDrops = 0;
+    },
+
+    logStats() {
+        const scaleFactors = calculateScaleFactors();
+        console.log(`[掉落物缓存统计] 命中率: ${this.getHitRate()}%, 缓存大小: ${this.getCacheSize()}, 总计: ${this.totalDrops}`);
+        console.log(`[缩放信息] 设备像素比: ${scaleFactors.devicePixelRatio}, 游戏缩放: ${scaleFactors.gameScale.toFixed(3)}, 综合缩放: ${scaleFactors.combinedScale.toFixed(3)}`);
+    }
+};
+
+// 定期输出缓存统计（每30秒）
+setInterval(() => {
+    if (window.dropCacheStats.totalDrops > 0) {
+        window.dropCacheStats.logStats();
+    }
+}, 30000);
+
+// 添加控制台命令查看缓存统计
+window.checkDropCache = () => {
+    window.dropCacheStats.logStats();
+    console.log('缓存键列表:', Array.from(dropImageCache.keys()));
+    return window.dropCacheStats;
+};
+
+// 测试缓存系统性能
+window.testDropCachePerformance = () => {
+    console.log('开始测试掉落物缓存性能...');
+
+    const testStart = performance.now();
+    const iterations = 1000;
+    const testTypes = [0, 1, 3, 4, 5]; // 测试不同花瓣类型
+    const testLevels = [1, 5, 10, 15];  // 测试不同等级
+    const testSizes = [20, 30, 40, 50]; // 测试不同尺寸
+
+    // 清理统计
+    window.dropCacheStats.reset();
+
+    // 执行测试渲染
+    for (let i = 0; i < iterations; i++) {
+        const type = testTypes[i % testTypes.length];
+        const level = testLevels[i % testLevels.length];
+        const size = testSizes[i % testSizes.length];
+
+        // 测试缓存创建/获取
+        createDropImage(type, level, size);
+    }
+
+    const testEnd = performance.now();
+    const duration = testEnd - testStart;
+
+    console.log(`性能测试完成:`);
+    console.log(`- 总迭代次数: ${iterations}`);
+    console.log(`- 总耗时: ${duration.toFixed(2)}ms`);
+    console.log(`- 平均每次操作: ${(duration / iterations).toFixed(3)}ms`);
+    window.dropCacheStats.logStats();
+
+    return {
+        iterations,
+        duration,
+        avgTime: duration / iterations,
+        cacheStats: window.dropCacheStats
+    };
+};
+
+// 调试函数：比较缓存渲染和矢量渲染的差异
+window.compareDropRendering = (petalType = 0, petalLevel = 1, dropSize = 30) => {
+    console.log('=== 掉落物渲染对比测试 ===');
+
+    const cacheScaleFactors = calculateCacheScaleFactors();
+    const allScaleFactors = calculateScaleFactors();
+
+    console.log(`花瓣类型: ${petalType}, 等级: ${petalLevel}, 基础尺寸: ${dropSize}`);
+    console.log(`设备像素比: ${cacheScaleFactors.devicePixelRatio}`);
+    console.log(`游戏缩放: ${allScaleFactors.gameScale}`);
+    console.log(`综合缩放: ${allScaleFactors.combinedScale}`);
+
+    // 创建测试canvas
+    const testCanvas = document.createElement('canvas');
+    testCanvas.width = 400;
+    testCanvas.height = 200;
+    const testCtx = testCanvas.getContext('2d');
+
+    // 背景
+    testCtx.fillStyle = '#f0f0f0';
+    testCtx.fillRect(0, 0, 400, 200);
+
+    // 左侧：矢量绘制
+    testCtx.save();
+    testCtx.translate(100, 100);
+    testCtx.scale(cacheScaleFactors.combinedScale, cacheScaleFactors.combinedScale);
+    const tempPetal = {
+        radius: dropSize,
+        level: petalLevel,
+        type: petalType
+    };
+    drawPetalInContext(tempPetal, testCtx, dropSize);
+    testCtx.restore();
+
+    // 右侧：缓存绘制
+    const cachedImage = createDropImage(petalType, petalLevel, dropSize);
+    if (cachedImage.complete) {
+        const renderSize = dropSize * cacheScaleFactors.combinedScale;
+        testCtx.drawImage(cachedImage, 300 - renderSize, 100 - renderSize, renderSize * 2, renderSize * 2);
+    }
+
+    // 标签
+    testCtx.fillStyle = '#333';
+    testCtx.font = '12px Arial';
+    testCtx.fillText('矢量绘制', 60, 180);
+    testCtx.fillText('缓存绘制', 260, 180);
+
+    // 显示测试结果
+    document.body.appendChild(testCanvas);
+    testCanvas.style.border = '1px solid #ccc';
+    testCanvas.style.margin = '10px';
+    testCanvas.title = '点击移除此测试canvas';
+    testCanvas.onclick = () => testCanvas.remove();
+
+    console.log('测试canvas已添加到页面，点击可移除');
+    return testCanvas;
+};
+
+// 清理缓存在缩放改变时
+window.clearDropCache = () => {
+    dropImageCache.clear();
+    window.dropCacheStats.reset();
+    console.log('掉落物缓存已清理');
+};
+
+// 智能缓存清理策略
+let lastCacheScaleFactors = null;
+
+// 检查缓存相关的缩放因子是否发生显著变化（主要是设备像素比）
+function hasCacheScaleChangedSignificantly() {
+    const currentCacheScale = calculateCacheScaleFactors();
+
+    if (!lastCacheScaleFactors) {
+        lastCacheScaleFactors = currentCacheScale;
+        return false;
+    }
+
+    const dprChanged = Math.abs(currentCacheScale.devicePixelRatio - lastCacheScaleFactors.devicePixelRatio) > 0.1;
+
+    if (dprChanged) {
+        lastCacheScaleFactors = currentCacheScale;
+        return true;
+    }
+
+    return false;
+}
+
+// 监听窗口大小变化，智能清理缓存
+let resizeTimeout;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        if (hasCacheScaleChangedSignificantly()) {
+            clearDropCache();
+            console.log('检测到设备像素比变化，已清理掉落物缓存');
+        }
+    }, 500);
+});
+
+// 初始化缓存缩放因子
+lastCacheScaleFactors = calculateCacheScaleFactors();
+
 
 levelColors = {
         1: { border: '#66c258', bg: '#7eef6d' },  // common
@@ -260,7 +560,7 @@ function drawStaticPetalItem(petal, canvas, options) {
     ctx.imageSmoothingQuality = 'high';
 
     // 完全按照原始petalRenderMap复制到drawPetalItem函数内部
-        const localPetalRenderMap = {
+    const localPetalRenderMap = {
         basic: (p) => {
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -516,8 +816,28 @@ function drawStaticPetalItem(petal, canvas, options) {
             ctx.arc(0, 0, p.radius * 0.4, 0, Math.PI * 2);
             ctx.fill();
             ctx.closePath();
-        }
-    };
+        },
+        stinger: (p) => {
+            p.radius = p.radius * 0.8;
+            let bodyColor = blendColor("#2d2d2d", "#FF0000", blendAmount(p));
+            if (checkForFirstFrame(p)) {
+                bodyColor = "#FFFFFF";
+            }
+            ctx.lineJoin = 'round';
+            ctx.rotate(Math.PI / 2);
+            ctx.beginPath();
+            ctx.fillStyle = bodyColor;
+            ctx.strokeStyle = "#000000";  // 黑色边框
+            ctx.lineWidth = p.radius / 4;
+            // 绘制三角形
+            ctx.moveTo(0, -p.radius);
+            ctx.lineTo(p.radius * 0.866, p.radius * 0.5);  // sqrt(3)/2
+            ctx.lineTo(-p.radius * 0.866, p.radius * 0.5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        },
+            };
 
     // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
     const levelColors = {
@@ -682,7 +1002,8 @@ function drawStaticPetalItem(petal, canvas, options) {
             7: 'shell',
             8: 'bomb',
             9: 'magnet',
-            10: 'thirdeye'
+            10: 'thirdeye',
+            11: 'stinger'
         };
 
         const renderType = typeMap[type] || 'basic';
@@ -717,7 +1038,8 @@ function drawStaticPetalItem(petal, canvas, options) {
         7: '贝壳',
         8: '炸弹',
         9: '磁铁',
-        10: '第三只眼'
+        10: '第三只眼',
+        11: '刺针'
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -878,8 +1200,8 @@ const objectTypeMap = {
     8: 'hornet_missile',
     9: 'magnet',
     10: 'thirdeye',
+    11: 'stinger',
     // 怪物类型
-    11: 'hornet',
     12: 'rock',
     13: 'ladybug',
     14: 'centipede0',
@@ -887,6 +1209,7 @@ const objectTypeMap = {
     16: 'venomspider',
     17: 'shieldguardian',
     18: 'bombbeetle',
+    23: 'hornet',  // 移动到23避免冲突
     // 花朵类型
     19: 'flower',
     // 掉落物类型
@@ -896,7 +1219,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -939,7 +1262,8 @@ function getLevelName(level) {
     return levelNames[level] || "unknown";
 }
 
-const gameState = {
+// 设置全局gameState以便其他脚本访问
+window.gameState = {
     playerId: null,
     connected: false,
     playerName: 'Player',
@@ -954,6 +1278,7 @@ const gameState = {
     mobs: [],
     flowers: [],
     collectDrops: [],
+    mobsSummary: {}, // 怪物统计信息 {mobType: {level: count}}
     fps: 0,
     socket: null,
     // 缩放相关状态
@@ -1022,6 +1347,9 @@ const gameState = {
     viewWidth: 1200, // 默认视野宽度
     viewHeight: 800  // 默认视野高度
 };
+
+// 为了兼容现有代码，创建一个本地引用
+const gameState = window.gameState;
 
 // DOM 元素
 const absorbSlotsContainer = document.getElementById('absorbSlotsContainer');
@@ -1585,11 +1913,19 @@ function initGame() {
     // 初始化音频系统
     initAudioSystem();
 
+    // 连接到WebSocket（等待认证）
     connectToServer()
 
-    // 事件监听
-    startButton.addEventListener('click', showLobby);
-    restartButton.addEventListener('click', restartGame);
+    // 事件监听（startButton现在由认证系统处理）
+    const startButton = document.getElementById('startButton');
+    if (startButton) {
+        startButton.addEventListener('click', showLobby);
+    }
+
+    const restartButton = document.getElementById('restartButton');
+    if (restartButton) {
+        restartButton.addEventListener('click', restartGame);
+    }
 
     // 大厅按钮事件
     bagButton.addEventListener('click', () => showWindow('bag'));
@@ -2707,8 +3043,28 @@ function drawPetalInContext(petal, ctx, displaySize) {
             ctx.arc(0, 0, p.radius * 0.4, 0, Math.PI * 2);
             ctx.fill();
             ctx.closePath();
-        }
-    };
+        },
+        stinger: (p) => {
+            p.radius = p.radius * 0.8;
+            let bodyColor = blendColor("#2d2d2d", "#FF0000", blendAmount(p));
+            if (checkForFirstFrame(p)) {
+                bodyColor = "#FFFFFF";
+            }
+            ctx.lineJoin = 'round';
+            ctx.rotate(Math.PI / 2);
+            ctx.beginPath();
+            ctx.fillStyle = bodyColor;
+            ctx.strokeStyle = "#000000";  // 黑色边框
+            ctx.lineWidth = p.radius / 4;
+            // 绘制三角形
+            ctx.moveTo(0, -p.radius);
+            ctx.lineTo(p.radius * 0.866, p.radius * 0.5);  // sqrt(3)/2
+            ctx.lineTo(-p.radius * 0.866, p.radius * 0.5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        },
+            };
 
     // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
     const levelColors = {
@@ -2776,7 +3132,8 @@ function drawPetalInContext(petal, ctx, displaySize) {
             7: 'shell',
             8: 'bomb',
             9: 'magnet',
-            10: 'thirdeye'
+            10: 'thirdeye',
+            11: 'stinger'
         };
 
         if(typeof type === 'integer' || typeof type === 'number'){
@@ -2812,7 +3169,8 @@ function drawPetalInContext(petal, ctx, displaySize) {
         7: '贝壳',
         8: '炸弹',
         9: '磁铁',
-        10: '第三只眼'
+        10: '第三只眼',
+        11: '刺针'
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -2883,11 +3241,25 @@ function getObjectImage(obj) {
 
 // 显示大厅界面
 function showLobby() {
-    gameState.playerName = playerNameInput.value || 'Player';
-    startButton.style.display = 'none';
-    playerNameInput.style.display = 'none';
+    // 使用认证系统设置的用户名，如果没有则使用默认值
+    if (!gameState.playerName) {
+        gameState.playerName = 'Player';
+    }
+
+    // 隐藏旧版登录界面元素（如果存在）
+    const startButton = document.getElementById('startButton');
+    const playerNameInput = document.getElementById('playerName');
+    if (startButton) startButton.style.display = 'none';
+    if (playerNameInput) playerNameInput.style.display = 'none';
+
     lobbyUI.style.display = 'flex';
     gameState.isLobby = true;
+
+    // 隐藏 wave 条（大厅界面不需要显示）
+    const waveBar = document.getElementById('waveBar');
+    if (waveBar) {
+        waveBar.style.display = 'none';
+    }
 
     // 恢复大厅界面的canvas动画
     resumeLobbyCanvasAnimations();
@@ -3098,7 +3470,7 @@ function calculateTotalAvailablePetals() {
     const totalPetals = [];
 
     // 解析服务器完整数据
-    for (let i = 0; i < 11; i++) {
+    for (let i = 0; i < 12; i++) {
         const petalKey = `petal${i}`;
         const petalString = gameState.serverBuild[petalKey];
 
@@ -3422,8 +3794,8 @@ function handleDrop(e) {
 function parseServerBuild(buildData) {
     const availablePetals = [];
 
-    // 遍历petal0到petal10（共11种花瓣类型）
-    for (let i = 0; i < 11; i++) {
+    // 遍历petal0到petal11（共12种花瓣类型）
+    for (let i = 0; i < 12; i++) {
         const petalKey = `petal${i}`;
         const petalString = buildData[petalKey];
 
@@ -3828,6 +4200,12 @@ function startGame() {
     updateInventoryDisplay();
     waveBar.style.display = 'block';
 
+    // 显示游戏画布
+    const gameCanvas = document.getElementById('gameCanvas');
+    if (gameCanvas) {
+        gameCanvas.style.display = 'block';
+    }
+
     // 初始化视野设置（确保花朵在屏幕中心）
     gameState.viewWidth = 1200;
     gameState.viewHeight = 800;
@@ -3848,7 +4226,7 @@ function restartGame() {
     gameState.playerHealth = gameState.playerMaxHealth;
     gameState.isLobby = true;
     lobbyUI.style.display = 'flex';
-    startScreen.style.display = 'flex';
+    // startScreen.style.display = 'flex'; // 注释掉这行，不显示登录界面
     readyButton.disabled = false;
 
     // 恢复大厅界面的canvas动画
@@ -3880,17 +4258,13 @@ function connectToServer() {
             console.log('连接到服务器成功');
             gameState.connected = true;
 
-            // 发送连接消息
-            sendToServer({
-                COMMAND: 'CONNECT',
-                client_name: gameState.playerName,
-                id: gameState.playerId
-            });
+            // WebSocket连接建立后，显示认证界面
+            if (window.authManager) {
+                console.log('WebSocket连接已建立，可以开始认证');
+            }
 
             // 启动心跳机制 - 每10秒发送一次心跳包
             startHeartbeat();
-
-
         };
 
         gameState.socket.onmessage = (event) => {
@@ -3912,6 +4286,17 @@ function connectToServer() {
         };
     } catch (error) {
         console.error('连接服务器失败:', error);
+    }
+}
+
+// 发送认证成功的CONNECT消息
+function sendConnectAfterAuth(playerId) {
+    if (gameState.connected && gameState.socket.readyState === WebSocket.OPEN) {
+        sendToServer({
+            COMMAND: 'CONNECT',
+            client_name: gameState.playerName,
+            id: playerId
+        });
     }
 }
 
@@ -4126,15 +4511,18 @@ function handleServerMessage(data) {
 
                         
                         // 根据类型分类到不同数组
-                        if (typeIdx >= 0 && typeIdx <= 10) {
-                            // 花瓣类型 (0-10) - 添加类型信息
+                        if (typeIdx >= 0 && typeIdx <= 11) {
+                            // 花瓣类型 (0-11) - 添加类型信息，包含新的刺针花瓣(11)
                             baseObject.type = typeIdx;
                             gameState.petals.push(baseObject);
-                        } else if (typeIdx >= 11 && typeIdx <= 18) {
-                            // 怪物类型 (11-18)
+                        } else if (typeIdx >= 12 && typeIdx <= 18) {
+                            // 怪物类型 (12-18)
                             gameState.mobs.push(baseObject);
                         } else if (typeIdx === 21) {
                             // 蜈蚣身体类型 (21)
+                            gameState.mobs.push(baseObject);
+                        } else if (typeIdx === 23) {
+                            // 黄蜂怪物类型 (23)
                             gameState.mobs.push(baseObject);
                         }
                         else if (typeIdx === 19) {
@@ -4197,10 +4585,34 @@ function handleServerMessage(data) {
                     message.effects.forEach(effect => {
                         effect.startTime = Date.now() / 1000;
                     });
-                    // 将新特效添加到现有特效列表
-                    gameState.effects = gameState.effects.concat(message.effects);
+                    // 将新特效添加到现有特效列表，但限制总数防止卡顿
+                    gameState.effects = gameState.effects.concat(message.effects).slice(-20); // 最多保留20个特效
                 }
 
+                // 处理怪物统计信息（增量传输）
+                if (message.mobs_summary) {
+
+                    // 检查是否为空字典（表示无变化）
+                    if (Object.keys(message.mobs_summary).length === 0) {
+                        pass
+                    } else {
+
+                        // 更新游戏状态中的怪物统计
+                        gameState.mobsSummary = message.mobs_summary;
+
+                        // 计算总怪物数量
+                        let totalMobs = 0;
+                        const mobDetails = [];
+
+                        for (const [mobType, levels] of Object.entries(message.mobs_summary)) {
+                            for (const [level, count] of Object.entries(levels)) {
+                                totalMobs += count;
+                                mobDetails.push(`${mobType} Lv.${level} x${count}`);
+                            }
+                        }
+
+                    }
+                }
 
                 // 检查游戏结束
                 if (gameState.playerHealth <= 0) {
@@ -4498,6 +4910,9 @@ function gameLoop(timestamp) {
 
     // 恢复变换
     ctx.restore();
+
+    // 绘制怪物统计信息（在血条上方）
+    drawMobsSummary();
 
     // 绘制所有玩家的血条和小花朵（包括自己和其他玩家）
     drawAllPlayersHealthBars();
@@ -5086,19 +5501,29 @@ function drawObject(obj) {
             }
             
 
-            // 绘制掉落物花瓣 - 使用矢量渲染
+            // 绘制掉落物花瓣 - 使用缓存图片优化
             ctx.save();
-            ctx.translate(screenX, screenY);
 
-            // 直接使用ctx绘制花瓣 - 简化版本
-            const tempPetal = {
-                radius: dropSize,
-                level: petalLevel,
-                type: petalType
-            };
+            // 获取或创建缓存的图片
+            const cachedImage = createDropImage(petalType, petalLevel, dropSize);
 
-            // 调用drawPetalInContext函数绘制
-            drawPetalInContext(tempPetal, ctx, dropSize);
+            if (cachedImage.complete) {
+                // 如果图片已加载，直接绘制
+                // 缓存图片放大4倍基础尺寸绘制
+                const scale = 4;
+                ctx.drawImage(cachedImage, screenX - dropSize, screenY - dropSize, dropSize * scale, dropSize * scale);
+            } else {
+                // 如果图片还未加载完成，回退到矢量绘制
+                // 游戏主循环已经处理了所有缩放，所以直接绘制即可
+                ctx.translate(screenX, screenY);
+                const tempPetal = {
+                    radius: dropSize,
+                    level: petalLevel,
+                    type: petalType
+                };
+                drawPetalInContext(tempPetal, ctx, dropSize);
+            }
+
             ctx.restore()
 
         } else if (obj.name && obj.name.includes('flower')) {
@@ -5460,30 +5885,29 @@ function drawEffects() {
             }
         }
         else if (effect.type === 'explosion') {
-            // 爆炸效果：增强版 - 强烈光线 + 少量大粒子
-            if (elapsed < 1) {
+            // 爆炸效果：优化版 - 简化渲染减少卡顿
+            if (elapsed < 0.6) { // 缩短持续时间
                 const progress = elapsed;
                 const screenX = config.baseCanvasWidth/2 + (effect.position[0] - gameState.playerPosition.x);
                 const screenY = config.baseCanvasHeight/2 + (effect.position[1] - gameState.playerPosition.y);
+                const alpha = 1 - progress;
 
                 ctx.save();
 
-                // 中心闪光效果
-                const flashSize = (1 - progress) * 40;
-                const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, flashSize);
-                gradient.addColorStop(0, `rgba(255, 255, 255, ${(1 - progress) * 0.9})`);
-                gradient.addColorStop(0.3, `rgba(255, 200, 0, ${(1 - progress) * 0.7})`);
-                gradient.addColorStop(1, `rgba(255, 0, 0, 0)`);
-
-                ctx.fillStyle = gradient;
+                // 简化中心闪光 - 使用纯色代替渐变
+                const flashSize = (1 - progress) * 30;
+                ctx.fillStyle = `rgba(255, 220, 100, ${alpha * 0.8})`;
                 ctx.beginPath();
                 ctx.arc(screenX, screenY, flashSize, 0, Math.PI * 2);
                 ctx.fill();
 
-                // 强烈放射光线（性能优化：减少射线数量）
-                const rayCount = 6; // 从8减少到6
-                const maxRayLength = effect.radius * 2;
+                // 简化光线效果 - 减少数量和复杂度
+                const rayCount = 4; // 进一步减少到4条
+                const maxRayLength = effect.radius * 1.5;
                 const angleStep = Math.PI * 2 / rayCount;
+
+                ctx.strokeStyle = `rgba(255, 150, 0, ${alpha * 0.6})`;
+                ctx.lineWidth = 3;
 
                 for (let i = 0; i < rayCount; i++) {
                     const angle = angleStep * i;
@@ -5491,43 +5915,25 @@ function drawEffects() {
                     const endX = screenX + Math.cos(angle) * rayLength;
                     const endY = screenY + Math.sin(angle) * rayLength;
 
-                    ctx.shadowBlur = 20;
-                    ctx.shadowColor = '#FF6600';
-                    ctx.strokeStyle = `rgba(255, ${150 + progress * 105}, 0, ${(1 - progress) * 0.8})`;
-                    ctx.lineWidth = 5 * (1 - progress) + 2;
                     ctx.beginPath();
                     ctx.moveTo(screenX, screenY);
                     ctx.lineTo(endX, endY);
                     ctx.stroke();
                 }
 
-                // 少量大型火焰粒子
-                const particleCount = 4;
-                const colors = ['#FF0000', '#FF3300', '#FF6600', '#FFAA00'];
+                // 简化粒子效果 - 只用简单的圆形
+                const particleCount = 3; // 减少到3个
 
+                ctx.fillStyle = `rgba(255, 100, 0, ${alpha * 0.7})`;
                 for (let i = 0; i < particleCount; i++) {
-                    const angle = (Math.PI * 2 / particleCount) * i + progress * 0.5;
-                    const distance = effect.radius * progress * (0.6 + i * 0.2);
+                    const angle = (Math.PI * 2 / particleCount) * i + progress * 0.3;
+                    const distance = effect.radius * progress * 0.8;
                     const px = screenX + Math.cos(angle) * distance;
                     const py = screenY + Math.sin(angle) * distance;
-                    const size = (15 + Math.random() * 10) * (1 - progress * 0.7);
+                    const size = (8 + Math.random() * 6) * (1 - progress);
 
-                    // 粒子发光效果
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = colors[i];
-                    ctx.fillStyle = colors[i];
-                    ctx.globalAlpha = (1 - progress) * 0.8;
-
-                    // 绘制大粒子
                     ctx.beginPath();
                     ctx.arc(px, py, size, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    // 内部高光
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.globalAlpha = (1 - progress) * 0.4;
-                    ctx.beginPath();
-                    ctx.arc(px - size/3, py - size/3, size/3, 0, Math.PI * 2);
                     ctx.fill();
                 }
 
@@ -5539,7 +5945,169 @@ function drawEffects() {
     });
 }
 
+// 绘制怪物统计信息
+function drawMobsSummary() {
+    if (!gameState.mobsSummary || Object.keys(gameState.mobsSummary).length === 0) {
+        return; // 没有怪物数据，不绘制
+    }
 
+    // 保存当前上下文状态
+    ctx.save();
+
+    // 重置变换，使用屏幕坐标
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    // waveBar现在在5vh位置，我们需要在它下方
+    // 获取waveBar元素的实际位置
+    const waveBarElement = document.getElementById('waveBar');
+    if (!waveBarElement) return; // 如果waveBar不存在就不绘制
+
+    const waveBarRect = waveBarElement.getBoundingClientRect();
+
+    // 坐标转换：视口坐标 → Canvas坐标
+    const scaleX = canvas.width / parseFloat(canvas.style.width);
+    const scaleY = canvas.height / parseFloat(canvas.style.height);
+
+    // 配置参数（需要根据DPR缩放）
+    const viewportMobSize = 50; // 视口坐标系中的怪物图标大小
+    const viewportMobSpacing = 15; // 视口坐标系中的怪物间距
+
+    // 转换为canvas坐标系中的尺寸
+    const mobSize = viewportMobSize * scaleX;
+    const mobSpacing = viewportMobSpacing * scaleX;
+    const levelOverlap = 0.8; // 等级重叠比例（高等级压住低等级的80%）
+
+    // 使用waveBar元素的实际中心位置（转换为canvas坐标）
+    const centerX = (waveBarRect.left + waveBarRect.width / 2) * scaleX;
+
+    // waveBar的实际底部位置 + 10px间隔（转换为canvas坐标）
+    const startY = (waveBarRect.bottom + 10) * scaleY;
+
+    // 计算所有怪物占用的总宽度，以便居中对齐
+    let totalWidth = 0;
+    const mobTypes = Object.keys(gameState.mobsSummary);
+    mobTypes.forEach(mobType => {
+        totalWidth += mobSize + mobSpacing;
+    });
+    totalWidth -= mobSpacing; // 减去最后一个间距
+
+    // 起始X坐标：居中 - 总宽度/2
+    let currentX = centerX - totalWidth / 2;
+
+    // 怪物类型到绘制函数的映射
+    const mobDrawFunctions = {
+        'hornet': drawVectorHornet,
+        'rock': drawVectorRock,
+        'ladybug': drawVectorLadybug,
+        'centipede0': drawVectorCentipede,
+        'thunderelement': drawVectorThunderElement,
+        'venomspider': drawVectorVenomSpider,
+        'shieldguardian': drawVectorShieldGuardian,
+        'bombbeetle': drawVectorBombBeetle
+    };
+
+    // 根据等级设置边框和背景颜色 - 使用和花瓣相同的颜色表
+    const levelColors = {
+        1: { border: '#66c258', bg: '#7eef6d' },  // common
+        2: { border: '#cfba4b', bg: '#ffe65d' },  // unusual
+        3: { border: '#3e42b8', bg: '#4d52e3' },  // rare
+        4: { border: '#6d19b4', bg: '#861fde' },  // epic
+        5: { border: '#b41919', bg: '#de1f1f' },  // legendary
+        6: { border: '#19b1b4', bg: '#1fdbde' },  // mythic
+        7: { border: '#cf235f', bg: '#ff2b75' },  // ultra
+        8: { border: '#23cf84', bg: '#2bffa3' },  // super
+        9: { border: '#3b3a3b', bg: '#494849' },  // omega
+        10: { border: '#cf4500', bg: '#ff5500' }, // fabled
+        11: { border: '#53447e', bg: '#67549c', fancy: { border: '#53447e', hue: 256, light: 47, sat: 30, spread: 20, period: 1.5 } }, // divine
+        12: { border: '#904bb0', bg: '#b25dd9', fancy: { border: '#904bb0', hue: 281, light: 61, sat: 62, spread: 12, period: 2, stars: 1 } }, // supreme
+        13: { border: '#000000', bg: '#5e004f', fancy: { border: '#151515', hue: 285, light: 20, sat: 100, spread: 35, period: 1.5, stars: 2 } }, // omnipotent
+        14: { border: '#035005', bg: '#046307', fancy: { border: '#035005', hue: 122, light: 25, sat: 100, spread: 60, period: 1.5, stars: 2 } }, // astral
+        15: { border: '#4f6bd1', bg: '#608efc', fancy: { border: '#4f6bd1', hue: 225, light: 69, sat: 100, spread: 10, period: 1, stars: 2 } }, // celestial
+        16: { border: '#a16649', bg: '#c77e5b', fancy: { border: '#a16649', hue: 19, light: 57, sat: 49, spread: 15, period: 1.5, stars: 2 } }, // seraphic
+        17: { border: '#cfcfcf', bg: '#ffffff', fancy: { border: '#cfcfcf', hue: 180, light: 93, sat: 100, spread: 80, period: 1.5, stars: 2 } }, // transcendent
+        18: { border: '#d1a3ba', bg: '#f6c5de', fancy: { border: '#d1a3ba', hue: 341, light: 89, sat: 100, spread: 40, period: 1, stars: 2 } }, // ethereal
+        19: { border: '#974d63', bg: '#7f0226', fancy: { border: '#974d63', hue: 343, light: 26, sat: 97, spread: 20, period: 0.75, stars: 2 } }  // galactic
+    };
+
+    // 遍历每种怪物类型
+    for (const [mobType, levels] of Object.entries(gameState.mobsSummary)) {
+        // 获取该类型的所有等级，按等级排序（低到高）
+        const sortedLevels = Object.keys(levels).map(Number).sort((a, b) => a - b);
+
+        if (sortedLevels.length === 0) continue;
+
+        // 绘制该怪物类型的所有等级
+        sortedLevels.forEach((level, levelIndex) => {
+            const count = levels[level];
+
+            // 计算垂直偏移（高等级在下层）
+            const levelOffset = levelIndex * mobSize * (1 - levelOverlap);
+            const mobX = currentX + mobSize/2;
+            const mobY = startY + levelOffset + mobSize/2;
+
+            // 绘制背景（和花瓣一样的样式）
+            const scale = mobSize / 55; // 以55px为基准
+            const borderWidth = 7 * scale;
+            const levelColor = levelColors[level] || levelColors[1];
+
+            // 绘制背景矩形
+            ctx.fillStyle = levelColor.bg;
+            ctx.strokeStyle = levelColor.border;
+            ctx.lineWidth = borderWidth;
+
+            const bgX = mobX - mobSize/2;
+            const bgY = mobY - mobSize/2;
+            const bgSize = mobSize * 0.9; // 和花瓣一样，使用90%的大小
+
+            // 绘制直角背景（与花瓣保持一致）
+            const bgOffsetX = bgX + (mobSize - bgSize)/2;
+            const bgOffsetY = bgY + (mobSize - bgSize)/2;
+            const borderOffset = 2 * scaleX;  // 固定的边框偏移，考虑DPR缩放
+
+            // 填充背景
+            ctx.fillRect(bgOffsetX, bgOffsetY, bgSize, bgSize);
+
+            // 绘制边框
+            ctx.strokeRect(bgOffsetX + borderOffset, bgOffsetY + borderOffset, bgSize - borderOffset * 2, bgSize - borderOffset * 2);
+
+            // 绘制怪物图标（缩小一半显示）
+            const drawMobSize = (mobSize * 0.9) / 2; // 背景尺寸的一半
+            const drawFunction = mobDrawFunctions[mobType];
+            if (drawFunction) {
+                // 调用对应的怪物绘制函数
+                drawFunction(mobX, mobY, drawMobSize, 0);
+            } else {
+                // 如果没有对应的绘制函数，使用通用怪物绘制函数
+                drawVectorMonster(mobX, mobY, drawMobSize, mobType, 0);
+            }
+
+            // 如果数量大于1，在右上角显示数量
+            if (count > 1) {
+                // 绘制白色"xN"文字
+                ctx.fillStyle = '#FFFFFF';
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3 * scaleX; // 线宽缩放
+                ctx.font = `bold ${12 * scaleX}px Arial`; // 字体大小缩放
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                const countOffsetX = mobSize/2 - 8 * scaleX; // X偏移缩放
+                const countOffsetY = mobSize/2 - 8 * scaleX; // Y偏移缩放
+
+                // 先描边再填充，使文字更清晰
+                const countText = `x${count}`;
+                ctx.strokeText(countText, mobX + countOffsetX, mobY - countOffsetY);
+                ctx.fillText(countText, mobX + countOffsetX, mobY - countOffsetY);
+            }
+        });
+
+        // 移动到下一个怪物类型的位置
+        currentX += mobSize + mobSpacing;
+    }
+
+    // 恢复上下文状态
+    ctx.restore();
+}
 
 
 // ========== 聊天功能相关函数 ==========
@@ -6170,7 +6738,28 @@ const petalRenderMap = {
         ctx.arc(0, 0, p.radius * 0.4, 0, Math.PI * 2);
         ctx.fill();
         ctx.closePath();
-    }
+    },
+
+    stinger: (p) => {
+        p.radius = p.radius * 0.8;
+        let bodyColor = blendColor("#2d2d2d", "#FF0000", blendAmount(p));
+        if (checkForFirstFrame(p)) {
+            bodyColor = "#FFFFFF";
+        }
+        ctx.lineJoin = 'round';
+        ctx.rotate(Math.PI / 2);
+        ctx.beginPath();
+        ctx.fillStyle = bodyColor;
+        ctx.strokeStyle = "#000000";  // 黑色边框
+        ctx.lineWidth = p.radius / 4;
+        // 绘制三角形
+        ctx.moveTo(0, -p.radius);
+        ctx.lineTo(p.radius * 0.866, p.radius * 0.5);  // sqrt(3)/2
+        ctx.lineTo(-p.radius * 0.866, p.radius * 0.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+    },
 };
 
 // 绘制花瓣形状（完全按照petal.js标准）
@@ -6749,8 +7338,8 @@ function drawVectorRock(x, y, size, angle) {
 
     // 生成简化的顶点数据（使用固定种子确保形状稳定）
     const vertexCount = Math.max(6, Math.floor(Math.log(size) * 2));
-    // 使用位置坐标作为种子，确保相同位置的rock有相同形状
-    const seed = Math.floor(x * 1000 + y * 1000) % 10000;
+    // 使用send_id（服务器传输在angle里面）作为种子，确保相同位置的rock有相同形状
+    const seed = Math.floor(angle * 1000 + angle * 1449) % 10000;
 
     // 简单的伪随机数生成器
     function seededRandom(seed) {
