@@ -117,9 +117,13 @@ body {
 #inventory {
     position: absolute;
     bottom: 20px;
-    left: 5px;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
+    flex-direction: row; /* 明确指定横向排列 */
     gap: 10px;
+    pointer-events: auto; /* 允许鼠标交互 */
+    z-index: 15; /* 确保在其他元素之上 */
 }
 
 .inventorySlot {
@@ -133,6 +137,8 @@ body {
     align-items: center;
     color: white;
     font-size: 12px;
+    flex-shrink: 0; /* 防止槽位被压缩 */
+    pointer-events: auto; /* 允许鼠标交互 */
 }
 
 #gameOver {

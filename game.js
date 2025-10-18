@@ -837,7 +837,53 @@ function drawStaticPetalItem(petal, canvas, options) {
             ctx.fill();
             ctx.stroke();
         },
-            };
+        orange: (p) => {
+            const divCoef = 1.35;
+
+            ctx.lineWidth = p.radius/divCoef/2.2//2.2;
+            // ctx.beginPath();
+            ctx.fillStyle = blendColor('#f0bd48', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#c2993a', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.fillStyle = blendColor('#39b54a', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#2e933c', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+            ctx.lineWidth = p.radius/3.4;
+            ctx.beginPath();
+            ctx.moveTo(p.radius * 0.61, p.radius * 0.13)
+            ctx.quadraticCurveTo(p.radius * 0.92, p.radius * 0.51, p.radius * 0.3, p.radius * 0.4);
+            ctx.stroke();
+        },
+        egg: (p) => {
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.fillStyle = blendColor('#fff0b8', '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor('#cfc295', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF";
+        }
+
+        ctx.beginPath();
+        ctx.ellipse(0, 0, p.radius, p.radius*1.35, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+        },
+    };
 
     // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
     const levelColors = {
@@ -1003,7 +1049,9 @@ function drawStaticPetalItem(petal, canvas, options) {
             8: 'bomb',
             9: 'magnet',
             10: 'thirdeye',
-            11: 'stinger'
+            11: 'stinger',
+            12: 'orange',
+            13: 'egg'
         };
 
         const renderType = typeMap[type] || 'basic';
@@ -1039,7 +1087,9 @@ function drawStaticPetalItem(petal, canvas, options) {
         8: '炸弹',
         9: '磁铁',
         10: '第三只眼',
-        11: '刺针'
+        11: '刺针',
+        12: '橙子',
+        13: '蛋'
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -1201,15 +1251,19 @@ const objectTypeMap = {
     9: 'magnet',
     10: 'thirdeye',
     11: 'stinger',
+    // 额外花瓣类型
+    12: 'orange',
+    13: 'egg',
     // 怪物类型
-    12: 'rock',
-    13: 'ladybug',
+    22: 'rock',
+    24: 'ladybug',
     14: 'centipede0',
     15: 'thunderelement',
     16: 'venomspider',
     17: 'shieldguardian',
     18: 'bombbeetle',
     23: 'hornet',  // 移动到23避免冲突
+    25: 'beetle',
     // 花朵类型
     19: 'flower',
     // 掉落物类型
@@ -3064,7 +3118,53 @@ function drawPetalInContext(petal, ctx, displaySize) {
             ctx.fill();
             ctx.stroke();
         },
-            };
+        orange: (p) => {
+            const divCoef = 1.35;
+
+            ctx.lineWidth = p.radius/divCoef/2.2//2.2;
+            // ctx.beginPath();
+            ctx.fillStyle = blendColor('#f0bd48', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#c2993a', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.fillStyle = blendColor('#39b54a', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#2e933c', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+            ctx.lineWidth = p.radius/3.4;
+            ctx.beginPath();
+            ctx.moveTo(p.radius * 0.61, p.radius * 0.13)
+            ctx.quadraticCurveTo(p.radius * 0.92, p.radius * 0.51, p.radius * 0.3, p.radius * 0.4);
+            ctx.stroke();
+        },
+        egg: (p) => {
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.fillStyle = blendColor('#fff0b8', '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor('#cfc295', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF";
+        }
+
+        ctx.beginPath();
+        ctx.ellipse(0, 0, p.radius, p.radius*1.35, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+        },
+    };
 
     // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
     const levelColors = {
@@ -3133,7 +3233,9 @@ function drawPetalInContext(petal, ctx, displaySize) {
             8: 'bomb',
             9: 'magnet',
             10: 'thirdeye',
-            11: 'stinger'
+            11: 'stinger',
+            12: 'orange',
+            13: 'egg'
         };
 
         if(typeof type === 'integer' || typeof type === 'number'){
@@ -3170,7 +3272,9 @@ function drawPetalInContext(petal, ctx, displaySize) {
         8: '炸弹',
         9: '磁铁',
         10: '第三只眼',
-        11: '刺针'
+        11: '刺针',
+        12: '橙子',
+        13: '蛋'
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -3260,6 +3364,12 @@ function showLobby() {
     if (waveBar) {
         waveBar.style.display = 'none';
     }
+
+    // 隐藏游戏中的inventory装备槽，只在大厅显示equipmentSlots
+    const inventory = document.getElementById('inventory');
+    const equipmentSlots = document.getElementById('equipmentSlots');
+    if (inventory) inventory.style.display = 'none'; // 隐藏游戏中的装备槽
+    if (equipmentSlots) equipmentSlots.style.display = 'flex'; // 显示大厅的装备槽
 
     // 恢复大厅界面的canvas动画
     resumeLobbyCanvasAnimations();
@@ -3470,7 +3580,7 @@ function calculateTotalAvailablePetals() {
     const totalPetals = [];
 
     // 解析服务器完整数据
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 14; i++) {  // 扩展到13以包含egg花瓣
         const petalKey = `petal${i}`;
         const petalString = gameState.serverBuild[petalKey];
 
@@ -3794,8 +3904,8 @@ function handleDrop(e) {
 function parseServerBuild(buildData) {
     const availablePetals = [];
 
-    // 遍历petal0到petal11（共12种花瓣类型）
-    for (let i = 0; i < 12; i++) {
+    // 遍历petal0到petal13（共14种花瓣类型）
+    for (let i = 0; i < 14; i++) {
         const petalKey = `petal${i}`;
         const petalString = buildData[petalKey];
 
@@ -4197,6 +4307,13 @@ function startGame() {
     lobbyUI.style.display = 'none';
     startScreen.style.display = 'none';
     gameState.isLobby = false;
+
+    // 显示游戏中的inventory装备槽，隐藏大厅的equipmentSlots
+    const inventory = document.getElementById('inventory');
+    const equipmentSlots = document.getElementById('equipmentSlots');
+    if (inventory) inventory.style.display = 'block'; // 显示游戏中的装备槽
+    if (equipmentSlots) equipmentSlots.style.display = 'none'; // 隐藏大厅的装备槽
+
     updateInventoryDisplay();
     waveBar.style.display = 'block';
 
@@ -4237,6 +4354,30 @@ function restartGame() {
 
     // 停止背景音乐
     stopBackgroundMusic();
+
+    // 隐藏游戏中的inventory装备槽，只显示大厅的equipmentSlots
+    const inventory = document.getElementById('inventory');
+    const equipmentSlots = document.getElementById('equipmentSlots');
+    if (inventory) inventory.style.display = 'none'; // 隐藏游戏中的装备槽
+    if (equipmentSlots) equipmentSlots.style.display = 'flex'; // 显示大厅的装备槽
+
+    // 清除房间信息和怪物summary信息
+    gameState.roomInfo = {};
+    gameState.mobsSummary = {};
+    gameState.currentRoom = null;
+    gameState.previousRoom = null;
+    gameState.wave = { current: 1, start_time: null, duration: 120, spawn_phase_duration: 60, is_spawn_phase: false };
+    gameState.effects = [];
+    gameState.mobs = [];
+    gameState.drops = [];
+    gameState.projectiles = [];
+    gameState.playerPosition = { x: 0, y: 0 };
+
+    // 更新房间信息显示
+    updateRoomInfo();
+    showRoomInfo(false);
+
+    console.log('重新开始游戏，已重新显示装备槽并清除房间信息、怪物summary和游戏实体信息');
 
     // 重新连接服务器以启动心跳
     if (!gameState.connected) {
@@ -4511,19 +4652,10 @@ function handleServerMessage(data) {
 
                         
                         // 根据类型分类到不同数组
-                        if (typeIdx >= 0 && typeIdx <= 11) {
-                            // 花瓣类型 (0-11) - 添加类型信息，包含新的刺针花瓣(11)
+                        if (typeIdx >= 0 && typeIdx <= 13) {
+                            // 花瓣类型 (0-12)
                             baseObject.type = typeIdx;
                             gameState.petals.push(baseObject);
-                        } else if (typeIdx >= 12 && typeIdx <= 18) {
-                            // 怪物类型 (12-18)
-                            gameState.mobs.push(baseObject);
-                        } else if (typeIdx === 21) {
-                            // 蜈蚣身体类型 (21)
-                            gameState.mobs.push(baseObject);
-                        } else if (typeIdx === 23) {
-                            // 黄蜂怪物类型 (23)
-                            gameState.mobs.push(baseObject);
                         }
                         else if (typeIdx === 19) {
                             // 花朵类型 (19)
@@ -4531,6 +4663,8 @@ function handleServerMessage(data) {
                         } else if (typeIdx === 20) {
                             // 掉落物类型 (20)
                             gameState.collectDrops.push(baseObject);
+                        } else{
+                            gameState.mobs.push(baseObject);
                         }
                     });
                 }
@@ -4617,6 +4751,24 @@ function handleServerMessage(data) {
                 // 检查游戏结束
                 if (gameState.playerHealth <= 0) {
                     gameOverScreen.style.display = 'flex';
+
+                    // 游戏结束时立即清除房间信息和怪物summary信息
+                    gameState.roomInfo = {};
+                    gameState.mobsSummary = {};
+                    gameState.currentRoom = null;
+                    gameState.previousRoom = null;
+                    gameState.wave = { current: 1, start_time: null, duration: 120, spawn_phase_duration: 60, is_spawn_phase: false };
+                    gameState.effects = [];
+                    gameState.mobs = [];
+                    gameState.drops = [];
+                    gameState.projectiles = [];
+                    gameState.playerPosition = { x: 0, y: 0 };
+
+                    // 更新房间信息显示
+                    updateRoomInfo();
+                    showRoomInfo(false);
+
+                    console.log('游戏结束，已清除房间信息、怪物summary和游戏实体信息');
                 }
                 break;
 
@@ -5451,23 +5603,13 @@ function drawObject(obj) {
         } else if (obj.name && (obj.name.includes('hornet') || obj.name.includes('centipede') ||
                    obj.name.includes('rock') || obj.name.includes('ladybug') || obj.name.includes('mob') ||
                    obj.name.includes('bombbeetle') || obj.name.includes('shield') ||
-                   obj.name.includes('venomspider') || obj.name.includes('thunderelement'))) {
+                   obj.name.includes('venomspider') || obj.name.includes('thunderelement') ||
+                   obj.name.includes('beetle'))) {
             // 使用服务器传输的原始大小，不应用最小尺寸限制
             const mobSize = Math.max(width, height);
-            let monsterType = 'hornet'; // 默认类型
-            if (obj.name === 'centipede0') monsterType = 'centipede0';
-            else if (obj.name === 'centipede1') monsterType = 'centipede1';
-            else if (obj.name.includes('centipede')) monsterType = 'centipede'; // 兼容旧版
-            else if (obj.name.includes('rock')) monsterType = 'rock';
-            else if (obj.name.includes('ladybug')) monsterType = 'ladybug';
-            else if (obj.name.includes('bombbeetle')) monsterType = 'bombbeetle';
-            else if (obj.name === 'shieldguardian') monsterType = 'shieldguardian';
-            else if (obj.name === 'venomspider') monsterType = 'venomspider';
-            else if (obj.name === 'thunderelement') monsterType = 'thunderelement';
-            else if (obj.name.includes('shield')) monsterType = 'shield';
 
 
-            drawVectorMonster(screenX, screenY, mobSize, monsterType, -obj.angle);
+            drawVectorMonster(screenX, screenY, mobSize, obj.name, -obj.angle);
         } else if (obj.name && obj.name.includes('drop')) {
             // 收集物 - 使用服务器传输的原始大小，但size应该是直径
             const dropSize = Math.max(width, height) / 2;  // 这是半径
@@ -6003,7 +6145,8 @@ function drawMobsSummary() {
         'thunderelement': drawVectorThunderElement,
         'venomspider': drawVectorVenomSpider,
         'shieldguardian': drawVectorShieldGuardian,
-        'bombbeetle': drawVectorBombBeetle
+        'bombbeetle': drawVectorBombBeetle,
+        'beetle': drawVectorBeetle
     };
 
     // 根据等级设置边框和背景颜色 - 使用和花瓣相同的颜色表
@@ -6760,6 +6903,53 @@ const petalRenderMap = {
         ctx.fill();
         ctx.stroke();
     },
+    orange: (p) => {
+        const divCoef = 1.35;
+
+        ctx.lineWidth = p.radius/divCoef/2.2//2.2;
+        // ctx.beginPath();
+        ctx.fillStyle = blendColor('#f0bd48', '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor('#c2993a', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF";
+        }
+
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+
+        ctx.fillStyle = blendColor('#39b54a', '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor('#2e933c', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF";
+        }
+        ctx.lineWidth = p.radius/3.4;
+        ctx.beginPath();
+        ctx.moveTo(p.radius * 0.61, p.radius * 0.13)
+        ctx.quadraticCurveTo(p.radius * 0.92, p.radius * 0.51, p.radius * 0.3, p.radius * 0.4);
+        ctx.stroke();
+    },
+
+    egg: (p) => {
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.fillStyle = blendColor('#fff0b8', '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor('#cfc295', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF";
+        }
+
+        ctx.beginPath();
+        ctx.ellipse(0, 0, p.radius, p.radius*1.35, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+    },
 };
 
 // 绘制花瓣形状（完全按照petal.js标准）
@@ -6921,6 +7111,124 @@ function drawVectorBombBeetle(x, y, size, angle) {
     // 将紫色改为红色
     let bodyColor = blendColor('#ff0000', "#FF0000", Math.max(0, blendAmount(e)));
     let sideColor = blendColor('#cc0000', "#FF0000", Math.max(0, blendAmount(e)));
+
+    if (checkForFirstFrame(e)) {
+        bodyColor = "#ffffff";
+        sideColor = "#ffffff";
+    }
+
+    ctx.rotate(e.render.angle);
+
+    // Front things - 螯的绘制
+    // 恢复原始螯的颜色，移除边框
+    ctx.fillStyle = "#333333";
+
+    // 上螯
+    ctx.translate(e.render.radius * 0.99, -e.render.radius * 0.37);
+    let rotateAngle = Math.cos(e.render.time / 60) / 15 + 0.1; // 大幅降低动画速度，从/12改为/60，幅度从/7.5改为/15
+    ctx.rotate(rotateAngle);
+    ctx.beginPath();
+    ctx.lineTo(e.render.radius * (0.66 - 0.99), e.render.radius * (-0.54 + 0.37));
+    ctx.quadraticCurveTo(e.render.radius * (1.35 - 0.99), e.render.radius * (-0.81 + 0.37), e.render.radius * (1.8 - 0.99), e.render.radius * (-0.47 + 0.37));
+    ctx.quadraticCurveTo(e.render.radius * (1.92 - 0.99), e.render.radius * (-0.38 + 0.37), e.render.radius * (1.81 - 0.99), e.render.radius * (-0.28 + 0.37));
+    ctx.quadraticCurveTo(e.render.radius * (1.42 - 0.99), e.render.radius * (-0.37 + 0.37), e.render.radius * (0.74 - 0.99), e.render.radius * (-0.13 + 0.37));
+    ctx.fill();
+    ctx.closePath();
+    ctx.rotate(-rotateAngle);
+    ctx.translate(-e.render.radius * 0.99, e.render.radius * 0.37);
+
+    // 下螯 - 使用相反的动画相位
+    ctx.translate(e.render.radius * 0.99, e.render.radius * 0.37);
+    ctx.rotate(-rotateAngle); // 恢复相同的动画相位
+    ctx.beginPath();
+    ctx.lineTo(e.render.radius * (0.66 - 0.99), e.render.radius * (0.54 - 0.37));
+    ctx.quadraticCurveTo(e.render.radius * (1.35 - 0.99), e.render.radius * (0.81 - 0.37), e.render.radius * (1.8 - 0.99), e.render.radius * (0.47 - 0.37));
+    ctx.quadraticCurveTo(e.render.radius * (1.92 - 0.99), e.render.radius * (0.38 - 0.37), e.render.radius * (1.81 - 0.99), e.render.radius * (0.28 - 0.37));
+    ctx.quadraticCurveTo(e.render.radius * (1.42 - 0.99), e.render.radius * (0.37 - 0.37), e.render.radius * (0.74 - 0.99), e.render.radius * (0.13 - 0.37));
+    ctx.fill();
+    ctx.closePath();
+    ctx.rotate(rotateAngle);
+    ctx.translate(-e.render.radius * 0.99, -e.render.radius * 0.37);
+
+    // Body
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.lineWidth = e.render.radius * 0.19310344827586207;
+    ctx.strokeStyle = sideColor;
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.lineTo(e.render.radius * -1.01, e.render.radius * 0);
+    ctx.bezierCurveTo(e.render.radius * -1.1, e.render.radius * -1.01, e.render.radius * 1.1, e.render.radius * -1.01, e.render.radius * 1, e.render.radius * 0);
+    ctx.bezierCurveTo(e.render.radius * 1.1, e.render.radius * 1.01, e.render.radius * -1.1, e.render.radius * 1.01, e.render.radius * -1.01, e.render.radius * 0);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    // Middle Line
+    ctx.beginPath();
+    ctx.lineTo(e.render.radius * -0.51, e.render.radius * 0);
+    ctx.quadraticCurveTo(e.render.radius * 0.01, e.render.radius * -0.06, e.render.radius * 0.5, e.render.radius * 0);
+    ctx.stroke();
+    ctx.closePath();
+
+    // Dots
+    ctx.fillStyle = sideColor;
+
+    ctx.beginPath();
+    ctx.arc(e.render.radius * -0.43, e.render.radius * -0.3, e.render.radius * 0.12413793103448276, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.closePath();
+    ctx.beginPath();
+    ctx.arc(e.render.radius * -0.01, e.render.radius * -0.38, e.render.radius * 0.12413793103448276, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.closePath();
+    ctx.beginPath();
+    ctx.arc(e.render.radius * 0.43, e.render.radius * -0.3, e.render.radius * 0.12413793103448276, 0, Math.PI * 2, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.closePath();
+
+    ctx.beginPath();
+    ctx.fillStyle = sideColor;
+    ctx.arc(e.render.radius * -0.43, e.render.radius * 0.3, e.render.radius * 0.12413793103448276, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.closePath();
+    ctx.beginPath();
+    ctx.arc(e.render.radius * -0.01, e.render.radius * 0.38, e.render.radius * 0.12413793103448276, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.closePath();
+    ctx.beginPath();
+    ctx.arc(e.render.radius * 0.43, e.render.radius * 0.3, e.render.radius * 0.12413793103448276, 0, Math.PI * 2, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.closePath();
+    ctx.rotate(-e.render.angle);
+
+    ctx.restore();
+}
+
+function drawVectorBeetle(x, y, size, angle) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    // 图片渲染使用 size 作为直径，所以矢量也需要用 size/2
+    const e = {
+        render: {
+            angle: 0,
+            radius: size / 2,
+            time: Date.now(), // 使用实际当前时间
+            lastX: x,
+            lastY: y
+        },
+        ticksSinceLastDamaged: 1000,
+        lastTicksSinceLastDamaged: 1000,
+        team: "friend"
+    };
+
+    ctx.lineWidth = e.render.radius / 3;
+
+    // 将红色改为黄色
+    let bodyColor = blendColor('#ffd700', "#FFD700", Math.max(0, blendAmount(e)));
+    let sideColor = blendColor('#ffb347', "#FFD700", Math.max(0, blendAmount(e)));
 
     if (checkForFirstFrame(e)) {
         bodyColor = "#ffffff";
@@ -7648,6 +7956,9 @@ function drawVectorMonster(x, y, size, type, angle) {
         case 'bombbeetle':
             drawVectorBombBeetle(x, y, size, angle);
             break;
+        case 'beetle':
+            drawVectorBeetle(x, y, size, angle);
+            break;
         case 'shield':
             drawVectorShield(x, y, size, angle);
             break;
@@ -7660,6 +7971,8 @@ function drawVectorMonster(x, y, size, type, angle) {
         case 'shieldguardian':
             drawVectorShieldGuardian(x, y, size, angle);
             break;
+        case 'beetle':
+            drawVectorBeetle(x, y, size, angle);
         default:
             // 默认绘制简单圆形
             ctx.save();
