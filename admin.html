@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Florr.io 服务器数据管理</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button.danger {
+            background-color: #dc3545;
+        }
+        button.danger:hover {
+            background-color: #c82333;
+        }
+        .player-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .player-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        .player-item:hover {
+            background-color: #f8f9fa;
+        }
+        .player-item.selected {
+            background-color: #e3f2fd;
+        }
+        .message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .hidden {
+            display: none;
+        }
+        .json-editor {
+            font-family: monospace;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            min-height: 200px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Florr.io 服务器数据管理</h1>
+
+    <div class="container">
+        <h2>安全验证</h2>
+        <div class="form-group">
+            <label for="adminKey">管理员密钥:</label>
+            <input type="password" id="adminKey" placeholder="请输入管理员密钥">
+        </div>
+        <button onclick="setAdminKey()">设置密钥</button>
+        <div id="authMessage"></div>
+    </div>
+
+    <div id="mainContent" class="hidden">
+        <div class="container">
+            <h2>玩家列表</h2>
+            <button onclick="loadPlayers()">刷新玩家列表</button>
+            <button onclick="exportData()">导出所有数据</button>
+            <button onclick="createBackup()">创建备份</button>
+            <div id="playerList" class="player-list"></div>
+        </div>
+
+        <div class="container">
+            <h2>查看/编辑玩家数据</h2>
+            <div class="form-group">
+                <label for="playerId">玩家ID:</label>
+                <input type="text" id="playerId" placeholder="输入玩家ID或从列表中选择">
+                <button onclick="loadPlayerData()">加载玩家数据</button>
+            </div>
+
+            <div id="playerDataSection" class="hidden">
+                <h3>当前玩家数据:</h3>
+                <div id="currentPlayerData" class="json-editor"></div>
+
+                <h3>修改数据 (JSON格式):</h3>
+                <div class="form-group">
+                    <label for="updateData">更新数据:</label>
+                    <textarea id="updateData" rows="10" placeholder='例如: {"level": 5, "max_wave_reached": 100}'></textarea>
+                </div>
+                <button onclick="updatePlayerData()">更新玩家数据</button>
+                <button class="danger" onclick="deletePlayer()">删除玩家</button>
+            </div>
+        </div>
+
+        <div class="container">
+            <h2>数据恢复</h2>
+            <div class="form-group">
+                <label>从备份恢复数据:</label>
+                <button class="danger" onclick="restoreFromBackup()">从自动备份恢复</button>
+            </div>
+            <div id="restoreMessage"></div>
+        </div>
+    </div>
+
+    <div id="globalMessage"></div>
+
+    <script>
+        let adminKey = '';
+        let currentAdminKey = 'florr_admin_2024'; // 管理员密钥
+
+        function showMessage(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="message ${isError ? 'error' : 'success'}">${message}</div>`;
+            setTimeout(() => {
+                element.innerHTML = '';
+            }, 5000);
+        }
+
+        function setAdminKey() {
+            const key = document.getElementById('adminKey').value;
+            if (key === currentAdminKey) {
+                adminKey = key;
+                document.getElementById('authMessage').innerHTML = '<div class="message success">✅ 验证成功！</div>';
+                document.getElementById('mainContent').classList.remove('hidden');
+                loadPlayers();
+            } else {
+                showMessage('authMessage', '❌ 密钥错误！', true);
+            }
+        }
+
+        async function apiCall(action, method = 'GET', params = null, data = null) {
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Key': adminKey,  // 使用HTTP头传递密钥
+                    }
+                };
+
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+
+                // 构建URL和参数
+                let url = `/data11dalkh11/${action}`;
+                const urlParams = new URLSearchParams();
+
+                // 添加其他参数（不包括admin_key）
+                if (params) {
+                    for (const [key, value] of Object.entries(params)) {
+                        urlParams.append(key, value);
+                    }
+                }
+
+                // 如果是GET请求，将参数添加到URL
+                if (method === 'GET' && urlParams.toString()) {
+                    url += '?' + urlParams.toString();
+                }
+                // 如果是POST请求，将参数添加到URL
+                else if (method === 'POST' && urlParams.toString()) {
+                    url += '?' + urlParams.toString();
+                }
+
+                console.log('请求URL:', url);
+                console.log('请求方法:', method);
+                console.log('请求头:', options.headers);
+
+                const response = await fetch(url, options);
+                const result = await response.json();
+
+                if (response.ok) {
+                    return result;
+                } else {
+                    throw new Error(result.error || '请求失败');
+                }
+            } catch (error) {
+                showMessage('globalMessage', `❌ ${error.message}`, true);
+                throw error;
+            }
+        }
+
+        async function loadPlayers() {
+            try {
+                const result = await apiCall('list');
+                const playerList = document.getElementById('playerList');
+
+                if (result.players && result.players.length > 0) {
+                    playerList.innerHTML = result.players.map(player => `
+                        <div class="player-item" onclick="selectPlayer('${player.player_id}')">
+                            <strong>${player.username || player.client_name}</strong> (ID: ${player.player_id})
+                            <br>等级: ${player.level} | 最高波次: ${player.max_wave_reached}
+                        </div>
+                    `).join('');
+                } else {
+                    playerList.innerHTML = '<p>暂无玩家数据</p>';
+                }
+            } catch (error) {
+                console.error('加载玩家列表失败:', error);
+            }
+        }
+
+        function selectPlayer(playerId) {
+            document.getElementById('playerId').value = playerId;
+
+            // 高亮选中的玩家
+            document.querySelectorAll('.player-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            event.target.closest('.player-item').classList.add('selected');
+        }
+
+        async function loadPlayerData() {
+            const playerId = document.getElementById('playerId').value;
+            if (!playerId) {
+                showMessage('globalMessage', '请输入玩家ID', true);
+                return;
+            }
+
+            try {
+                const result = await apiCall('get', 'GET', { player_id: playerId });
+
+                if (result.player_data) {
+                    document.getElementById('currentPlayerData').textContent = JSON.stringify(result.player_data, null, 2);
+                    document.getElementById('playerDataSection').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('加载玩家数据失败:', error);
+            }
+        }
+
+        async function updatePlayerData() {
+            const playerId = document.getElementById('playerId').value;
+            const updateDataText = document.getElementById('updateData').value;
+
+            if (!playerId || !updateDataText) {
+                showMessage('globalMessage', '请填写玩家ID和更新数据', true);
+                return;
+            }
+
+            try {
+                const updates = JSON.parse(updateDataText);
+                const data = { player_id: playerId, updates: updates };
+
+                console.log('发送的更新数据:', data);
+                await apiCall('update', 'POST', null, data);  // 修正参数顺序
+                showMessage('globalMessage', `✅ 玩家 ${playerId} 的数据已更新`);
+
+                // 刷新数据
+                loadPlayerData();
+                loadPlayers();
+            } catch (error) {
+                showMessage('globalMessage', `❌ 更新失败: ${error.message}`, true);
+            }
+        }
+
+        async function deletePlayer() {
+            const playerId = document.getElementById('playerId').value;
+            if (!playerId) {
+                showMessage('globalMessage', '请输入玩家ID', true);
+                return;
+            }
+
+            if (!confirm(`确定要删除玩家 ${playerId} 吗？此操作不可撤销！`)) {
+                return;
+            }
+
+            try {
+                await apiCall('delete', 'POST', { player_id: playerId, confirm: true });
+                showMessage('globalMessage', `✅ 玩家 ${playerId} 已删除`);
+
+                // 清空界面并刷新
+                document.getElementById('playerId').value = '';
+                document.getElementById('playerDataSection').classList.add('hidden');
+                loadPlayers();
+            } catch (error) {
+                showMessage('globalMessage', `❌ 删除失败: ${error.message}`, true);
+            }
+        }
+
+        async function exportData() {
+            try {
+                // 创建一个隐藏的表单来导出数据
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/data11dalkh11/export';
+                form.target = '_blank';
+
+                // 添加admin_key作为隐藏字段
+                const adminKeyInput = document.createElement('input');
+                adminKeyInput.type = 'hidden';
+                adminKeyInput.name = 'admin_key';
+                adminKeyInput.value = adminKey;
+                form.appendChild(adminKeyInput);
+
+                document.body.appendChild(form);
+                form.submit();
+                document.body.removeChild(form);
+
+                showMessage('globalMessage', '✅ 数据导出已开始');
+            } catch (error) {
+                showMessage('globalMessage', `❌ 导出失败: ${error.message}`, true);
+            }
+        }
+
+        async function createBackup() {
+            try {
+                await apiCall('backup', 'POST');
+                showMessage('globalMessage', '✅ 备份已创建');
+            } catch (error) {
+                showMessage('globalMessage', `❌ 备份失败: ${error.message}`, true);
+            }
+        }
+
+        async function restoreFromBackup() {
+            if (!confirm('确定要从备份恢复数据吗？这将覆盖当前的所有数据！')) {
+                return;
+            }
+
+            try {
+                await apiCall('restore', 'POST', { confirm: true });
+                showMessage('globalMessage', '✅ 数据已从备份恢复');
+                loadPlayers();
+            } catch (error) {
+                showMessage('globalMessage', `❌ 恢复失败: ${error.message}`, true);
+            }
+        }
+
+        // 页面加载时的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 可以在这里添加初始化逻辑
+        });
+    </script>
+</body>
+</html>

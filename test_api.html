@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API测试页面</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>Florr.io API 测试</h1>
+
+    <h2>测试获取玩家列表</h2>
+    <button onclick="testListPlayers()">测试列表</button>
+    <div id="listResult"></div>
+
+    <h2>测试获取特定玩家数据</h2>
+    <input type="text" id="testPlayerId" value="zuo" placeholder="玩家ID">
+    <button onclick="testGetPlayer()">获取玩家数据</button>
+    <div id="playerResult"></div>
+
+    <h2>正确的URL格式示例</h2>
+    <ul>
+        <li>正确: <code>/data11dalkh11/get?player_id=zuo&admin_key=florr_admin_2024</code></li>
+        <li>错误: <code>/data11dalkh11/get?player_id=zuo?admin_key=florr_admin_2024</code></li>
+    </ul>
+
+    <script>
+        const adminKey = 'florr_admin_2024';
+
+        async function testListPlayers() {
+            try {
+                const response = await fetch(`/data11dalkh11/list?admin_key=${adminKey}`);
+                const result = await response.json();
+                document.getElementById('listResult').innerHTML =
+                    `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+            } catch (error) {
+                document.getElementById('listResult').innerHTML =
+                    `<div style="color: red;">错误: ${error.message}</div>`;
+            }
+        }
+
+        async function testGetPlayer() {
+            const playerId = document.getElementById('testPlayerId').value;
+            try {
+                const response = await fetch(`/data11dalkh11/get?player_id=${playerId}&admin_key=${adminKey}`);
+                const result = await response.json();
+                document.getElementById('playerResult').innerHTML =
+                    `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+            } catch (error) {
+                document.getElementById('playerResult').innerHTML =
+                    `<div style="color: red;">错误: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

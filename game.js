@@ -1273,7 +1273,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -4423,6 +4423,9 @@ function connectToServer() {
             gameState.connected = false;
             // 停止心跳
             stopHeartbeat();
+
+            // 显示连接错误提示
+            showConnectionError();
         };
 
         gameState.socket.onclose = () => {
@@ -4430,10 +4433,359 @@ function connectToServer() {
             gameState.connected = false;
             // 停止心跳
             stopHeartbeat();
+
+            // 显示断开连接提示
+            showDisconnected();
         };
     } catch (error) {
         console.error('连接服务器失败:', error);
     }
+}
+
+// 显示断开连接提示
+function showDisconnected() {
+    // 如果已经有弹窗显示，不重复显示
+    if (document.getElementById('disconnected-modal')) {
+        return;
+    }
+
+    const modal = document.createElement('div');
+    modal.id = 'disconnected-modal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        font-family: Arial, sans-serif;
+    `;
+
+    modal.innerHTML = `
+        <div style="
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            animation: slideIn 0.3s ease-out;
+        ">
+            <div style="
+                font-size: 48px;
+                margin-bottom: 20px;
+                animation: pulse 2s infinite;
+            ">🔌</div>
+            <h2 style="margin: 0 0 15px 0; font-size: 24px;">Disconnected</h2>
+            <p style="margin: 0 0 20px 0; font-size: 16px; opacity: 0.9;">
+                与服务器断开连接
+            </p>
+            <p style="margin: 0 0 25px 0; font-size: 14px; opacity: 0.8;">
+                请检查网络连接或刷新页面重新连接
+            </p>
+            <div style="margin-bottom: 20px;">
+                <button onclick="attemptReconnect()" id="reconnect-btn" style="
+                    background: rgba(255, 255, 255, 0.2);
+                    border: 2px solid white;
+                    color: white;
+                    padding: 12px 30px;
+                    border-radius: 25px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    font-weight: bold;
+                    transition: all 0.3s ease;
+                    margin-right: 10px;
+                " onmouseover="this.style.background='rgba(255, 255, 255, 0.3)'"
+                   onmouseout="this.style.background='rgba(255, 255, 255, 0.2)'">
+                    重新连接
+                </button>
+                <button onclick="location.reload()" style="
+                    background: rgba(255, 255, 255, 0.1);
+                    border: 1px solid rgba(255, 255, 255, 0.5);
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 25px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    transition: all 0.3s ease;
+                    margin-right: 10px;
+                " onmouseover="this.style.background='rgba(255, 255, 255, 0.2)'"
+                   onmouseout="this.style.background='rgba(255, 255, 255, 0.1)'">
+                    刷新页面
+                </button>
+                <button onclick="this.parentElement.parentElement.parentElement.remove()" style="
+                    background: transparent;
+                    border: 1px solid rgba(255, 255, 255, 0.5);
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 25px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    transition: all 0.3s ease;
+                " onmouseover="this.style.background='rgba(255, 255, 255, 0.1)'"
+                   onmouseout="this.style.background='transparent'">
+                    关闭
+                </button>
+            </div>
+            <div style="font-size: 12px; opacity: 0.7;">
+                <span id="reconnect-status"></span>
+            </div>
+        </div>
+    `;
+
+    // 添加CSS动画
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+    `;
+    document.head.appendChild(style);
+
+    document.body.appendChild(modal);
+}
+
+// 重连机制
+let reconnectAttempts = 0;
+let maxReconnectAttempts = 5;
+let reconnectInterval = null;
+
+function attemptReconnect() {
+    const statusElement = document.getElementById('reconnect-status');
+    const reconnectBtn = document.getElementById('reconnect-btn');
+
+    if (!statusElement || !reconnectBtn) {
+        return;
+    }
+
+    // 如果已经重连中，不重复操作
+    if (reconnectInterval) {
+        return;
+    }
+
+    reconnectAttempts = 0;
+    reconnectBtn.disabled = true;
+    reconnectBtn.style.opacity = '0.5';
+    reconnectBtn.style.cursor = 'not-allowed';
+
+    performReconnect();
+}
+
+function performReconnect() {
+    const statusElement = document.getElementById('reconnect-status');
+    const reconnectBtn = document.getElementById('reconnect-btn');
+
+    if (!statusElement || !reconnectBtn) {
+        return;
+    }
+
+    reconnectAttempts++;
+    statusElement.textContent = `正在尝试重连... (${reconnectAttempts}/${maxReconnectAttempts})`;
+
+    // 尝试重新连接
+    try {
+        // 关闭现有连接
+        if (gameState.socket) {
+            gameState.socket.close();
+        }
+
+        // 重新建立连接
+        connectToServer();
+
+        // 检查连接是否成功
+        setTimeout(() => {
+            if (gameState.connected && gameState.socket.readyState === WebSocket.OPEN) {
+                // 连接成功
+                statusElement.textContent = '✅ 连接成功！';
+                statusElement.style.color = '#4CAF50';
+
+                // 关闭弹窗
+                setTimeout(() => {
+                    const modal = document.getElementById('disconnected-modal');
+                    if (modal) {
+                        modal.remove();
+                    }
+                }, 1000);
+
+                // 重置重连状态
+                reconnectAttempts = 0;
+                if (reconnectInterval) {
+                    clearInterval(reconnectInterval);
+                    reconnectInterval = null;
+                }
+            } else if (reconnectAttempts < maxReconnectAttempts) {
+                // 连接失败，继续尝试
+                statusElement.textContent = `❌ 重连失败，3秒后重试... (${reconnectAttempts}/${maxReconnectAttempts})`;
+                statusElement.style.color = '#ff6b6b';
+
+                setTimeout(() => {
+                    performReconnect();
+                }, 3000);
+            } else {
+                // 达到最大重连次数
+                statusElement.textContent = '❌ 重连失败，请刷新页面或检查网络';
+                statusElement.style.color = '#ff4444';
+
+                reconnectBtn.textContent = '重试';
+                reconnectBtn.disabled = false;
+                reconnectBtn.style.opacity = '1';
+                reconnectBtn.style.cursor = 'pointer';
+
+                if (reconnectInterval) {
+                    clearInterval(reconnectInterval);
+                    reconnectInterval = null;
+                }
+            }
+        }, 2000);
+
+    } catch (error) {
+        console.error('重连过程中发生错误:', error);
+        statusElement.textContent = `❌ 重连错误: ${error.message}`;
+        statusElement.style.color = '#ff4444';
+
+        // 恢复按钮状态
+        reconnectBtn.disabled = false;
+        reconnectBtn.style.opacity = '1';
+        reconnectBtn.style.cursor = 'pointer';
+
+        if (reconnectInterval) {
+            clearInterval(reconnectInterval);
+            reconnectInterval = null;
+        }
+    }
+}
+
+// 显示连接错误提示
+function showConnectionError() {
+    // 如果已经有断开连接弹窗，不显示错误弹窗
+    if (document.getElementById('disconnected-modal')) {
+        return;
+    }
+
+    // 如果已经有错误弹窗，不重复显示
+    if (document.getElementById('error-modal')) {
+        return;
+    }
+
+    const modal = document.createElement('div');
+    modal.id = 'error-modal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        font-family: Arial, sans-serif;
+    `;
+
+    modal.innerHTML = `
+        <div style="
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            animation: slideIn 0.3s ease-out;
+        ">
+            <div style="
+                font-size: 48px;
+                margin-bottom: 20px;
+                animation: shake 0.5s infinite;
+            ">⚠️</div>
+            <h2 style="margin: 0 0 15px 0; font-size: 24px;">Connection Error</h2>
+            <p style="margin: 0 0 20px 0; font-size: 16px; opacity: 0.9;">
+                连接服务器时发生错误
+            </p>
+            <p style="margin: 0 0 25px 0; font-size: 14px; opacity: 0.8;">
+                请检查服务器是否正常运行
+            </p>
+            <button onclick="location.reload()" style="
+                background: rgba(255, 255, 255, 0.2);
+                border: 2px solid white;
+                color: white;
+                padding: 12px 30px;
+                border-radius: 25px;
+                cursor: pointer;
+                font-size: 16px;
+                font-weight: bold;
+                transition: all 0.3s ease;
+                margin-right: 10px;
+            " onmouseover="this.style.background='rgba(255, 255, 255, 0.3)'"
+               onmouseout="this.style.background='rgba(255, 255, 255, 0.2)'">
+                重试
+            </button>
+            <button onclick="this.parentElement.parentElement.remove()" style="
+                background: transparent;
+                border: 1px solid rgba(255, 255, 255, 0.5);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 25px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: all 0.3s ease;
+            " onmouseover="this.style.background='rgba(255, 255, 255, 0.1)'"
+               onmouseout="this.style.background='transparent'">
+                关闭
+            </button>
+        </div>
+    `;
+
+    // 添加CSS动画
+    let styleElement = document.getElementById('error-modal-styles');
+    if (!styleElement) {
+        styleElement = document.createElement('style');
+        styleElement.id = 'error-modal-styles';
+        styleElement.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateY(-50px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-5px); }
+                75% { transform: translateX(5px); }
+            }
+        `;
+        document.head.appendChild(styleElement);
+    }
+
+    document.body.appendChild(modal);
+
+    // 5秒后自动关闭错误弹窗
+    setTimeout(() => {
+        if (modal && modal.parentNode) {
+            modal.remove();
+        }
+    }, 5000);
 }
 
 // 发送认证成功的CONNECT消息
