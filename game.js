@@ -1273,7 +1273,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -2076,9 +2076,10 @@ function initializeAbsorbWindow() {
 
     // 事件监听
     absorbActionButton.addEventListener('click', startAbsorb);
-    closeResult.addEventListener('click', () => {
-        absorbResult.style.display = 'none';
-    });
+    // 注释掉弹窗关闭功能，不再使用弹窗显示结果
+    // closeResult.addEventListener('click', () => {
+    //     absorbResult.style.display = 'none';
+    // });
 
 }
 
@@ -2539,20 +2540,24 @@ function clearSynthesizedPetals(totalPetalCount) {
 // 显示实际的服务器结果
 function displayActualResult(result, totalPetalCount) {
     gameState.isAbsorbing = false;
-
-    // 显示结果
-    resultContent.innerHTML = '';
+    const absorbCenter = document.getElementById('absorbCenter');
+    const absorbActionButton = document.getElementById('absorbActionButton');
 
     if (result.success) {
-        const usedCount = result.total_used || totalPetalCount;
-        const successMsg = document.createElement('p');
-        successMsg.textContent = `合成成功! 使用了 ${usedCount} 个花瓣，成功合成 ${result.success_count} 个`;
-        successMsg.style.color = '#4CAF50';
-        resultContent.appendChild(successMsg);
-
+        // 成功：在五边形中心显示合成的花瓣，不覆盖按钮
         if (result.result_petal) {
+            // 确保按钮存在并启用
+            absorbActionButton.disabled = false;
+
+            // 创建合成结果显示元素
             const resultPetal = document.createElement('div');
-            resultPetal.className = 'result-petal';
+            resultPetal.className = 'synthesis-result-display';
+            resultPetal.style.position = 'absolute';
+            resultPetal.style.top = '48%';
+            resultPetal.style.left = '25%';
+            resultPetal.style.transform = 'translate(-50%, -50%)';
+            resultPetal.style.zIndex = '15';
+            resultPetal.style.cursor = 'pointer'; // 添加手型光标表示可点击
 
             // 使用canvas绘制花瓣
             const canvas = document.createElement('canvas');
@@ -2560,37 +2565,95 @@ function displayActualResult(result, totalPetalCount) {
                 type: result.result_petal[0],
                 level: result.result_petal[1]
             };
-            drawPetalItem(petalData, canvas, { displaySize: 45 });
+            drawPetalItem(petalData, canvas, { displaySize: 60 });
             resultPetal.appendChild(canvas);
 
             const levelText = document.createElement('div');
             levelText.textContent = `Lv.${result.result_petal[1]}`;
-            levelText.style.fontSize = '12px';
+            levelText.style.fontSize = '14px';
+            levelText.style.fontWeight = 'bold';
+            levelText.style.color = 'white';
+            levelText.style.textAlign = 'center';
+            levelText.style.marginTop = '2px';
+            levelText.style.textShadow = '1px 1px 2px rgba(0,0,0,0.8)';
             resultPetal.appendChild(levelText);
 
-            resultContent.appendChild(resultPetal);
+            // 将合成结果添加到五边形容器（absorbSlotsContainer）的中央
+            const absorbSlotsContainer = document.getElementById('absorbSlotsContainer');
+            absorbSlotsContainer.appendChild(resultPetal);
+
+            // 添加成功动画效果
+            resultPetal.style.animation = 'successGlow 2s ease-in-out';
+
+            // 添加点击事件：点击后将花瓣返回背包
+            resultPetal.addEventListener('click', function() {
+                // 直接移除合成结果显示
+                if (resultPetal.parentNode === absorbSlotsContainer) {
+                    absorbSlotsContainer.removeChild(resultPetal);
+                }
+            });
         }
     } else {
-        const usedCount = result.total_used || totalPetalCount;
-        const failMsg = document.createElement('p');
-        failMsg.textContent = `合成失败! 使用了 ${usedCount} 个花瓣`;
-        failMsg.style.color = '#ff4757';
-        resultContent.appendChild(failMsg);
+        // 失败：确保按钮可用，显示剩余花瓣
+        absorbActionButton.disabled = false;
 
-        if (result.remaining_count > 0) {
-            const remainingText = document.createElement('p');
-            remainingText.textContent = `剩余花瓣: ${result.remaining_count} 个`;
-            remainingText.style.marginTop = '10px';
-            resultContent.appendChild(remainingText);
+        // 如果有剩余花瓣，将它们重新分配到槽位中
+        if (result.remaining_count > 0 && result.petal_type !== undefined && result.petal_level !== undefined) {
+            console.log(`合成失败！剩余 ${result.remaining_count} 个花瓣，类型 ${result.petal_type}，等级 ${result.petal_level}`);
+
+            // 计算每个槽位应该分配多少花瓣
+            const baseCount = Math.floor(result.remaining_count / 5);
+            const remainder = result.remaining_count % 5;
+            console.log(`分配方案：每个槽位基础 ${baseCount} 个，前 ${remainder} 个槽位额外+1`);
+
+            // 重新分配剩余花瓣到槽位
+            for (let i = 0; i < 5; i++) {
+                const count = baseCount + (i < remainder ? 1 : 0);
+                if (count > 0) {
+                    // 找到对应花瓣的原始索引
+                    const originalIndex = gameState.availablePetals.findIndex(
+                        p => p.type === result.petal_type && p.level === result.petal_level
+                    );
+
+                    gameState.absorbSlots[i] = {
+                        type: result.petal_type,
+                        level: result.petal_level,
+                        count: count,
+                        originalIndex: originalIndex >= 0 ? originalIndex : 0
+                    };
+                    console.log(`槽位 ${i}: ${count} 个花瓣，原始索引: ${originalIndex}`);
+                } else {
+                    gameState.absorbSlots[i] = null;
+                }
+            }
+
+            gameState.absorbTotalCount = result.remaining_count;
+            gameState.currentAbsorbType = result.petal_type;
+            gameState.currentAbsorbLevel = result.petal_level;
+
+            // 确保槽位已初始化，然后更新显示
+            initializeAbsorbSlots();
+            for (let i = 0; i < 5; i++) {
+                updateAbsorbSlotDisplay(i);
+            }
+            updateAbsorbButton();
+
+            // 更新花瓣选择界面（如果还开着）
+            if (absorbWindow.style.display === 'block') {
+                loadAvailablePetals();
+            }
+        } else {
+            // 没有剩余花瓣，清空所有槽位
+            resetAbsorbSlots();
         }
     }
 
-    absorbResult.style.display = 'block';
+    // 清空合成的花瓣 - 只有成功时才重置槽位，失败时已经处理了剩余花瓣
+    if (result.success) {
+        resetAbsorbSlots();
+    }
 
-    // 清空合成的花瓣 - 直接重置槽位，因为服务器已经处理了花瓣消耗
-    resetAbsorbSlots();
-
-    // 更新背包内容
+      // 更新背包内容
     setTimeout(() => {
         if (gameState.connected) {
             sendToServer({
@@ -2687,7 +2750,7 @@ function addPlayerCard(name, build, isCurrentPlayer, isReady = false) {
             position: absolute;
             top: 5px;
             right: 5px;
-            background-color: #4CAF50;
+            background-color: #1ea761;
             color: white;
             width: 20px;
             height: 20px;
@@ -3368,7 +3431,7 @@ function showLobby() {
     // 隐藏游戏中的inventory装备槽，只在大厅显示equipmentSlots
     const inventory = document.getElementById('inventory');
     const equipmentSlots = document.getElementById('equipmentSlots');
-    if (inventory) inventory.style.display = 'none'; // 隐藏游戏中的装备槽
+    if (inventory) inventory.classList.add('hidden'); // 隐藏游戏中的装备槽
     if (equipmentSlots) equipmentSlots.style.display = 'flex'; // 显示大厅的装备槽
 
     // 恢复大厅界面的canvas动画
@@ -4304,7 +4367,7 @@ function cancelReady() {
         });
 
         readyButton.textContent = 'Ready';
-        readyButton.style.backgroundColor = '#4CAF50'; // 绿色背景
+        readyButton.style.backgroundColor = '#1ea761'; // 绿色背景
     }
 }
 
@@ -4317,7 +4380,7 @@ function startGame() {
     // 显示游戏中的inventory装备槽，隐藏大厅的equipmentSlots
     const inventory = document.getElementById('inventory');
     const equipmentSlots = document.getElementById('equipmentSlots');
-    if (inventory) inventory.style.display = 'block'; // 显示游戏中的装备槽
+    if (inventory) inventory.classList.remove('hidden'); // 显示游戏中的装备槽
     if (equipmentSlots) equipmentSlots.style.display = 'none'; // 隐藏大厅的装备槽
 
     updateInventoryDisplay();
@@ -4355,7 +4418,7 @@ function restartGame() {
     // 恢复大厅界面的canvas动画
     resumeLobbyCanvasAnimations();
     readyButton.textContent = 'Ready';
-    readyButton.style.backgroundColor = '#4CAF50'; // 重置为绿色
+    readyButton.style.backgroundColor = '#1ea761'; // 重置为绿色
     waveBar.style.display = 'none';
 
     // 停止背景音乐
@@ -4364,7 +4427,7 @@ function restartGame() {
     // 隐藏游戏中的inventory装备槽，只显示大厅的equipmentSlots
     const inventory = document.getElementById('inventory');
     const equipmentSlots = document.getElementById('equipmentSlots');
-    if (inventory) inventory.style.display = 'none'; // 隐藏游戏中的装备槽
+    if (inventory) inventory.classList.add('hidden'); // 隐藏游戏中的装备槽
     if (equipmentSlots) equipmentSlots.style.display = 'flex'; // 显示大厅的装备槽
 
     // 清除房间信息和怪物summary信息
@@ -4613,7 +4676,7 @@ function performReconnect() {
             if (gameState.connected && gameState.socket.readyState === WebSocket.OPEN) {
                 // 连接成功
                 statusElement.textContent = '✅ 连接成功！';
-                statusElement.style.color = '#4CAF50';
+                statusElement.style.color = '#1ea761';
 
                 // 关闭弹窗
                 setTimeout(() => {
@@ -4920,11 +4983,27 @@ function handleServerMessage(data) {
                 // 处理房间创建成功
                 console.log('房间创建成功:', message.room_info);
                 alert(`房间创建成功！\n房间名称: ${message.room_info.name}\n房间类型: ${message.room_info.type}\n房间key: ${message.room_key}`);
+
+                // 自动获取并发送当前起始波次设置
+                const startWaveSliderCreated = document.getElementById('startWaveSlider');
+                if (startWaveSliderCreated) {
+                    const currentWaveValueCreated = parseInt(startWaveSliderCreated.value);
+                    console.log(`房间创建成功，自动发送起始波次设置: ${currentWaveValueCreated}`);
+                    setPlayerStartWave(currentWaveValueCreated);
+                }
                 break;
 
             case 'ROOM_JOINED':
                 // 处理成功加入房间
                 console.log('成功加入房间:', message.room_key);
+
+                // 自动获取并发送当前起始波次设置
+                const startWaveSliderJoined = document.getElementById('startWaveSlider');
+                if (startWaveSliderJoined) {
+                    const currentWaveValueJoined = parseInt(startWaveSliderJoined.value);
+                    console.log(`玩家加入房间，自动发送起始波次设置: ${currentWaveValueJoined}`);
+                    setPlayerStartWave(currentWaveValueJoined);
+                }
                 break;
 
             case 'ROOM_LIST':
@@ -5421,11 +5500,14 @@ function gameLoop(timestamp) {
     // 恢复变换
     ctx.restore();
 
-    // 绘制怪物统计信息（在血条上方）
-    drawMobsSummary();
+    // 如果不是大厅模式，绘制游戏UI
+    if (!gameState.isLobby) {
+        // 绘制怪物统计信息（在血条上方）
+        drawMobsSummary();
 
-    // 绘制所有玩家的血条和小花朵（包括自己和其他玩家）
-    drawAllPlayersHealthBars();
+        // 绘制所有玩家的血条和小花朵（包括自己和其他玩家）
+        drawAllPlayersHealthBars();
+    }
 
 
     // 继续游戏循环
@@ -5639,7 +5721,7 @@ function drawOtherPlayerMiniFlower(x, y, size, player) {
         miniFlower.drawFlower(miniFlower.x, miniFlower.y, miniFlower.radius, miniFlower.character);
     } else {
         // 简单的圆形作为备选
-        ctx.fillStyle = '#4CAF50';
+        ctx.fillStyle = '#1ea761';
         ctx.beginPath();
         ctx.arc(x, y, size / 2, 0, Math.PI * 2);
         ctx.fill();

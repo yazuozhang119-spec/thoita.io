@@ -59,8 +59,8 @@ body {
     height: 100%;
     background-color: #1ea761;
     background-image:
-        linear-gradient(rgba(29, 154, 91, 0.8) 1.5px, transparent 1.5px),
-        linear-gradient(90deg, rgba(29, 154, 91, 0.8) 1.5px, transparent 1.5px);
+        linear-gradient(#1d9a5bcc 1.5px, transparent 1.5px),
+        linear-gradient(90deg, #1d9a5bcc 1.5px, transparent 1.5px);
     background-size: 30px 30px;
     display: flex;
     flex-direction: column;
@@ -119,9 +119,9 @@ body {
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    display: flex !important;
-    flex-direction: row !important; /* 强制横向排列 */
-    flex-wrap: nowrap !important; /* 强制不换行 */
+    display: flex;
+    flex-direction: row; /* 强制横向排列 */
+    flex-wrap: nowrap; /* 强制不换行 */
     gap: 10px;
     pointer-events: auto; /* 允许鼠标交互 */
     z-index: 15; /* 确保在其他元素之上 */
@@ -129,6 +129,11 @@ body {
     max-width: 90vw; /* 限制最大宽度 */
     align-items: center; /* 垂直居中对齐 */
     justify-content: center; /* 水平居中对齐 */
+}
+
+/* 隐藏inventory的规则，优先级高于默认显示规则 */
+#inventory.hidden {
+    display: none !important;
 }
 
 /* 额外的规则确保横向显示 */
@@ -162,7 +167,7 @@ div#inventory,
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: #000000;
     display: none;
     flex-direction: column;
     justify-content: center;
@@ -375,7 +380,13 @@ div#inventory,
     top: 0;
     left: 0;
     z-index: 5;
-    background-color: transparent; /* 透明，继承父容器的网格背景 */
+    background-color: #1ea761;
+    background-image:
+        linear-gradient(#1d9a5bcc 1.5px, transparent 1.5px),
+        linear-gradient(90deg, #1d9a5bcc 1.5px, transparent 1.5px);
+    background-size: 30px 30px;
+    box-sizing: border-box;
+    border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 #bagWindow {
@@ -386,7 +397,7 @@ div#inventory,
     transform: translate(-50%, -50%);
     width: 30%;
     height: 55%;
-    background-color: rgba(50, 50, 50, 0.9);
+    background-color: #5a9fdb;
     border-radius: 10px;
     padding: 20px;
     z-index: 15;
@@ -394,7 +405,7 @@ div#inventory,
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
     box-sizing: border-box;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    border: 3px solid #4a8fc8;
 }
 
 #bagWindow::-webkit-scrollbar {
@@ -424,13 +435,13 @@ div#inventory,
     transform: translate(-50%, -50%);
     width: 30%;
     height: 55%;
-    background-color: rgba(50, 50, 50, 0.9);
+    background-color: #da9b5b;
     border-radius: 10px;
     padding: 20px;
     z-index: 15;
     overflow: hidden;
     box-sizing: border-box;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    border: 3px solid #ca8b4b;
 }
 
 
@@ -453,7 +464,7 @@ div#inventory,
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.9);
+    background-color: #000000;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -573,7 +584,7 @@ div#inventory,
 }
 
 #roomInfo {
-    background-color: rgba(60, 60, 60, 0.7);
+    background-color: #3c3c3c;
     border-radius: 10px;
     padding: 20px;
     margin-top: 10px;
@@ -594,7 +605,7 @@ div#inventory,
 }
 
 .player-card {
-    background-color: rgba(80, 80, 80, 0.8);
+    background-color: #505050;
     border-radius: 8px;
     padding: 10px;
     width: 120px;
@@ -608,7 +619,7 @@ div#inventory,
 }
 
 .player-card.current-player {
-    background-color: rgba(76, 175, 80, 0.9);
+    background-color: #4CAF50;
     border: 2px solid #4CAF50;
     box-shadow: 0 0 15px rgba(76, 175, 80, 0.6);
     transform: scale(1.05);
@@ -631,7 +642,7 @@ div#inventory,
 .petal-icon {
     width: 25px;
     height: 25px;
-    background-color: rgba(100, 100, 100, 0.5);
+    background-color: #646464;
     border-radius: 3px;
     display: flex;
     justify-content: center;
@@ -797,13 +808,13 @@ div#inventory,
     cursor: not-allowed;
 }
 
-/* 合成结果样式 */
+/* 合成结果样式 - 已隐藏，改在合成槽中间显示结果 */
 #absorbResult {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background-color: rgba(40, 40, 40, 0.95);
+    background-color: #282828;
     border: 2px solid #4CAF50;
     border-radius: 10px;
     padding: 20px;
@@ -811,6 +822,7 @@ div#inventory,
     text-align: center;
     min-width: 200px;
     box-sizing: border-box;
+    display: none !important; /* 强制隐藏弹窗 */
 }
 
 #resultContent {
@@ -860,7 +872,7 @@ div#inventory,
     max-width: 100%;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
-    background-color: rgba(0, 0, 0, 0.2);
+    background-color: #da9b5b;
     border-radius: 5px;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -983,6 +995,26 @@ div#inventory,
 
 
 
+/* 合成结果显示样式 */
+.synthesis-result-display {
+    animation: synthesisAppear 0.5s ease-out;
+}
+
+@keyframes synthesisAppear {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+}
+
 .room-action-button {
     padding: 8px 16px;
     font-size: 14px;
@@ -1079,7 +1111,7 @@ div#inventory,
     right: 20px;
     width: 350px;
     height: 300px;
-    background-color: rgba(40, 40, 40, 0.9);
+    background-color: #282828;
     border-radius: 10px;
     border: 2px solid rgba(255, 255, 255, 0.3);
     display: flex;
@@ -1090,7 +1122,7 @@ div#inventory,
 }
 
 #chatHeader {
-    background-color: rgba(76, 175, 80, 0.8);
+    background-color: #4CAF50;
     color: white;
     padding: 8px 12px;
     border-radius: 8px 8px 0 0;
@@ -1556,7 +1588,7 @@ button {
 
 /* 认证表单样式 */
 .auth-form {
-    background-color: rgba(40, 40, 40, 0.9);
+    background-color: #282828;
     border-radius: 15px;
     padding: 30px;
     width: 350px;
@@ -1734,6 +1766,21 @@ button {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+@keyframes successGlow {
+    0% {
+        filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));
+        transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+        filter: drop-shadow(0 0 25px rgba(255, 215, 0, 1));
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+    100% {
+        filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.6));
+        transform: translate(-50%, -50%) scale(1);
+    }
 }
 
 /* 表单验证提示 */
