@@ -1273,7 +1273,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -2117,32 +2117,10 @@ function initializeAbsorbPetalSelection() {
 function updateAbsorbPetalSelection() {
     absorbPetalSelection.innerHTML = '';
 
-    // 创建可用花瓣的临时副本
-    const tempAvailablePetals = gameState.availablePetals.map(petal => ({...petal}));
-
-    // 从临时副本中减去装备槽位中的花瓣
-    const equippedPetals = gameState.equippedPetals.filter(petal => petal !== null);
-    const deductCounts = {};
-    equippedPetals.forEach(petal => {
-        const key = `${petal.type}-${petal.level}`;
-        deductCounts[key] = (deductCounts[key] || 0) + 1;
-    });
-
-    // 从临时可用花瓣中扣除装备的花瓣
-    for (const [key, count] of Object.entries(deductCounts)) {
-        const [type, level] = key.split('-').map(Number);
-        for (let petal of tempAvailablePetals) {
-            if (petal.type === type && petal.level === level && petal.count > 0) {
-                const deductAmount = Math.min(petal.count, count);
-                petal.count -= deductAmount;
-                break;
-            }
-        }
-    }
-
-    // 按种类分组花瓣，跳过索引2，使用处理后的临时数据
+    // 按种类分组花瓣，跳过索引2
+    // 注意：gameState.availablePetals 已经在 autoEquipSavedBuild() 中扣除了装备的花瓣
     const petalsByType = {};
-    tempAvailablePetals.forEach((petal, index) => {
+    gameState.availablePetals.forEach((petal, index) => {
         if (parseInt(petal.type) !== 2) { // 跳过索引2的花瓣
             if (!petalsByType[petal.type]) {
                 petalsByType[petal.type] = [];
@@ -2661,10 +2639,7 @@ function displayActualResult(result, totalPetalCount) {
             }
             updateAbsorbButton();
 
-            // 更新花瓣选择界面（如果还开着）
-            if (absorbWindow.style.display === 'block') {
-                loadAvailablePetals();
-            }
+            // 不需要手动更新花瓣选择界面，因为REFRESH_BUILD会从服务器获取最新数据
         } else {
             // 没有剩余花瓣，清空所有槽位
             resetAbsorbSlots();
@@ -3856,7 +3831,7 @@ function saveCurrentBuild() {
 }
 
 // 初始化可用花瓣
-function initializeAvailablePetals() {
+function initializeAvailablePetals(deductAbsorbSlots = true) {
     // 保存当前合成槽状态
     const currentSlots = [...gameState.absorbSlots];
     const currentTotal = gameState.absorbTotalCount;
@@ -3865,8 +3840,11 @@ function initializeAvailablePetals() {
     if (gameState.serverBuild) {
         gameState.availablePetals = parseServerBuild(gameState.serverBuild);
 
-        // 减去合成槽中已占用的花瓣数量
-        adjustAvailablePetalsForAbsorbSlots();
+        // 只有在需要时才扣除合成槽中已占用的花瓣数量
+        // 合成后的REFRESH_BUILD响应中，服务器数据已经扣除了合成的花瓣，不需要重复扣除
+        if (deductAbsorbSlots) {
+            adjustAvailablePetalsForAbsorbSlots();
+        }
     }
 
     // 恢复合成槽状态（防止被覆盖）
@@ -4942,7 +4920,8 @@ function handleServerMessage(data) {
 
                     // 如果在大厅界面，更新可用花瓣
                     if (gameState.isLobby) {
-                        initializeAvailablePetals();
+                        // 初始加载时需要扣除合成槽中的花瓣
+                        initializeAvailablePetals(true);
                         // 只在合成界面打开时才更新花瓣选择
                         if (absorbWindow.style.display === 'block') {
                             updateAbsorbPetalSelection();
@@ -4970,7 +4949,9 @@ function handleServerMessage(data) {
 
                     // 如果在大厅界面，更新可用花瓣
                         if (gameState.isLobby) {
-                            initializeAvailablePetals();
+                            // 如果刚完成合成，服务器数据已经扣除了合成槽中的花瓣，不需要重复扣除
+                            const isPostSynthesis = gameState.isAbsorbing;
+                            initializeAvailablePetals(!isPostSynthesis);
                             // 只在合成界面打开时才更新花瓣选择
                             if (absorbWindow.style.display === 'block') {
                                 updateAbsorbPetalSelection();
