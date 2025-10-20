@@ -448,12 +448,12 @@ div#inventory,
 .close-button {
     position: absolute;
     top: 10px;
-    right: 10px;
+    right: 1px;
     background: #ff4757;
     border: none;
     color: white;
-    width: 30px;
-    height: 30px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     cursor: pointer;
 }
