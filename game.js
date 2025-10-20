@@ -1375,6 +1375,7 @@ window.gameState = {
     savedBuild: null, // 保存的构筑数据
     effects: [],
     isAutoEquipping: false, // 防止重复装备的标志
+    isPostSynthesisRefresh: false, // 合成后刷新标志
     wave: {
         current: 1,
         start_time: 0,  // wave开始时间戳
@@ -2651,9 +2652,11 @@ function displayActualResult(result, totalPetalCount) {
         resetAbsorbSlots();
     }
 
-      // 更新背包内容
+      // 更新背包内容 - 合成后延迟刷新，避免状态冲突
     setTimeout(() => {
         if (gameState.connected) {
+            // 设置标志，表示这是合成后的刷新
+            gameState.isPostSynthesisRefresh = true;
             sendToServer({
                 COMMAND: 'REFRESH_BUILD',
                 client_name: gameState.playerName,
@@ -3617,14 +3620,27 @@ function deductEquippedPetalsFromBag(equippedPetals) {
         deductCounts[key] = (deductCounts[key] || 0) + 1;
     });
 
-    // 从availablePetals中扣除
+    // 从availablePetals中扣除，同时考虑合成槽中已占用的花瓣
     for (const [key, count] of Object.entries(deductCounts)) {
         const [type, level] = key.split('-').map(Number);
 
+        // 首先检查合成槽中是否已占用该类型花瓣
+        const absorbSlotKey = `${type}-${level}`;
+        const absorbSlotCount = gameState.absorbSlots.reduce((total, slot) => {
+            if (slot && slot.type === type && slot.level === level) {
+                return total + slot.count;
+            }
+            return total;
+        }, 0);
+
         for (let petal of gameState.availablePetals) {
             if (petal.type === type && petal.level === level && petal.count > 0) {
-                const deductAmount = Math.min(petal.count, count);
-                petal.count -= deductAmount;
+                // 确保不会扣除超过可用数量的花瓣
+                const availableCount = petal.count - absorbSlotCount;
+                const deductAmount = Math.min(availableCount, count);
+                if (deductAmount > 0) {
+                    petal.count -= deductAmount;
+                }
                 break;
             }
         }
@@ -4452,6 +4468,14 @@ function restartGame() {
     // 重新连接服务器以启动心跳
     if (!gameState.connected) {
         connectToServer();
+    } else {
+        // 如果已连接，立即获取最新的背包信息以更新掉落物
+        console.log('玩家重新开始，获取最新背包信息以更新掉落物...');
+        sendToServer({
+            COMMAND: 'REFRESH_BUILD',
+            client_name: gameState.playerName,
+            id: gameState.playerId
+        });
     }
 }
 
@@ -4952,10 +4976,6 @@ function handleServerMessage(data) {
                             // 如果刚完成合成，服务器数据已经扣除了合成槽中的花瓣，不需要重复扣除
                             const isPostSynthesis = gameState.isAbsorbing;
                             initializeAvailablePetals(!isPostSynthesis);
-                            // 只在合成界面打开时才更新花瓣选择
-                            if (absorbWindow.style.display === 'block') {
-                                updateAbsorbPetalSelection();
-                            }
                         }
                     }
 
@@ -4964,9 +4984,19 @@ function handleServerMessage(data) {
                         console.log('收到保存的构筑:', message.current_build);
                         gameState.savedBuild = message.current_build;
 
-                        // 如果在大厅界面，自动装备保存的构筑
-                        if (gameState.isLobby) {
+                        // 如果在大厅界面且不是合成后的刷新，自动装备保存的构筑
+                        if (gameState.isLobby && !gameState.isPostSynthesisRefresh) {
                             autoEquipSavedBuild();
+                            // 只在合成界面打开时才更新花瓣选择，确保在装备完成后更新
+                            if (absorbWindow.style.display === 'block') {
+                                updateAbsorbPetalSelection();
+                            }
+                        } else if (gameState.isPostSynthesisRefresh) {
+                            // 合成后的刷新，只更新花瓣选择，不重新装备
+                            gameState.isPostSynthesisRefresh = false;
+                            if (absorbWindow.style.display === 'block') {
+                                updateAbsorbPetalSelection();
+                            }
                         }
                     }
                 }
