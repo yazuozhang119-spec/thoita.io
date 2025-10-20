@@ -2117,26 +2117,9 @@ function initializeAbsorbPetalSelection() {
 function updateAbsorbPetalSelection() {
     absorbPetalSelection.innerHTML = '';
 
-    // 创建可用花瓣的副本并调整数量，排除装备槽中的花瓣
-    const adjustedPetals = gameState.availablePetals.map(petal => ({...petal}));
-    const equippedSlotCounts = {};
-    gameState.equippedPetals.forEach(petal => {
-        if (petal && petal.type !== undefined && petal.level !== undefined) {
-            const key = `${petal.type}-${petal.level}`;
-            equippedSlotCounts[key] = (equippedSlotCounts[key] || 0) + 1;
-        }
-    });
-    // 从副本中减去装备的数量
-    adjustedPetals.forEach(petal => {
-        const key = `${petal.type}-${petal.level}`;
-        if (equippedSlotCounts[key]) {
-            petal.count = Math.max(0, petal.count - equippedSlotCounts[key]);
-        }
-    });
-
     // 按种类分组花瓣，跳过索引2
     const petalsByType = {};
-    adjustedPetals.forEach((petal, index) => {
+    gameState.availablePetals.forEach((petal, index) => {
         if (parseInt(petal.type) !== 2) { // 跳过索引2的花瓣
             if (!petalsByType[petal.type]) {
                 petalsByType[petal.type] = [];
@@ -2657,7 +2640,7 @@ function displayActualResult(result, totalPetalCount) {
 
             // 更新花瓣选择界面（如果还开着）
             if (absorbWindow.style.display === 'block') {
-                updateAbsorbPetalSelection();
+                loadAvailablePetals();
             }
         } else {
             // 没有剩余花瓣，清空所有槽位
@@ -3891,26 +3874,6 @@ function adjustAvailablePetalsForAbsorbSlots() {
     });
 
     console.log('调整后的可用花瓣（已减去合成槽占用）:', gameState.availablePetals);
-}
-
-// 调整可用花瓣数量，考虑装备槽中的花瓣
-function adjustAvailablePetalsForEquippedPetals() {
-    // 统计装备槽中每种花瓣占用的数量
-    const equippedSlotCounts = {};
-    gameState.equippedPetals.forEach(petal => {
-        if (petal && petal.type !== undefined && petal.level !== undefined) {
-            const key = `${petal.type}-${petal.level}`;
-            equippedSlotCounts[key] = (equippedSlotCounts[key] || 0) + 1;
-        }
-    });
-    // 从可用花瓣中减去装备的数量
-    gameState.availablePetals.forEach(petal => {
-        const key = `${petal.type}-${petal.level}`;
-        if (equippedSlotCounts[key]) {
-            petal.count = Math.max(0, petal.count - equippedSlotCounts[key]);
-        }
-    });
-    console.log('调整后的可用花瓣（已减去装备槽占用）:', gameState.availablePetals);
 }
 
 // 拖拽开始处理
