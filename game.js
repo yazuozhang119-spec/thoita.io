@@ -1273,7 +1273,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
+    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -2117,9 +2117,32 @@ function initializeAbsorbPetalSelection() {
 function updateAbsorbPetalSelection() {
     absorbPetalSelection.innerHTML = '';
 
-    // 按种类分组花瓣，跳过索引2
+    // 创建可用花瓣的临时副本
+    const tempAvailablePetals = gameState.availablePetals.map(petal => ({...petal}));
+
+    // 从临时副本中减去装备槽位中的花瓣
+    const equippedPetals = gameState.equippedPetals.filter(petal => petal !== null);
+    const deductCounts = {};
+    equippedPetals.forEach(petal => {
+        const key = `${petal.type}-${petal.level}`;
+        deductCounts[key] = (deductCounts[key] || 0) + 1;
+    });
+
+    // 从临时可用花瓣中扣除装备的花瓣
+    for (const [key, count] of Object.entries(deductCounts)) {
+        const [type, level] = key.split('-').map(Number);
+        for (let petal of tempAvailablePetals) {
+            if (petal.type === type && petal.level === level && petal.count > 0) {
+                const deductAmount = Math.min(petal.count, count);
+                petal.count -= deductAmount;
+                break;
+            }
+        }
+    }
+
+    // 按种类分组花瓣，跳过索引2，使用处理后的临时数据
     const petalsByType = {};
-    gameState.availablePetals.forEach((petal, index) => {
+    tempAvailablePetals.forEach((petal, index) => {
         if (parseInt(petal.type) !== 2) { // 跳过索引2的花瓣
             if (!petalsByType[petal.type]) {
                 petalsByType[petal.type] = [];
