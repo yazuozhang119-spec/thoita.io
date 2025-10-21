@@ -226,13 +226,54 @@
         <!-- 重新打开聊天按钮 -->
         <button id="chatOpenButton" style="display: none;">💬</button>
 
-        <!-- 音量控制 -->
-        <div id="volumeControl">
-            <button id="volumeToggle" class="volume-button">🔊</button>
-            <div id="volumeSlider" class="volume-slider-container" style="display: none;">
-                <input type="range" id="volumeRange" min="0" max="100" value="50" class="volume-slider">
-                <span id="volumeValue">50%</span>
-                <button id="testAudioBtn" style="margin-top: 5px; padding: 2px 6px; font-size: 10px; width: 100%;">测试音频</button>
+        <!-- 设置按钮 -->
+        <div id="settingsButton">
+            <button id="settingsToggle" class="settings-button">⚙️</button>
+        </div>
+
+        <!-- 设置面板 -->
+        <div id="settingsPanel" class="settings-panel" style="display: none;">
+            <div class="settings-header">
+                <span>设置</span>
+                <button id="settingsClose" class="settings-close">×</button>
+            </div>
+            <div class="settings-content">
+                <!-- 键盘移动 -->
+                <div class="settings-section">
+                    <div class="setting-toggle">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="keyboardMovementToggle">
+                            <span class="toggle-text">键盘移动</span>
+                        </label>
+                        <div class="toggle-switch">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 音量控制 -->
+                <div class="settings-section">
+                    <div class="volume-control-horizontal">
+                        <span class="volume-label">音量</span>
+                        <div class="volume-slider-wrapper">
+                            <input type="range" id="volumeRange" min="0" max="100" value="50" class="volume-slider">
+                            <span id="volumeValue">50%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 显示实体 -->
+                <div class="settings-section">
+                    <div class="setting-toggle">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="showEntitiesToggle" checked>
+                            <span class="toggle-text">显示实体</span>
+                        </label>
+                        <div class="toggle-switch">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 

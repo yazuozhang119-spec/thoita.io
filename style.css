@@ -1301,18 +1301,18 @@ div#inventory,
     background-color: #45a049;
 }
 
-/* 音量控制样式 */
-#volumeControl {
+/* 设置按钮样式 */
+#settingsButton {
     position: fixed;
     top: 20px;
-    right: 20px;
+    left: 20px;
     z-index: 1000;
 }
 
-.volume-button {
+.settings-button {
     width: 40px;
     height: 40px;
-    border-radius: 50%;
+    border-radius: 8px;
     background-color: rgba(0, 0, 0, 0.7);
     border: 2px solid rgba(255, 255, 255, 0.3);
     color: white;
@@ -1324,34 +1324,110 @@ div#inventory,
     justify-content: center;
 }
 
-.volume-button:hover {
+.settings-button:hover {
     background-color: rgba(0, 0, 0, 0.8);
     border-color: rgba(255, 255, 255, 0.5);
     transform: scale(1.1);
 }
 
-.volume-slider-container {
-    position: absolute;
-    top: 50px;
-    right: 0;
-    background-color: rgba(0, 0, 0, 0.8);
+/* 设置面板样式 */
+.settings-panel {
+    position: fixed;
+    top: 20px;
+    left: 70px;
+    width: 280px;
+    background-color: rgba(40, 40, 40, 0.95);
     border: 2px solid rgba(255, 255, 255, 0.4);
-    border-radius: 8px;
-    padding: 10px;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    z-index: 1001;
+    font-family: 'Arial', sans-serif;
+    backdrop-filter: blur(10px);
+}
+
+.settings-header {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 8px 8px 0 0;
+    font-weight: bold;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.settings-close {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+}
+
+.settings-close:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.settings-content {
+    padding: 15px;
+}
+
+.settings-section {
+    margin-bottom: 15px;
+}
+
+.settings-section:last-child {
+    margin-bottom: 0;
+}
+
+.settings-section h4 {
+    color: white;
+    font-size: 14px;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+/* 音量控制样式（水平布局） */
+.volume-control-horizontal {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: white;
+    font-size: 14px;
+}
+
+.volume-label {
+    margin-right: 15px;
+    font-weight: 500;
+}
+
+.volume-slider-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
     min-width: 150px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    box-sizing: border-box;
 }
 
 .volume-slider {
-    width: 120px;
+    flex: 1;
     height: 6px;
     -webkit-appearance: none;
     appearance: none;
     background: rgba(255, 255, 255, 0.3);
     outline: none;
     border-radius: 3px;
-    margin: 5px 0;
+    margin: 0;
 }
 
 .volume-slider::-webkit-slider-thumb {
@@ -1377,9 +1453,9 @@ div#inventory,
 #volumeValue {
     color: white;
     font-size: 12px;
-    text-align: center;
-    display: block;
-    margin-top: 5px;
+    min-width: 35px;
+    text-align: right;
+    font-weight: 500;
 }
 
 #waveText {
@@ -1816,6 +1892,105 @@ button {
         padding: 12px;
         font-size: 16px;
     }
+}
+
+/* 设置选项的toggle开关样式 */
+.setting-toggle {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    color: white;
+    font-size: 14px;
+    position: relative;
+    flex: 1;
+}
+
+.toggle-label input[type="checkbox"] {
+    display: none;
+}
+
+.toggle-text {
+    margin-right: 10px;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 50px;
+    height: 26px;
+    background-color: #666666;
+    border-radius: 13px;
+    border: 2px solid #333333;
+    transition: background-color 0.3s ease;
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+.toggle-slider {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background-color: #dddddd;
+    border-radius: 50%;
+    transition: transform 0.3s ease, background-color 0.3s ease;
+}
+
+/* 当checkbox被选中时，更新toggle-switch的样式 */
+.setting-toggle input[type="checkbox"]:checked ~ .toggle-switch {
+    background-color: #4CAF50;
+}
+
+.setting-toggle input[type="checkbox"]:checked ~ .toggle-switch .toggle-slider {
+    transform: translateX(24px);
+    background-color: #ffffff;
+}
+
+/* 添加一个类来处理选中状态的样式变化 */
+.setting-toggle.active .toggle-switch {
+    background-color: #4CAF50;
+}
+
+.setting-toggle.active .toggle-switch .toggle-slider {
+    transform: translateX(24px);
+    background-color: #ffffff;
+}
+
+/* 设置操作按钮样式 */
+.settings-action-button {
+    width: 100%;
+    padding: 10px 15px;
+    background-color: #b2b2b2;
+    color: white;
+    border: 2px solid #8a8a8a;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-align: center;
+    box-sizing: border-box;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.settings-action-button:hover {
+    background-color: #9a9a9a;
+    border-color: #787878;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.settings-action-button:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
 

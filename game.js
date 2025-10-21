@@ -884,50 +884,43 @@ function drawStaticPetalItem(petal, canvas, options) {
         ctx.closePath();
         },
         square: (p) => {
-            // 发光正方形花瓣，带粗边框
-            const glowSize = p.radius * 0.15; // 发光效果大小
-            const borderWidth = p.radius * 0.25; // 粗边框宽度
+            // 发光效果
+            const glowSize = p.radius * 0.3;
+            ctx.shadowBlur = glowSize;
+            ctx.shadowColor = blendColor("#ffa500", "#FF0000", blendAmount(p));
 
-            // 外层发光效果
-            ctx.shadowBlur = glowSize * 2;
-            ctx.shadowColor = blendColor('#ffff00', '#FF0000', blendAmount(p));
+            // 外层发光边框
+            ctx.beginPath();
+            ctx.strokeStyle = blendColor("#ffa500", "#ff0000", blendAmount(p));
+            ctx.lineWidth = 6;
+            if(checkForFirstFrame(p)){
+                ctx.strokeStyle = "#ffffff";
+            }
+            for(let i = 0; i < 4; i++){
+                ctx.lineTo(Math.cos(i * 1.57079) * (p.radius + 3), Math.sin(i * 1.57079) * (p.radius + 3));
+            }
+            ctx.closePath();
+            ctx.stroke();
 
-            // 绘制发光外层
-            ctx.fillStyle = blendColor('rgba(255, 255, 100, 0.3)', 'rgba(255, 0, 0, 0.3)', blendAmount(p));
-            ctx.fillRect(-p.radius - glowSize, -p.radius - glowSize, (p.radius + glowSize) * 2, (p.radius + glowSize) * 2);
+            // 主体正方形
+            ctx.beginPath();
+            ctx.fillStyle = blendColor("#ffe869", '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor("#cfbc55", '#FF0000', blendAmount(p));
+            ctx.lineWidth = 2;
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF"
+            }
+            for(let i = 0; i < 4; i++){
+                ctx.lineTo(Math.cos(i * 1.57079) * p.radius, Math.sin(i * 1.57079) * p.radius);
+            }
+            ctx.fill();
+            ctx.lineTo(Math.cos(4 * 1.57079) * p.radius, Math.sin(4 * 1.57079) * p.radius);
+            ctx.stroke();
+            ctx.closePath();
 
             // 重置阴影
             ctx.shadowBlur = 0;
-
-            // 主体正方形
-            ctx.fillStyle = blendColor('#ffeb3b', '#FF0000', blendAmount(p));
-            if(checkForFirstFrame(p)){
-                ctx.fillStyle = "#FFFFFF";
-            }
-            ctx.fillRect(-p.radius, -p.radius, p.radius * 2, p.radius * 2);
-
-            // 粗边框
-            ctx.strokeStyle = blendColor('#ffc107', '#FF0000', blendAmount(p));
-            if(checkForFirstFrame(p)){
-                ctx.strokeStyle = "#FFFFFF";
-            }
-            ctx.lineWidth = borderWidth;
-            ctx.strokeRect(-p.radius, -p.radius, p.radius * 2, p.radius * 2);
-
-            // 内层装饰线条（增加层次感）
-            ctx.strokeStyle = blendColor('#fff59d', '#FF0000', blendAmount(p));
-            if(checkForFirstFrame(p)){
-                ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-            }
-            ctx.lineWidth = borderWidth * 0.3;
-            ctx.strokeRect(-p.radius * 0.7, -p.radius * 0.7, p.radius * 1.4, p.radius * 1.4);
-
-            // 中心发光点
-            ctx.fillStyle = blendColor('rgba(255, 255, 255, 0.8)', 'rgba(255, 255, 255, 0.8)', blendAmount(p));
-            ctx.beginPath();
-            ctx.arc(0, 0, p.radius * 0.15, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.closePath();
         },
     };
 
@@ -1188,9 +1181,15 @@ function checkForFirstFrame(e) {
     return (e.lastTicksSinceLastDamaged < 13 && !damageFlash);
 }
 
-function drawCentipede(x, y, size, angle, isHead) {
+function drawCentipede(x, y, size, angle, isHead, is_injured = false) {
     let bodyColor = blendColor("#8ac255", "#FF0000", Math.max(0, 0));
     let sideColor = blendColor("#333333", "#FF0000", Math.max(0, 0));
+
+    // 如果受伤，将颜色向白色偏向
+    if (is_injured) {
+        bodyColor = shiftToWhite(bodyColor);
+        sideColor = shiftToWhite(sideColor);
+    }
 
     const isFirstFrame = false;
     if (isFirstFrame) {
@@ -1302,10 +1301,11 @@ const objectTypeMap = {
     // 额外花瓣类型
     12: 'orange',
     13: 'egg',
+    14: 'square',
     // 怪物类型
     22: 'rock',
     24: 'ladybug',
-    14: 'centipede0',
+    26: 'centipede0',
     15: 'thunderelement',
     16: 'venomspider',
     17: 'shieldguardian',
@@ -1321,7 +1321,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -1417,6 +1417,26 @@ window.gameState = {
     volume: 0.5,
     isMuted: false,
     musicEnabled: true,
+    // 键盘移动状态
+    keyboardMovement: false,
+    // 键盘输入状态
+    keys: {
+        w: false, a: false, s: false, d: false,
+        ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false,
+        ' ': false, Space: false,
+        shift: false, Shift: false
+    },
+    // 键盘移动速度
+    keyboardSpeed: 5,
+    // 键盘状态
+    keyboardAttack: false,
+    keyboardDefend: false,
+    // 鼠标状态标志
+    isMouseActive: false,
+    // 鼠标活动定时器
+    mouseActiveTimer: null,
+    // 键盘移动帧计数器（用于降低更新频率）
+    keyboardMoveFrame: 0,
     absorbTotalCount: 0, // 记录总花瓣数量
     currentAbsorbType: null,
     currentAbsorbLevel: null,
@@ -1560,6 +1580,9 @@ function initAudioSystem() {
         // 初始化音量控制UI
         initVolumeControls();
 
+        // 初始化设置面板
+        initSettingsPanel();
+
         // 用户交互后播放背景音乐（浏览器政策要求）
         document.addEventListener('click', function playBackgroundMusic() {
             if (gameState.musicEnabled && gameState.backgroundMusic && gameState.backgroundMusic.paused) {
@@ -1609,23 +1632,24 @@ function createAudioWithFallback(name, formats) {
 
 // 初始化音量控制
 function initVolumeControls() {
-    const volumeToggle = document.getElementById('volumeToggle');
-    const volumeSlider = document.getElementById('volumeSlider');
     const volumeRange = document.getElementById('volumeRange');
     const volumeValue = document.getElementById('volumeValue');
-    const testAudioBtn = document.getElementById('testAudioBtn');
 
-    // 音量按钮点击事件
-    volumeToggle.addEventListener('click', function() {
-        const sliderContainer = document.getElementById('volumeSlider');
-        const isVisible = sliderContainer.style.display !== 'none';
+    // 从localStorage读取保存的音量
+    const savedVolume = localStorage.getItem('gameVolume');
+    if (savedVolume) {
+        gameState.volume = savedVolume / 100;
+        volumeRange.value = savedVolume;
+        volumeValue.textContent = `${savedVolume}%`;
 
-        if (isVisible) {
-            sliderContainer.style.display = 'none';
-        } else {
-            sliderContainer.style.display = 'block';
+        // 更新音频音量
+        if (gameState.backgroundMusic) {
+            gameState.backgroundMusic.volume = gameState.volume;
         }
-    });
+        if (gameState.deathSound) {
+            gameState.deathSound.volume = gameState.volume;
+        }
+    }
 
     // 音量滑块变化事件
     volumeRange.addEventListener('input', function() {
@@ -1642,81 +1666,164 @@ function initVolumeControls() {
         }
 
         // 更新显示
-        volumeValue.textContent = this.value + '%';
-
-        // 更新按钮图标
-        updateVolumeButton(volume);
+        volumeValue.textContent = `${this.value}%`;
+        localStorage.setItem('gameVolume', this.value);
     });
+}
 
-    // 测试音频按钮
-    testAudioBtn.addEventListener('click', function() {
-        testAudio();
-    });
+// 初始化设置面板
+function initSettingsPanel() {
+    const settingsToggle = document.getElementById('settingsToggle');
+    const settingsPanel = document.getElementById('settingsPanel');
+    const settingsClose = document.getElementById('settingsClose');
 
-    // 点击其他地方关闭音量滑块
+    // 设置按钮点击事件
+    if (settingsToggle) {
+        settingsToggle.addEventListener('click', function() {
+            const isVisible = settingsPanel.style.display !== 'none';
+
+            if (isVisible) {
+                settingsPanel.style.display = 'none';
+            } else {
+                settingsPanel.style.display = 'block';
+            }
+        });
+    }
+
+    // 关闭按钮点击事件
+    if (settingsClose) {
+        settingsClose.addEventListener('click', function() {
+            settingsPanel.style.display = 'none';
+        });
+    }
+
+    // 键盘移动toggle功能
+    const keyboardMovementToggle = document.getElementById('keyboardMovementToggle');
+    const keyboardToggleSwitch = document.querySelector('.setting-toggle .toggle-switch');
+    const settingToggleContainer = document.querySelector('.setting-toggle');
+
+    function updateToggleVisualState(isChecked) {
+        if (settingToggleContainer) {
+            if (isChecked) {
+                settingToggleContainer.classList.add('active');
+            } else {
+                settingToggleContainer.classList.remove('active');
+            }
+        }
+    }
+
+    if (keyboardMovementToggle) {
+        // 从localStorage读取保存的状态
+        const savedState = localStorage.getItem('keyboardMovement');
+        gameState.keyboardMovement = savedState === 'true';
+        keyboardMovementToggle.checked = gameState.keyboardMovement;
+
+        // 初始化视觉状态
+        updateToggleVisualState(gameState.keyboardMovement);
+
+        // 监听checkbox变化
+        keyboardMovementToggle.addEventListener('change', function() {
+            gameState.keyboardMovement = this.checked;
+            localStorage.setItem('keyboardMovement', this.checked);
+
+            // 更新视觉状态
+            updateToggleVisualState(this.checked);
+
+            console.log('键盘移动:', this.checked ? '开启' : '关闭');
+        });
+
+        // 为toggle-switch添加点击事件
+        if (keyboardToggleSwitch) {
+            keyboardToggleSwitch.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                keyboardMovementToggle.checked = !keyboardMovementToggle.checked;
+
+                // 触发change事件
+                const event = new Event('change', { bubbles: true });
+                keyboardMovementToggle.dispatchEvent(event);
+            });
+        }
+
+        // 为label添加点击事件
+        const toggleLabel = document.querySelector('.toggle-label');
+        if (toggleLabel) {
+            toggleLabel.addEventListener('click', function(e) {
+                if (e.target.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    keyboardMovementToggle.checked = !keyboardMovementToggle.checked;
+
+                    // 触发change事件
+                    const event = new Event('change', { bubbles: true });
+                    keyboardMovementToggle.dispatchEvent(event);
+                }
+            });
+        }
+    }
+
+    // 显示实体toggle功能
+    const showEntitiesToggle = document.getElementById('showEntitiesToggle');
+    if (showEntitiesToggle) {
+        // 根据当前渲染模式设置初始状态
+        // useVectorRendering为true时表示矢量渲染（显示实体），为false时表示图片渲染（不显示实体）
+        const initialState = gameState.useVectorRendering !== false;
+        showEntitiesToggle.checked = initialState;
+
+        // 初始化视觉状态
+        const showEntitiesContainer = showEntitiesToggle.closest('.setting-toggle');
+        if (showEntitiesContainer) {
+            if (initialState) {
+                showEntitiesContainer.classList.add('active');
+            } else {
+                showEntitiesContainer.classList.remove('active');
+            }
+        }
+
+        // 监听checkbox变化
+        showEntitiesToggle.addEventListener('change', function() {
+            const container = this.closest('.setting-toggle');
+            if (container) {
+                if (this.checked) {
+                    container.classList.add('active');
+                } else {
+                    container.classList.remove('active');
+                }
+            }
+
+            // 调用渲染模式切换函数
+            if (typeof window.toggleRenderingMode === 'function') {
+                window.toggleRenderingMode();
+            }
+
+            console.log('显示实体:', this.checked ? '矢量渲染' : '图像渲染');
+        });
+
+        // 为toggle-switch添加点击事件
+        const toggleSwitch = showEntitiesToggle.parentElement.nextElementSibling;
+        if (toggleSwitch && toggleSwitch.classList.contains('toggle-switch')) {
+            toggleSwitch.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                showEntitiesToggle.checked = !showEntitiesToggle.checked;
+
+                // 触发change事件
+                const event = new Event('change', { bubbles: true });
+                showEntitiesToggle.dispatchEvent(event);
+            });
+        }
+    }
+
+    // 点击其他地方关闭设置面板
     document.addEventListener('click', function(event) {
-        const volumeControl = document.getElementById('volumeControl');
-        if (!volumeControl.contains(event.target)) {
-            document.getElementById('volumeSlider').style.display = 'none';
+        if (settingsPanel && settingsPanel.style.display !== 'none') {
+            const settingsButton = document.getElementById('settingsButton');
+
+            // 如果点击的不是设置面板也不是设置按钮，则关闭面板
+            if (!settingsPanel.contains(event.target) && !settingsButton.contains(event.target)) {
+                settingsPanel.style.display = 'none';
+            }
         }
     });
-}
-
-// 测试音频功能
-function testAudio() {
-    console.log('=== 音频测试开始 ===');
-    console.log('音乐启用状态:', gameState.musicEnabled);
-    console.log('当前音量:', gameState.volume);
-    console.log('静音状态:', gameState.isMuted);
-
-    if (gameState.backgroundMusic) {
-        console.log('背景音乐对象存在');
-        console.log('背景音乐当前状态:', {
-            paused: gameState.backgroundMusic.paused,
-            currentTime: gameState.backgroundMusic.currentTime,
-            duration: gameState.backgroundMusic.duration,
-            readyState: gameState.backgroundMusic.readyState
-        });
-
-        // 尝试播放背景音乐
-        gameState.backgroundMusic.play().then(() => {
-            console.log('背景音乐播放成功！');
-            setTimeout(() => {
-                gameState.backgroundMusic.pause();
-                console.log('背景音乐测试停止');
-            }, 3000); // 播放3秒后停止
-        }).catch(error => {
-            console.error('背景音乐播放失败:', error);
-        });
-    } else {
-        console.error('背景音乐对象不存在！');
-    }
-
-    if (gameState.deathSound) {
-        console.log('死亡音效对象存在');
-        // 测试死亡音效
-        gameState.deathSound.play().then(() => {
-            console.log('死亡音效播放成功！');
-        }).catch(error => {
-            console.error('死亡音效播放失败:', error);
-        });
-    } else {
-        console.error('死亡音效对象不存在！');
-    }
-
-    console.log('=== 音频测试结束 ===');
-}
-
-// 更新音量按钮图标
-function updateVolumeButton(volume) {
-    const volumeToggle = document.getElementById('volumeToggle');
-    if (volume === 0) {
-        volumeToggle.textContent = '🔇';
-    } else if (volume < 0.5) {
-        volumeToggle.textContent = '🔉';
-    } else {
-        volumeToggle.textContent = '🔊';
-    }
 }
 
 // 播放死亡音效
@@ -3388,50 +3495,43 @@ function drawPetalInContext(petal, ctx, displaySize) {
         ctx.closePath();
         },
         square: (p) => {
-            // 发光正方形花瓣，带粗边框
-            const glowSize = p.radius * 0.15; // 发光效果大小
-            const borderWidth = p.radius * 0.25; // 粗边框宽度
+            // 发光效果
+            const glowSize = p.radius * 0.3;
+            ctx.shadowBlur = glowSize;
+            ctx.shadowColor = blendColor("#ffa500", "#FF0000", blendAmount(p));
 
-            // 外层发光效果
-            ctx.shadowBlur = glowSize * 2;
-            ctx.shadowColor = blendColor('#ffff00', '#FF0000', blendAmount(p));
+            // 外层发光边框
+            ctx.beginPath();
+            ctx.strokeStyle = blendColor("#ffa500", "#ff0000", blendAmount(p));
+            ctx.lineWidth = 6;
+            if(checkForFirstFrame(p)){
+                ctx.strokeStyle = "#ffffff";
+            }
+            for(let i = 0; i < 4; i++){
+                ctx.lineTo(Math.cos(i * 1.57079) * (p.radius + 3), Math.sin(i * 1.57079) * (p.radius + 3));
+            }
+            ctx.closePath();
+            ctx.stroke();
 
-            // 绘制发光外层
-            ctx.fillStyle = blendColor('rgba(255, 255, 100, 0.3)', 'rgba(255, 0, 0, 0.3)', blendAmount(p));
-            ctx.fillRect(-p.radius - glowSize, -p.radius - glowSize, (p.radius + glowSize) * 2, (p.radius + glowSize) * 2);
+            // 主体正方形
+            ctx.beginPath();
+            ctx.fillStyle = blendColor("#ffe869", '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor("#cfbc55", '#FF0000', blendAmount(p));
+            ctx.lineWidth = 2;
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF"
+            }
+            for(let i = 0; i < 4; i++){
+                ctx.lineTo(Math.cos(i * 1.57079) * p.radius, Math.sin(i * 1.57079) * p.radius);
+            }
+            ctx.fill();
+            ctx.lineTo(Math.cos(4 * 1.57079) * p.radius, Math.sin(4 * 1.57079) * p.radius);
+            ctx.stroke();
+            ctx.closePath();
 
             // 重置阴影
             ctx.shadowBlur = 0;
-
-            // 主体正方形
-            ctx.fillStyle = blendColor('#ffeb3b', '#FF0000', blendAmount(p));
-            if(checkForFirstFrame(p)){
-                ctx.fillStyle = "#FFFFFF";
-            }
-            ctx.fillRect(-p.radius, -p.radius, p.radius * 2, p.radius * 2);
-
-            // 粗边框
-            ctx.strokeStyle = blendColor('#ffc107', '#FF0000', blendAmount(p));
-            if(checkForFirstFrame(p)){
-                ctx.strokeStyle = "#FFFFFF";
-            }
-            ctx.lineWidth = borderWidth;
-            ctx.strokeRect(-p.radius, -p.radius, p.radius * 2, p.radius * 2);
-
-            // 内层装饰线条（增加层次感）
-            ctx.strokeStyle = blendColor('#fff59d', '#FF0000', blendAmount(p));
-            if(checkForFirstFrame(p)){
-                ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-            }
-            ctx.lineWidth = borderWidth * 0.3;
-            ctx.strokeRect(-p.radius * 0.7, -p.radius * 0.7, p.radius * 1.4, p.radius * 1.4);
-
-            // 中心发光点
-            ctx.fillStyle = blendColor('rgba(255, 255, 255, 0.8)', 'rgba(255, 255, 255, 0.8)', blendAmount(p));
-            ctx.beginPath();
-            ctx.arc(0, 0, p.radius * 0.15, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.closePath();
         },
     };
 
@@ -4600,6 +4700,23 @@ function startGame() {
         gameCanvas.style.display = 'block';
     }
 
+    // 隐藏设置界面和设置按钮
+    const settingsPanel = document.getElementById('settingsPanel');
+    const settingsButton = document.getElementById('settingsButton');
+    if (settingsPanel) {
+        settingsPanel.style.display = 'none';
+    }
+    if (settingsButton) {
+        settingsButton.style.display = 'none';
+    }
+
+    // 重置鼠标状态
+    gameState.isMouseActive = false;
+    if (gameState.mouseActiveTimer) {
+        clearTimeout(gameState.mouseActiveTimer);
+        gameState.mouseActiveTimer = null;
+    }
+
     // 初始化视野设置（确保花朵在屏幕中心）
     gameState.viewWidth = 1200;
     gameState.viewHeight = 800;
@@ -4637,6 +4754,16 @@ function restartGame() {
     const equipmentSlots = document.getElementById('equipmentSlots');
     if (inventory) inventory.classList.add('hidden'); // 隐藏游戏中的装备槽
     if (equipmentSlots) equipmentSlots.style.display = 'flex'; // 显示大厅的装备槽
+
+    // 重新显示设置界面和设置按钮
+    const settingsPanel = document.getElementById('settingsPanel');
+    const settingsButton = document.getElementById('settingsButton');
+    if (settingsPanel) {
+        settingsPanel.style.display = 'block';
+    }
+    if (settingsButton) {
+        settingsButton.style.display = 'block';
+    }
 
     // 清除房间信息和怪物summary信息
     gameState.roomInfo = {};
@@ -5286,19 +5413,28 @@ function handleServerMessage(data) {
                     // 解析统一的对象列表
                     message.objects.forEach(obj => {
                         // 动态处理两种不同的传输格式
-                        let typeIdx, position, size, angle, speed_x, speed_y, is_attack, health, max_health;
+                        let typeIdx, position, size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured;
 
-                        if (obj.length === 9) {
-                            // # 花朵使用扩展传输格式: [idx, position, max_size, angle, speed_x, speed_y, is_attack, health, max_health]
-                            [typeIdx, position, size, angle, speed_x, speed_y, is_attack, health, max_health] = obj;
+                        if (obj.length >= 9) {
+                            // # 花朵使用扩展传输格式: [idx, position, max_size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured]
+                            [typeIdx, position, size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured] = obj;
+                        } else if (obj.length === 5) {
+                            // 其他对象普通格式: [typeIdx, position, size, angle, is_injured]
+                            [typeIdx, position, size, angle, is_injured] = obj;
+                            speed_x = 0;
+                            speed_y = 0;
+                            is_attack = 0;
+                            health = null;
+                            max_health = null;
                         } else {
-                            // 其他对象普通格式: [typeIdx, position, size, angle]
+                            // 兼容旧格式: [typeIdx, position, size, angle]
                             [typeIdx, position, size, angle] = obj;
                             speed_x = 0;
                             speed_y = 0;
                             is_attack = 0;
                             health = null;
                             max_health = null;
+                            is_injured = false;
                         }
 
                         const typeName = objectTypeMap[typeIdx] || 'unknown';
@@ -5315,13 +5451,15 @@ function handleServerMessage(data) {
                             is_attack: is_attack || 0,
                             // 血量信息（只有花朵对象才有）
                             health: health,
-                            max_health: max_health
+                            max_health: max_health,
+                            // 受伤状态
+                            is_injured: is_injured || false
                         };
 
                         
                         // 根据类型分类到不同数组
-                        if (typeIdx >= 0 && typeIdx <= 13) {
-                            // 花瓣类型 (0-12)
+                        if (typeIdx >= 0 && typeIdx <= 14) {
+                            // 花瓣类型 (0-14)
                             baseObject.type = typeIdx;
                             gameState.petals.push(baseObject);
                         }
@@ -5513,6 +5651,19 @@ function handleMouseMove(event) {
     // 计算角度
     gameState.playerAngle = Math.atan2(relativeY, relativeX);
 
+    // 标记鼠标处于活跃状态
+    gameState.isMouseActive = true;
+
+    // 清除之前的定时器
+    if (gameState.mouseActiveTimer) {
+        clearTimeout(gameState.mouseActiveTimer);
+    }
+
+    // 设置新的定时器，1秒后重置鼠标活跃状态
+    gameState.mouseActiveTimer = setTimeout(() => {
+        gameState.isMouseActive = false;
+    }, 1000);
+
     // 发送鼠标位置到服务器
     sendToServer({
         COMMAND: 'SEND_DATA',
@@ -5554,6 +5705,91 @@ function handleMouseUp(event) {
         data: [0, 0, gameState.playerState],
         id: gameState.playerId
     });
+}
+
+// 处理键盘移动和攻击
+function handleKeyboardInput() {
+    if (!gameState.connected || gameState.isLobby || !gameState.keyboardMovement) return;
+
+    // 如果鼠标处于活跃状态，暂停键盘移动以避免冲突
+    if (gameState.isMouseActive) return;
+
+    // 限制键盘移动更新频率，每3帧更新一次位置
+    gameState.keyboardMoveFrame++;
+    if (gameState.keyboardMoveFrame % 3 !== 0) {
+        // 只处理攻击状态，不处理移动
+        let newState = gameState.playerState;
+        if (gameState.keyboardAttack && !gameState.keyboardDefend) {
+            newState = 1; // 攻击
+        } else if (!gameState.keyboardAttack && gameState.keyboardDefend) {
+            newState = -1; // 防御
+        } else if (!gameState.keyboardAttack && !gameState.keyboardDefend) {
+            newState = 0; // 正常
+        }
+
+        // 如果状态发生变化，发送到服务器
+        if (newState !== gameState.playerState) {
+            gameState.playerState = newState;
+            sendToServer({
+                COMMAND: 'SEND_DATA',
+                client_name: gameState.playerName,
+                data: [0, 0, gameState.playerState],
+                id: gameState.playerId
+            });
+        }
+        return;
+    }
+
+    // 计算移动方向
+    let dx = 0, dy = 0;
+    if (gameState.keys.w || gameState.keys.ArrowUp) dy -= 1;
+    if (gameState.keys.s || gameState.keys.ArrowDown) dy += 1;
+    if (gameState.keys.a || gameState.keys.ArrowLeft) dx -= 1;
+    if (gameState.keys.d || gameState.keys.ArrowRight) dx += 1;
+
+    // 归一化移动向量
+    if (dx !== 0 || dy !== 0) {
+        const length = Math.sqrt(dx * dx + dy * dy);
+        dx = (dx / length) * gameState.keyboardSpeed;
+        dy = (dy / length) * gameState.keyboardSpeed;
+
+        // 限制移动速度，避免过快导致抖动
+        const maxSpeed = 3;
+        const finalDx = Math.max(-maxSpeed, Math.min(maxSpeed, dx));
+        const finalDy = Math.max(-maxSpeed, Math.min(maxSpeed, dy));
+
+        // 计算角度（基于移动方向）
+        gameState.playerAngle = Math.atan2(finalDy, finalDx);
+
+        // 发送移动指令到服务器（不直接修改本地位置，让服务器决定）
+        sendToServer({
+            COMMAND: 'SEND_DATA',
+            client_name: gameState.playerName,
+            data: [finalDx, finalDy, gameState.playerState],
+            id: gameState.playerId
+        });
+    }
+
+    // 处理攻击状态（只有在没有鼠标冲突时才处理）
+    let newState = gameState.playerState;
+    if (gameState.keyboardAttack && !gameState.keyboardDefend) {
+        newState = 1; // 攻击
+    } else if (!gameState.keyboardAttack && gameState.keyboardDefend) {
+        newState = -1; // 防御
+    } else if (!gameState.keyboardAttack && !gameState.keyboardDefend) {
+        newState = 0; // 正常
+    }
+
+    // 如果状态发生变化，发送到服务器
+    if (newState !== gameState.playerState) {
+        gameState.playerState = newState;
+        sendToServer({
+            COMMAND: 'SEND_DATA',
+            client_name: gameState.playerName,
+            data: [0, 0, gameState.playerState],
+            id: gameState.playerId
+        });
+    }
 }
 
 // 处理鼠标滚轮事件 - 调整视野大小
@@ -5682,6 +5918,9 @@ function gameLoop(timestamp) {
         const delta = timestamp - gameState.lastFrameTime;
         const currentFps = Math.round(1000 / delta);
         gameState.fps = currentFps;
+
+        // 处理键盘输入（每帧都处理以确保流畅性）
+        handleKeyboardInput();
 
         
         // 每10帧更新一次FPS显示，减少DOM操作
@@ -6250,6 +6489,7 @@ function drawObject(obj) {
             width = 30;
             height = 30;
         }
+
         
         if (obj.name && (obj.name.includes('petal') || obj.type !== undefined)) {
             // 使用服务器传输的原始大小，不应用最小尺寸限制
@@ -6280,7 +6520,7 @@ function drawObject(obj) {
             const mobSize = Math.max(width, height);
 
 
-            drawVectorMonster(screenX, screenY, mobSize, obj.name, -obj.angle);
+            drawVectorMonster(screenX, screenY, mobSize, obj.name, -obj.angle, obj.is_injured);
         } else if (obj.name && obj.name.includes('drop')) {
             // 收集物 - 使用服务器传输的原始大小，但size应该是直径
             const dropSize = Math.max(width, height) / 2;  // 这是半径
@@ -6337,6 +6577,7 @@ function drawObject(obj) {
                 drawPetalInContext(tempPetal, ctx, dropSize);
             }
 
+            
             ctx.restore()
 
         } else if (obj.name && obj.name.includes('flower')) {
@@ -7622,50 +7863,43 @@ const petalRenderMap = {
         ctx.closePath();
     },
     square: (p) => {
-        // 发光正方形花瓣，带粗边框
-        const glowSize = p.radius * 0.15; // 发光效果大小
-        const borderWidth = p.radius * 0.25; // 粗边框宽度
+        // 发光效果
+        const glowSize = p.radius * 0.3;
+        ctx.shadowBlur = glowSize;
+        ctx.shadowColor = blendColor("#ffa500", "#FF0000", blendAmount(p));
 
-        // 外层发光效果
-        ctx.shadowBlur = glowSize * 2;
-        ctx.shadowColor = blendColor('#ffff00', '#FF0000', blendAmount(p));
+        // 外层发光边框
+        ctx.beginPath();
+        ctx.strokeStyle = blendColor("#ffa500", "#ff0000", blendAmount(p));
+        ctx.lineWidth = 6;
+        if(checkForFirstFrame(p)){
+            ctx.strokeStyle = "#ffffff";
+        }
+        for(let i = 0; i < 4; i++){
+            ctx.lineTo(Math.cos(i * 1.57079) * (p.radius + 3), Math.sin(i * 1.57079) * (p.radius + 3));
+        }
+        ctx.closePath();
+        ctx.stroke();
 
-        // 绘制发光外层
-        ctx.fillStyle = blendColor('rgba(255, 255, 100, 0.3)', 'rgba(255, 0, 0, 0.3)', blendAmount(p));
-        ctx.fillRect(-p.radius - glowSize, -p.radius - glowSize, (p.radius + glowSize) * 2, (p.radius + glowSize) * 2);
+        // 主体正方形
+        ctx.beginPath();
+        ctx.fillStyle = blendColor("#ffe869", '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor("#cfbc55", '#FF0000', blendAmount(p));
+        ctx.lineWidth = 2;
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF"
+        }
+        for(let i = 0; i < 4; i++){
+            ctx.lineTo(Math.cos(i * 1.57079) * p.radius, Math.sin(i * 1.57079) * p.radius);
+        }
+        ctx.fill();
+        ctx.lineTo(Math.cos(4 * 1.57079) * p.radius, Math.sin(4 * 1.57079) * p.radius);
+        ctx.stroke();
+        ctx.closePath();
 
         // 重置阴影
         ctx.shadowBlur = 0;
-
-        // 主体正方形
-        ctx.fillStyle = blendColor('#ffeb3b', '#FF0000', blendAmount(p));
-        if(checkForFirstFrame(p)){
-            ctx.fillStyle = "#FFFFFF";
-        }
-        ctx.fillRect(-p.radius, -p.radius, p.radius * 2, p.radius * 2);
-
-        // 粗边框
-        ctx.strokeStyle = blendColor('#ffc107', '#FF0000', blendAmount(p));
-        if(checkForFirstFrame(p)){
-            ctx.strokeStyle = "#FFFFFF";
-        }
-        ctx.lineWidth = borderWidth;
-        ctx.strokeRect(-p.radius, -p.radius, p.radius * 2, p.radius * 2);
-
-        // 内层装饰线条（增加层次感）
-        ctx.strokeStyle = blendColor('#fff59d', '#FF0000', blendAmount(p));
-        if(checkForFirstFrame(p)){
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-        }
-        ctx.lineWidth = borderWidth * 0.3;
-        ctx.strokeRect(-p.radius * 0.7, -p.radius * 0.7, p.radius * 1.4, p.radius * 1.4);
-
-        // 中心发光点
-        ctx.fillStyle = blendColor('rgba(255, 255, 255, 0.8)', 'rgba(255, 255, 255, 0.8)', blendAmount(p));
-        ctx.beginPath();
-        ctx.arc(0, 0, p.radius * 0.15, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.closePath();
     },
 };
 
@@ -7757,7 +7991,7 @@ function drawVectorPlayer(x, y, size, angle) {
 }
 
 // 绘制Shield实体（基于实际shield.png）
-function drawVectorShield(x, y, size, angle) {
+function drawVectorShield(x, y, size, angle, is_injured = false) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -7777,16 +8011,27 @@ function drawVectorShield(x, y, size, angle) {
     ctx.closePath();
 
     // 填充主色（浅黄色）
-    ctx.fillStyle = '#F8E08E';
+    let shieldFillColor = '#F8E08E';
+    let shieldStrokeColor = '#B38D3C';
+    let shieldDecorColor = '#D9BC6A';
+
+    // 如果受伤，将颜色向白色偏向
+    if (is_injured) {
+        shieldFillColor = shiftToWhite(shieldFillColor);
+        shieldStrokeColor = shiftToWhite(shieldStrokeColor);
+        shieldDecorColor = shiftToWhite(shieldDecorColor);
+    }
+
+    ctx.fillStyle = shieldFillColor;
     ctx.fill();
 
     // 绘制外轮廓边框（深棕色）
-    ctx.strokeStyle = '#B38D3C';
+    ctx.strokeStyle = shieldStrokeColor;
     ctx.lineWidth = 3;
     ctx.stroke();
 
     // 绘制内部装饰线条（浅棕色）
-    ctx.strokeStyle = '#D9BC6A';
+    ctx.strokeStyle = shieldDecorColor;
     ctx.lineWidth = 2;
 
     // 4条平行短线条
@@ -7804,7 +8049,7 @@ function drawVectorShield(x, y, size, angle) {
 }
 
 // 绘制Bomb Beetle实体（基于实际bombbeetle.png）
-function drawVectorBombBeetle(x, y, size, angle) {
+function drawVectorBombBeetle(x, y, size, angle, is_injured = false) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -7828,6 +8073,12 @@ function drawVectorBombBeetle(x, y, size, angle) {
     // 将紫色改为红色
     let bodyColor = blendColor('#ff0000', "#FF0000", Math.max(0, blendAmount(e)));
     let sideColor = blendColor('#cc0000', "#FF0000", Math.max(0, blendAmount(e)));
+
+    // 如果受伤，将颜色向白色偏向
+    if (is_injured) {
+        bodyColor = shiftToWhite(bodyColor);
+        sideColor = shiftToWhite(sideColor);
+    }
 
     if (checkForFirstFrame(e)) {
         bodyColor = "#ffffff";
@@ -7922,7 +8173,7 @@ function drawVectorBombBeetle(x, y, size, angle) {
     ctx.restore();
 }
 
-function drawVectorBeetle(x, y, size, angle) {
+function drawVectorBeetle(x, y, size, angle, is_injured = false) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -7946,6 +8197,12 @@ function drawVectorBeetle(x, y, size, angle) {
     // 将红色改为黄色
     let bodyColor = blendColor('#ffd700', "#FFD700", Math.max(0, blendAmount(e)));
     let sideColor = blendColor('#ffb347', "#FFD700", Math.max(0, blendAmount(e)));
+
+    // 如果受伤，将颜色向白色偏向
+    if (is_injured) {
+        bodyColor = shiftToWhite(bodyColor);
+        sideColor = shiftToWhite(sideColor);
+    }
 
     if (checkForFirstFrame(e)) {
         bodyColor = "#ffffff";
@@ -8059,8 +8316,43 @@ function rgbToHex(r, g, b) {
     return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
 }
 
+// 将颜色向白色偏向（非常明显的变白效果，支持闪烁）
+function shiftToWhite(color, baseShiftAmount = 0.8, enableFlash = true) {
+    if (baseShiftAmount <= 0) return color;
+
+    // 解析颜色
+    const rgb = {
+        r: parseInt(color.slice(1, 3), 16),
+        g: parseInt(color.slice(3, 5), 16),
+        b: parseInt(color.slice(5, 7), 16)
+    };
+
+    let actualShiftAmount = baseShiftAmount;
+
+    // 添加闪烁效果
+    if (enableFlash) {
+        const flashFrequency = 3.0; // 闪烁频率（每秒3次）
+        const flashIntensity = 0.4;  // 闪烁强度
+        const time = Date.now() / 1000; // 当前时间（秒）
+
+        // 使用正弦波创建一阵一阵的闪烁效果
+        const flashValue = Math.sin(time * Math.PI * 2 * flashFrequency) * flashIntensity;
+        actualShiftAmount = Math.max(0.4, Math.min(1.0, baseShiftAmount + flashValue));
+    }
+
+    // 非常强的白色混合，确保极明显的变白效果
+    const whiteFactor = Math.min(actualShiftAmount, 1.0);
+
+    // 强力线性插值向白色靠近
+    const finalR = Math.min(255, Math.floor(rgb.r + (255 - rgb.r) * whiteFactor));
+    const finalG = Math.min(255, Math.floor(rgb.g + (255 - rgb.g) * whiteFactor));
+    const finalB = Math.min(255, Math.floor(rgb.b + (255 - rgb.b) * whiteFactor));
+
+    return rgbToHex(finalR, finalG, finalB);
+}
+
 // 完全按照 enemy.js 的 Hornet 绘制方式
-function drawVectorHornet(x, y, size, angle) {
+function drawVectorHornet(x, y, size, angle, is_injured = false) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -8079,6 +8371,12 @@ function drawVectorHornet(x, y, size, angle) {
     // 完全复制 enemy.js 中的 Hornet 绘制逻辑
     let bodyColor = blendColor("#ffd363", "#FF0000", Math.max(0, 0)); // blendAmount(e)
     let stripesColor = blendColor("#333333", "#FF0000", Math.max(0, 0));
+
+    // 如果受伤，将颜色向白色偏向
+    if (is_injured) {
+        bodyColor = shiftToWhite(bodyColor);
+        stripesColor = shiftToWhite(stripesColor);
+    }
 
     // 由于没有 damageFlash，简化 checkForFirstFrame
     const isFirstFrame = false;
@@ -8165,7 +8463,7 @@ function drawVectorHornet(x, y, size, angle) {
 }
 
 // 完全按照 enemy.js 的 Ladybug 绘制方式
-function drawVectorLadybug(x, y, size, angle) {
+function drawVectorLadybug(x, y, size, angle, is_injured = false) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -8186,6 +8484,12 @@ function drawVectorLadybug(x, y, size, angle) {
     // 完全复制 enemy.js 中的 Ladybug 绘制逻辑
     let bodyColor = blendColor("#EB4034", "#FF0000", Math.max(0, 0)); // blendAmount(e)
     let headColor = blendColor("#111111", "#FF0000", Math.max(0, 0));
+
+    // 如果受伤，将颜色向白色偏向
+    if (is_injured) {
+        bodyColor = shiftToWhite(bodyColor);
+        headColor = shiftToWhite(headColor);
+    }
 
     // 由于没有 damageFlash，简化 checkForFirstFrame
     const isFirstFrame = false;
@@ -8344,7 +8648,7 @@ function drawVectorCentipede(x, y, size, angle) {
 }
 
 // 完全按照 enemy.js 的 Rock 绘制方式（简化版本）
-function drawVectorRock(x, y, size, angle) {
+function drawVectorRock(x, y, size, angle, is_injured = false) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -8392,8 +8696,17 @@ function drawVectorRock(x, y, size, angle) {
     // 完全复制 enemy.js 中的 Rock 绘制逻辑
     ctx.lineWidth = e.render.radius / 10;
 
-    ctx.fillStyle = blendColor('#777777', "#FF0000", Math.max(0, 0)); // blendAmount(e)
-    ctx.strokeStyle = blendColor('#606060', "#FF0000", Math.max(0, 0));
+    let rockFillColor = blendColor('#777777', "#FF0000", Math.max(0, 0)); // blendAmount(e)
+    let rockStrokeColor = blendColor('#606060', "#FF0000", Math.max(0, 0));
+
+    // 如果受伤，将颜色向白色偏向
+    if (is_injured) {
+        rockFillColor = shiftToWhite(rockFillColor);
+        rockStrokeColor = shiftToWhite(rockStrokeColor);
+    }
+
+    ctx.fillStyle = rockFillColor;
+    ctx.strokeStyle = rockStrokeColor;
 
     const isFirstFrame = false;
     if (isFirstFrame) {
@@ -8415,7 +8728,7 @@ function drawVectorRock(x, y, size, angle) {
 }
 
 // 绘制盾牌守卫（基于enemy.js中的Shell绘制方法）
-function drawVectorShieldGuardian(x, y, size, angle) {
+function drawVectorShieldGuardian(x, y, size, angle, is_injured = false) {
     // 模拟enemy对象结构
     const e = {
         radius: size / 2,
@@ -8430,8 +8743,17 @@ function drawVectorShieldGuardian(x, y, size, angle) {
     ctx.translate(x, y);
 
     // 设置颜色（从enemy.js的Shell复制）
-    ctx.strokeStyle = blendColor('#ccb26e', "#FF0000", Math.max(0, blendAmount(e)));
-    ctx.fillStyle = blendColor('#fcdd85', "#FF0000", Math.max(0, blendAmount(e)));
+    let shieldGuardianStrokeColor = blendColor('#ccb26e', "#FF0000", Math.max(0, blendAmount(e)));
+    let shieldGuardianFillColor = blendColor('#fcdd85', "#FF0000", Math.max(0, blendAmount(e)));
+
+    // 如果受伤，将颜色向白色偏向
+    if (is_injured) {
+        shieldGuardianStrokeColor = shiftToWhite(shieldGuardianStrokeColor);
+        shieldGuardianFillColor = shiftToWhite(shieldGuardianFillColor);
+    }
+
+    ctx.strokeStyle = shieldGuardianStrokeColor;
+    ctx.fillStyle = shieldGuardianFillColor;
 
     const isFirstFrame = false;
     if (isFirstFrame) {
@@ -8497,7 +8819,7 @@ function drawVectorShieldGuardian(x, y, size, angle) {
 }
 
 // 绘制毒蜘蛛（基于enemy.js中的Spider绘制方法）
-function drawVectorVenomSpider(x, y, size, angle) {
+function drawVectorVenomSpider(x, y, size, angle, is_injured = false) {
 
     // 模拟enemy对象结构
     const currentTime = Date.now();
@@ -8519,6 +8841,12 @@ function drawVectorVenomSpider(x, y, size, angle) {
 
     let bodyColor = blendColor("#4f412d", "#FF0000", Math.max(0, blendAmount(e)));
     let legColor = blendColor("#403425", "#FF0000", Math.max(0, blendAmount(e)));
+
+    // 如果受伤，将颜色向白色偏向
+    if (is_injured) {
+        bodyColor = shiftToWhite(bodyColor);
+        legColor = shiftToWhite(legColor);
+    }
 
     const isFirstFrame = false;
     if (isFirstFrame) {
@@ -8580,7 +8908,7 @@ function drawVectorVenomSpider(x, y, size, angle) {
 }
 
 // 绘制雷电元素（完全按照enemy.js中的Jellyfish绘制方法）
-function drawVectorThunderElement(x, y, size, angle) {
+function drawVectorThunderElement(x, y, size, angle, is_injured = false) {
     let savedAlpha = ctx.globalAlpha;
 
     // 模拟enemy对象结构
@@ -8604,9 +8932,19 @@ function drawVectorThunderElement(x, y, size, angle) {
     ctx.rotate(e.render.angle);
     ctx.lineWidth = e.radius / 6;
 
-    // 设置颜色（完全按照Jellyfish）
-    ctx.fillStyle = blendColor('#ffffff', "#FF0000", Math.max(0, blendAmount(e)));
-    ctx.strokeStyle = blendColor('#ffffff', "#FF0000", Math.max(0, blendAmount(e)));
+    // 设置颜色（修改为淡蓝色以便闪烁可见）
+    let baseColor = is_injured ? '#87CEEB' : '#ffffff'; // 天蓝色作为基础色
+    let thunderElementFillColor = blendColor(baseColor, "#FF0000", Math.max(0, blendAmount(e)));
+    let thunderElementStrokeColor = blendColor(baseColor, "#FF0000", Math.max(0, blendAmount(e)));
+
+    // 如果受伤，将颜色向白色偏向（现在会有明显的效果）
+    if (is_injured) {
+        thunderElementFillColor = shiftToWhite(thunderElementFillColor);
+        thunderElementStrokeColor = shiftToWhite(thunderElementStrokeColor);
+    }
+
+    ctx.fillStyle = thunderElementFillColor;
+    ctx.strokeStyle = thunderElementStrokeColor;
 
     const isFirstFrame = false;
     if (isFirstFrame) {
@@ -8651,45 +8989,45 @@ function drawVectorThunderElement(x, y, size, angle) {
 }
 
 // 绘制通用怪物形状（矢量版本）- 兼容旧版
-function drawVectorMonster(x, y, size, type, angle) {
+function drawVectorMonster(x, y, size, type, angle, is_injured = false) {
     // 根据类型调用具体的绘制函数
     switch (type) {
         case 'hornet':
-            drawVectorHornet(x, y, size, angle);
+            drawVectorHornet(x, y, size, angle, is_injured);
             break;
         case 'ladybug':
-            drawVectorLadybug(x, y, size, angle);
+            drawVectorLadybug(x, y, size, angle, is_injured);
             break;
         case 'centipede':
         case 'centipede0':  // 蜈蚣头部（有触角）
-            drawCentipede(x, y, size, angle, true); // 头部
+            drawCentipede(x, y, size, angle, true, is_injured); // 头部
             break;
         case 'centipede1':  // 蜈蚣身体（无触角）
-            drawCentipede(x, y, size, angle, false); // 身体
+            drawCentipede(x, y, size, angle, false, is_injured); // 身体
             break;
         case 'rock':
-            drawVectorRock(x, y, size, angle);
+            drawVectorRock(x, y, size, angle, is_injured);
             break;
         case 'bombbeetle':
-            drawVectorBombBeetle(x, y, size, angle);
+            drawVectorBombBeetle(x, y, size, angle, is_injured);
             break;
         case 'beetle':
-            drawVectorBeetle(x, y, size, angle);
+            drawVectorBeetle(x, y, size, angle, is_injured);
             break;
         case 'shield':
-            drawVectorShield(x, y, size, angle);
+            drawVectorShield(x, y, size, angle, is_injured);
             break;
         case 'venomspider':
-            drawVectorVenomSpider(x, y, size, angle);
+            drawVectorVenomSpider(x, y, size, angle, is_injured);
             break;
         case 'thunderelement':
-            drawVectorThunderElement(x, y, size, angle);
+            drawVectorThunderElement(x, y, size, angle, is_injured);
             break;
         case 'shieldguardian':
-            drawVectorShieldGuardian(x, y, size, angle);
+            drawVectorShieldGuardian(x, y, size, angle, is_injured);
             break;
         case 'beetle':
-            drawVectorBeetle(x, y, size, angle);
+            drawVectorBeetle(x, y, size, angle, is_injured);
         default:
             // 默认绘制简单圆形
             ctx.save();
@@ -8756,14 +9094,120 @@ window.showPerformanceStats = function() {
     console.log(`   实体数量: ${gameState.petals.length + gameState.mobs.length + gameState.collectDrops.length}`);
 };
 
-// 快捷键：按V键切换渲染模式，按H键切换性能监控面板，按ESC关闭面板
+// 键盘移动事件监听器
 document.addEventListener('keydown', (e) => {
+    // 只在游戏中处理键盘移动
+    if (!gameState.isLobby && gameState.connected && gameState.keyboardMovement) {
+        const key = e.key.toLowerCase();
+
+        // 移动键
+        if (key === 'w' || key === 'arrowup') {
+            gameState.keys.w = true;
+            gameState.keys.ArrowUp = true;
+            e.preventDefault();
+        }
+        if (key === 's' || key === 'arrowdown') {
+            gameState.keys.s = true;
+            gameState.keys.ArrowDown = true;
+            e.preventDefault();
+        }
+        if (key === 'a' || key === 'arrowleft') {
+            gameState.keys.a = true;
+            gameState.keys.ArrowLeft = true;
+            e.preventDefault();
+        }
+        if (key === 'd' || key === 'arrowright') {
+            gameState.keys.d = true;
+            gameState.keys.ArrowRight = true;
+            e.preventDefault();
+        }
+
+        // 攻击键（空格）
+        if (key === ' ' || key === 'space') {
+            gameState.keys[' '] = true;
+            gameState.keys.Space = true;
+            gameState.keyboardAttack = true;
+            e.preventDefault();
+        }
+
+        // 防守键（Shift）
+        if (key === 'shift') {
+            gameState.keys.shift = true;
+            gameState.keys.Shift = true;
+            gameState.keyboardDefend = true;
+            e.preventDefault();
+        }
+    }
+
+    // 其他快捷键
     if (e.key === 'v' || e.key === 'V') {
         window.toggleRenderingMode();
+
+        // 同步更新显示实体toggle开关的状态
+        const showEntitiesToggle = document.getElementById('showEntitiesToggle');
+        if (showEntitiesToggle) {
+            const newState = gameState.useVectorRendering;
+            showEntitiesToggle.checked = newState;
+
+            const container = showEntitiesToggle.closest('.setting-toggle');
+            if (container) {
+                if (newState) {
+                    container.classList.add('active');
+                } else {
+                    container.classList.remove('active');
+                }
+            }
+        }
     } else if (e.key === 'h' || e.key === 'H') {
         togglePerformancePanel();
     } else if (e.key === 'Escape' && gameState.isPerformancePanelVisible) {
         hidePerformancePanel();
+    }
+});
+
+// 键盘释放事件监听器
+document.addEventListener('keyup', (e) => {
+    // 只在游戏中处理键盘移动
+    if (!gameState.isLobby && gameState.connected && gameState.keyboardMovement) {
+        const key = e.key.toLowerCase();
+
+        // 移动键
+        if (key === 'w' || key === 'arrowup') {
+            gameState.keys.w = false;
+            gameState.keys.ArrowUp = false;
+            e.preventDefault();
+        }
+        if (key === 's' || key === 'arrowdown') {
+            gameState.keys.s = false;
+            gameState.keys.ArrowDown = false;
+            e.preventDefault();
+        }
+        if (key === 'a' || key === 'arrowleft') {
+            gameState.keys.a = false;
+            gameState.keys.ArrowLeft = false;
+            e.preventDefault();
+        }
+        if (key === 'd' || key === 'arrowright') {
+            gameState.keys.d = false;
+            gameState.keys.ArrowRight = false;
+            e.preventDefault();
+        }
+
+        // 攻击键（空格）
+        if (key === ' ' || key === 'space') {
+            gameState.keys[' '] = false;
+            gameState.keys.Space = false;
+            gameState.keyboardAttack = false;
+            e.preventDefault();
+        }
+
+        // 防守键（Shift）
+        if (key === 'shift') {
+            gameState.keys.shift = false;
+            gameState.keys.Shift = false;
+            gameState.keyboardDefend = false;
+            e.preventDefault();
+        }
     }
 });
 
