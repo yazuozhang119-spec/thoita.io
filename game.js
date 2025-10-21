@@ -883,6 +883,52 @@ function drawStaticPetalItem(petal, canvas, options) {
         ctx.stroke();
         ctx.closePath();
         },
+        square: (p) => {
+            // 发光正方形花瓣，带粗边框
+            const glowSize = p.radius * 0.15; // 发光效果大小
+            const borderWidth = p.radius * 0.25; // 粗边框宽度
+
+            // 外层发光效果
+            ctx.shadowBlur = glowSize * 2;
+            ctx.shadowColor = blendColor('#ffff00', '#FF0000', blendAmount(p));
+
+            // 绘制发光外层
+            ctx.fillStyle = blendColor('rgba(255, 255, 100, 0.3)', 'rgba(255, 0, 0, 0.3)', blendAmount(p));
+            ctx.fillRect(-p.radius - glowSize, -p.radius - glowSize, (p.radius + glowSize) * 2, (p.radius + glowSize) * 2);
+
+            // 重置阴影
+            ctx.shadowBlur = 0;
+
+            // 主体正方形
+            ctx.fillStyle = blendColor('#ffeb3b', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+            }
+            ctx.fillRect(-p.radius, -p.radius, p.radius * 2, p.radius * 2);
+
+            // 粗边框
+            ctx.strokeStyle = blendColor('#ffc107', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.strokeStyle = "#FFFFFF";
+            }
+            ctx.lineWidth = borderWidth;
+            ctx.strokeRect(-p.radius, -p.radius, p.radius * 2, p.radius * 2);
+
+            // 内层装饰线条（增加层次感）
+            ctx.strokeStyle = blendColor('#fff59d', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+            }
+            ctx.lineWidth = borderWidth * 0.3;
+            ctx.strokeRect(-p.radius * 0.7, -p.radius * 0.7, p.radius * 1.4, p.radius * 1.4);
+
+            // 中心发光点
+            ctx.fillStyle = blendColor('rgba(255, 255, 255, 0.8)', 'rgba(255, 255, 255, 0.8)', blendAmount(p));
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+        },
     };
 
     // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
@@ -1051,7 +1097,8 @@ function drawStaticPetalItem(petal, canvas, options) {
             10: 'thirdeye',
             11: 'stinger',
             12: 'orange',
-            13: 'egg'
+            13: 'egg',
+            14: 'square'
         };
 
         const renderType = typeMap[type] || 'basic';
@@ -1089,7 +1136,8 @@ function drawStaticPetalItem(petal, canvas, options) {
         10: '第三只眼',
         11: '刺针',
         12: '橙子',
-        13: '蛋'
+        13: '蛋',
+        14: '方块'
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -1273,7 +1321,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -1355,6 +1403,7 @@ window.gameState = {
     equipmentSlots: 10,
     equippedPetals: Array(10).fill(null),
     availablePetals: [],
+    allPetals: [], // 存储完整的原始背包数据，每次都从这里计算可用花瓣
     // petalImages: {}, // 不再使用图片
         roomPlayers: {},
     petal_num : 5,
@@ -2116,6 +2165,12 @@ function initializeAbsorbPetalSelection() {
 
 // 更新可用的花瓣选择
 function updateAbsorbPetalSelection() {
+    // 如果正在合成中或正在等待合成后的刷新，不更新界面避免显示错误数据
+    if (gameState.isAbsorbing || gameState.isPostSynthesisRefresh) {
+        console.log('合成进行中或等待刷新，跳过花瓣选择界面更新');
+        return;
+    }
+
     absorbPetalSelection.innerHTML = '';
 
     // 按种类分组花瓣，跳过索引2
@@ -2373,9 +2428,15 @@ function updateAbsorbSlotDisplay(slotIndex) {
     const slot = absorbSlotsContainer.querySelector(`.absorb-slot[data-index="${slotIndex}"]`);
     const petal = gameState.absorbSlots[slotIndex];
 
+    if (!slot) {
+        console.error(`无法找到槽位元素: ${slotIndex}`);
+        return;
+    }
+
     slot.innerHTML = '';
 
     if (petal) {
+        console.log(`更新槽位 ${slotIndex}:`, petal);
         slot.classList.add('filled');
 
         // 使用canvas绘制花瓣
@@ -2403,24 +2464,34 @@ function updateAbsorbSlotDisplay(slotIndex) {
     }
 }
 
-// 从合成槽位移除花瓣
+// 从合成槽位移除花瓣（一次只移除1个）
 function removePetalFromAbsorbSlot(slotIndex) {
     const petal = gameState.absorbSlots[slotIndex];
-    if (petal) {
-        // 恢复花瓣数量（移除该槽位所有花瓣）
-        const originalPetal = gameState.availablePetals[petal.originalIndex];
-        if (originalPetal) {
-            originalPetal.count += petal.count;
-        }
+    if (petal && petal.count > 0) {
+        console.log(`从槽位 ${slotIndex} 移除1个花瓣，当前数量: ${petal.count}`);
 
-        gameState.absorbTotalCount -= petal.count;
-        gameState.absorbSlots[slotIndex] = null;
+        // 减少槽位中的花瓣数量
+        petal.count -= 1;
+        gameState.absorbTotalCount -= 1;
+
+        console.log(`槽位 ${slotIndex} 剩余数量: ${petal.count}`);
+
+        // 如果槽位中没有花瓣了，清空槽位
+        if (petal.count <= 0) {
+            gameState.absorbSlots[slotIndex] = null;
+            console.log(`槽位 ${slotIndex} 已清空`);
+        }
 
         // 如果所有槽位都空了，重置合成类型
         if (gameState.absorbTotalCount === 0) {
             gameState.currentAbsorbType = null;
             gameState.currentAbsorbLevel = null;
+            console.log('所有槽位已空，重置合成类型');
         }
+
+        // 重新计算可用花瓣（基于更新后的槽位状态）
+        // 这会正确计算availablePetals的数量
+        initializeAvailablePetals(true);
 
         updateAbsorbSlotDisplay(slotIndex);
         // 只在合成界面打开时才更新花瓣选择
@@ -2541,19 +2612,50 @@ function clearSynthesizedPetals(totalPetalCount) {
 
 // 显示实际的服务器结果
 function displayActualResult(result, totalPetalCount) {
+    console.log('=== displayActualResult 被调用 ===');
+    console.log('result:', result);
+    console.log('totalPetalCount:', totalPetalCount);
+    console.log('result.success:', result.success);
+    console.log('result.remaining_count:', result.remaining_count);
+    console.log('result.petal_type:', result.petal_type);
+    console.log('result.petal_level:', result.petal_level);
+
     gameState.isAbsorbing = false;
     const absorbCenter = document.getElementById('absorbCenter');
     const absorbActionButton = document.getElementById('absorbActionButton');
 
+    // 根据合成结果决定如何更新可用花瓣数量
     if (result.success) {
+        // 成功：不扣除合成槽（因为槽位已经被清空）
+        // 合成槽中的花瓣在开始合成时已经从availablePetals中扣除了
+        // 合成的花瓣现在处于"预占用"状态，等玩家点击后才正式添加到allPetals
+        initializeAvailablePetals(false);
+    } else {
+        // 失败：需要扣除合成槽（因为槽位中还有剩余花瓣）
+        // 但这里要先等槽位重新分配完成再计算，所以先不调用
+        // initializeAvailablePetals(false) 会在槽位分配后调用
+    }
+
+    if (result.success) {
+        console.log('=== 处理合成成功情况 ===');
+        // 立即清空合成槽
+        resetAbsorbSlots(false); // 清空槽位，但不更新花瓣选择（避免影响当前显示）
+
+        // 隐藏五边形合成槽
+        const pentagonSlots = absorbSlotsContainer.querySelector('.pentagon-slots');
+        if (pentagonSlots) {
+            pentagonSlots.style.display = 'none';
+        }
+
         // 成功：在五边形中心显示合成的花瓣，不覆盖按钮
         if (result.result_petal) {
+            console.log('显示合成结果花瓣');
             // 确保按钮存在并启用
             absorbActionButton.disabled = false;
 
             // 创建合成结果显示元素
             const resultPetal = document.createElement('div');
-            resultPetal.className = 'synthesis-result-display';
+            resultPetal.className = 'absorb-petal-item synthesis-result-display';
             resultPetal.style.position = 'absolute';
             resultPetal.style.top = '48%';
             resultPetal.style.left = '25%';
@@ -2561,24 +2663,29 @@ function displayActualResult(result, totalPetalCount) {
             resultPetal.style.zIndex = '15';
             resultPetal.style.cursor = 'pointer'; // 添加手型光标表示可点击
 
-            // 使用canvas绘制花瓣
-            const canvas = document.createElement('canvas');
+            // 放大容器尺寸以匹配花瓣大小
+            resultPetal.style.width = '45px';
+            resultPetal.style.height = '45px';
+
+            // 创建合成花瓣数据
             const petalData = {
                 type: result.result_petal[0],
-                level: result.result_petal[1]
+                level: result.result_petal[1],
+                count: 1
             };
-            drawPetalItem(petalData, canvas, { displaySize: 60 });
+
+            // 使用canvas绘制花瓣
+            const canvas = document.createElement('canvas');
+            drawPetalItem(petalData, canvas, { displaySize: 45 }); // 适当放大，比普通花瓣稍大
             resultPetal.appendChild(canvas);
 
-            const levelText = document.createElement('div');
-            levelText.textContent = `Lv.${result.result_petal[1]}`;
-            levelText.style.fontSize = '14px';
-            levelText.style.fontWeight = 'bold';
-            levelText.style.color = 'white';
-            levelText.style.textAlign = 'center';
-            levelText.style.marginTop = '2px';
-            levelText.style.textShadow = '1px 1px 2px rgba(0,0,0,0.8)';
-            resultPetal.appendChild(levelText);
+            // 添加数量标签
+            const countBadge = document.createElement('div');
+            countBadge.className = 'absorb-petal-count';
+            // 显示服务器返回的合成数量
+            const synthesisCount = result.success_count || 1;
+            countBadge.textContent = synthesisCount;
+            resultPetal.appendChild(countBadge);
 
             // 将合成结果添加到五边形容器（absorbSlotsContainer）的中央
             const absorbSlotsContainer = document.getElementById('absorbSlotsContainer');
@@ -2587,21 +2694,65 @@ function displayActualResult(result, totalPetalCount) {
             // 添加成功动画效果
             resultPetal.style.animation = 'successGlow 2s ease-in-out';
 
-            // 添加点击事件：点击后将花瓣返回背包
+            // 添加点击事件：点击后将合成花瓣添加到背包（不需要清空槽位，因为已经清空了）
             resultPetal.addEventListener('click', function() {
-                // 直接移除合成结果显示
+                console.log('点击合成结果花瓣');
+                // 将合成的花瓣添加到背包
+                const synthesisCount = result.success_count || 1;
+                const petalData = {
+                    type: result.result_petal[0],
+                    level: result.result_petal[1],
+                    count: synthesisCount
+                };
+
+                // 在allPetals中找到对应的花瓣并增加数量
+                const allPetal = gameState.allPetals.find(
+                    p => p.type === petalData.type && p.level === petalData.level
+                );
+
+                if (allPetal) {
+                    allPetal.count += synthesisCount;
+                    console.log(`将合成花瓣添加到allPetals: ${petalData.type}-${petalData.level}, 新数量: ${allPetal.count}`);
+
+                    // 重新计算可用花瓣
+                    initializeAvailablePetals(true);
+
+                    // 更新背包显示（如果背包窗口打开）
+                    if (bagWindow.style.display === 'block') {
+                        updateBagContent();
+                    }
+                }
+
+                // 移除合成结果显示
                 if (resultPetal.parentNode === absorbSlotsContainer) {
                     absorbSlotsContainer.removeChild(resultPetal);
+                }
+
+                // 重新显示五边形合成槽
+                const pentagonSlots = absorbSlotsContainer.querySelector('.pentagon-slots');
+                if (pentagonSlots) {
+                    pentagonSlots.style.display = 'flex';
                 }
             });
         }
     } else {
+        console.log('=== 处理合成失败情况 ===');
         // 失败：确保按钮可用，显示剩余花瓣
         absorbActionButton.disabled = false;
 
         // 如果有剩余花瓣，将它们重新分配到槽位中
-        if (result.remaining_count > 0 && result.petal_type !== undefined && result.petal_level !== undefined) {
-            console.log(`合成失败！剩余 ${result.remaining_count} 个花瓣，类型 ${result.petal_type}，等级 ${result.petal_level}`);
+        if (result.remaining_count > 0) {
+            console.log('有剩余花瓣需要重新分配');
+
+            // 使用当前合成的花瓣类型和等级（如果服务器没有返回的话）
+            const petalType = result.petal_type !== undefined ? result.petal_type : gameState.currentAbsorbType;
+            const petalLevel = result.petal_level !== undefined ? result.petal_level : gameState.currentAbsorbLevel;
+
+            console.log(`合成失败！剩余 ${result.remaining_count} 个花瓣，类型 ${petalType}，等级 ${petalLevel}`);
+
+            // 先清空槽位
+            gameState.absorbSlots = Array(5).fill(null);
+            gameState.absorbTotalCount = 0;
 
             // 计算每个槽位应该分配多少花瓣
             const baseCount = Math.floor(result.remaining_count / 5);
@@ -2611,15 +2762,15 @@ function displayActualResult(result, totalPetalCount) {
             // 重新分配剩余花瓣到槽位
             for (let i = 0; i < 5; i++) {
                 const count = baseCount + (i < remainder ? 1 : 0);
-                if (count > 0) {
-                    // 找到对应花瓣的原始索引
-                    const originalIndex = gameState.availablePetals.findIndex(
-                        p => p.type === result.petal_type && p.level === result.petal_level
+                if (count > 0 && petalType !== undefined && petalLevel !== undefined) {
+                    // 找到对应花瓣的原始索引（从allPetals中查找，因为availablePetals可能已扣除）
+                    const originalIndex = gameState.allPetals.findIndex(
+                        p => p.type === petalType && p.level === petalLevel
                     );
 
                     gameState.absorbSlots[i] = {
-                        type: result.petal_type,
-                        level: result.petal_level,
+                        type: petalType,
+                        level: petalLevel,
                         count: count,
                         originalIndex: originalIndex >= 0 ? originalIndex : 0
                     };
@@ -2629,28 +2780,30 @@ function displayActualResult(result, totalPetalCount) {
                 }
             }
 
+            // 更新总数和当前合成信息
             gameState.absorbTotalCount = result.remaining_count;
-            gameState.currentAbsorbType = result.petal_type;
-            gameState.currentAbsorbLevel = result.petal_level;
+            gameState.currentAbsorbType = petalType;
+            gameState.currentAbsorbLevel = petalLevel;
 
-            // 确保槽位已初始化，然后更新显示
-            initializeAbsorbSlots();
+            console.log('合成失败，分配后的槽位状态:', gameState.absorbSlots);
+
+            // 重新计算可用花瓣，确保扣除重新分配后的槽位占用
+            initializeAvailablePetals(true);
+
             for (let i = 0; i < 5; i++) {
                 updateAbsorbSlotDisplay(i);
             }
             updateAbsorbButton();
-
-            // 不需要手动更新花瓣选择界面，因为REFRESH_BUILD会从服务器获取最新数据
         } else {
+            console.log('没有剩余花瓣，清空所有槽位');
             // 没有剩余花瓣，清空所有槽位
-            resetAbsorbSlots();
+            resetAbsorbSlots(false); // 不更新花瓣选择，避免重复计算
         }
     }
 
-    // 清空合成的花瓣 - 只有成功时才重置槽位，失败时已经处理了剩余花瓣
-    if (result.success) {
-        resetAbsorbSlots();
-    }
+    // 失败时已经在上面的逻辑中处理了槽位重置和显示更新，不需要额外操作
+    // 成功时保留合成结果等待玩家取走
+    // 成功时不做任何操作，让合成的花瓣留在槽位中心等待玩家点击
 
       // 更新背包内容 - 合成后延迟刷新，避免状态冲突
     setTimeout(() => {
@@ -2668,26 +2821,32 @@ function displayActualResult(result, totalPetalCount) {
 
 // 修改处理合成结果的函数（现在用于处理服务器响应）
 function handleAbsorbResult(result) {
+    console.log('=== handleAbsorbResult 被调用 ===');
+    console.log('result:', result);
+    console.log('gameState.isAbsorbing:', gameState.isAbsorbing);
+
     // 如果动画还在进行，缓存结果等待动画结束
     if (gameState.isAbsorbing) {
+        console.log('动画进行中，缓存结果');
         gameState.cachedAbsorbResult = result;
         return;
     }
 
     // 动画已结束，直接显示结果
+    console.log('动画已结束，直接显示结果');
     displayActualResult(result, result.total_used || 0);
 }
 
 
 // 重置合成槽位
-function resetAbsorbSlots() {
+function resetAbsorbSlots(updateSelection = true) {
     gameState.absorbSlots = Array(5).fill(null);
     gameState.absorbTotalCount = 0;
     gameState.currentAbsorbType = null;
     gameState.currentAbsorbLevel = null;
     initializeAbsorbSlots();
-    // 只在合成界面打开时才更新花瓣选择
-    if (absorbWindow.style.display === 'block') {
+    // 根据参数决定是否更新花瓣选择
+    if (updateSelection && absorbWindow.style.display === 'block') {
         updateAbsorbPetalSelection();
     }
 }
@@ -3228,6 +3387,52 @@ function drawPetalInContext(petal, ctx, displaySize) {
         ctx.stroke();
         ctx.closePath();
         },
+        square: (p) => {
+            // 发光正方形花瓣，带粗边框
+            const glowSize = p.radius * 0.15; // 发光效果大小
+            const borderWidth = p.radius * 0.25; // 粗边框宽度
+
+            // 外层发光效果
+            ctx.shadowBlur = glowSize * 2;
+            ctx.shadowColor = blendColor('#ffff00', '#FF0000', blendAmount(p));
+
+            // 绘制发光外层
+            ctx.fillStyle = blendColor('rgba(255, 255, 100, 0.3)', 'rgba(255, 0, 0, 0.3)', blendAmount(p));
+            ctx.fillRect(-p.radius - glowSize, -p.radius - glowSize, (p.radius + glowSize) * 2, (p.radius + glowSize) * 2);
+
+            // 重置阴影
+            ctx.shadowBlur = 0;
+
+            // 主体正方形
+            ctx.fillStyle = blendColor('#ffeb3b', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+            }
+            ctx.fillRect(-p.radius, -p.radius, p.radius * 2, p.radius * 2);
+
+            // 粗边框
+            ctx.strokeStyle = blendColor('#ffc107', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.strokeStyle = "#FFFFFF";
+            }
+            ctx.lineWidth = borderWidth;
+            ctx.strokeRect(-p.radius, -p.radius, p.radius * 2, p.radius * 2);
+
+            // 内层装饰线条（增加层次感）
+            ctx.strokeStyle = blendColor('#fff59d', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+            }
+            ctx.lineWidth = borderWidth * 0.3;
+            ctx.strokeRect(-p.radius * 0.7, -p.radius * 0.7, p.radius * 1.4, p.radius * 1.4);
+
+            // 中心发光点
+            ctx.fillStyle = blendColor('rgba(255, 255, 255, 0.8)', 'rgba(255, 255, 255, 0.8)', blendAmount(p));
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+        },
     };
 
     // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
@@ -3299,7 +3504,8 @@ function drawPetalInContext(petal, ctx, displaySize) {
             10: 'thirdeye',
             11: 'stinger',
             12: 'orange',
-            13: 'egg'
+            13: 'egg',
+            14: 'square'
         };
 
         if(typeof type === 'integer' || typeof type === 'number'){
@@ -3338,7 +3544,8 @@ function drawPetalInContext(petal, ctx, displaySize) {
         10: '第三只眼',
         11: '刺针',
         12: '橙子',
-        13: '蛋'
+        13: '蛋',
+        14: '方块'
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -3593,8 +3800,8 @@ function autoEquipSavedBuild() {
         }
     }
 
-    // 从背包中扣除装备的花瓣数量
-    deductEquippedPetalsFromBag(equippedPetals);
+    // 更新可用花瓣（会自动扣除装备的花瓣）
+    initializeAvailablePetals(true);
 
     // 更新UI
     updateEquipmentSlots();
@@ -3611,44 +3818,6 @@ function autoEquipSavedBuild() {
     gameState.isAutoEquipping = false;
 }
 
-// 从背包中扣除装备的花瓣
-function deductEquippedPetalsFromBag(equippedPetals) {
-    // 统计每种花瓣需要扣除的数量
-    const deductCounts = {};
-    equippedPetals.forEach(petal => {
-        const key = `${petal.type}-${petal.level}`;
-        deductCounts[key] = (deductCounts[key] || 0) + 1;
-    });
-
-    // 从availablePetals中扣除，同时考虑合成槽中已占用的花瓣
-    for (const [key, count] of Object.entries(deductCounts)) {
-        const [type, level] = key.split('-').map(Number);
-
-        // 首先检查合成槽中是否已占用该类型花瓣
-        const absorbSlotKey = `${type}-${level}`;
-        const absorbSlotCount = gameState.absorbSlots.reduce((total, slot) => {
-            if (slot && slot.type === type && slot.level === level) {
-                return total + slot.count;
-            }
-            return total;
-        }, 0);
-
-        for (let petal of gameState.availablePetals) {
-            if (petal.type === type && petal.level === level && petal.count > 0) {
-                // 确保不会扣除超过可用数量的花瓣
-                const availableCount = petal.count - absorbSlotCount;
-                const deductAmount = Math.min(availableCount, count);
-                if (deductAmount > 0) {
-                    petal.count -= deductAmount;
-                }
-                break;
-            }
-        }
-    }
-
-    console.log('从背包扣除的花瓣:', deductCounts);
-    console.log('扣除后的背包:', gameState.availablePetals);
-}
 
 // 基于服务器数据计算真实的可用花瓣数量
 function calculateTotalAvailablePetals() {
@@ -3657,7 +3826,7 @@ function calculateTotalAvailablePetals() {
     const totalPetals = [];
 
     // 解析服务器完整数据
-    for (let i = 0; i < 14; i++) {  // 扩展到13以包含egg花瓣
+    for (let i = 0; i < 15; i++) {  // 扩展到14以包含square花瓣
         const petalKey = `petal${i}`;
         const petalString = gameState.serverBuild[petalKey];
 
@@ -3852,12 +4021,27 @@ function initializeAvailablePetals(deductAbsorbSlots = true) {
     const currentSlots = [...gameState.absorbSlots];
     const currentTotal = gameState.absorbTotalCount;
 
-    // 模拟一些花瓣数据
-    if (gameState.serverBuild) {
-        gameState.availablePetals = parseServerBuild(gameState.serverBuild);
+    // 从allPetals重新计算可用花瓣
+    if (gameState.allPetals && gameState.allPetals.length > 0) {
+        // 深拷贝allPetals到availablePetals
+        gameState.availablePetals = gameState.allPetals.map(petal => ({...petal}));
+
+        // 扣除装备槽中的花瓣
+        deductEquippedPetalsFromAvailable();
 
         // 只有在需要时才扣除合成槽中已占用的花瓣数量
-        // 合成后的REFRESH_BUILD响应中，服务器数据已经扣除了合成的花瓣，不需要重复扣除
+        if (deductAbsorbSlots) {
+            adjustAvailablePetalsForAbsorbSlots();
+        }
+    } else if (gameState.serverBuild) {
+        // 如果没有allPetals，从serverBuild初始化（兼容旧逻辑）
+        const parsedPetals = parseServerBuild(gameState.serverBuild);
+        gameState.allPetals = parsedPetals.map(petal => ({...petal}));
+        gameState.availablePetals = parsedPetals.map(petal => ({...petal}));
+
+        // 扣除装备槽中的花瓣
+        deductEquippedPetalsFromAvailable();
+
         if (deductAbsorbSlots) {
             adjustAvailablePetalsForAbsorbSlots();
         }
@@ -3867,7 +4051,33 @@ function initializeAvailablePetals(deductAbsorbSlots = true) {
     gameState.absorbSlots = currentSlots;
     gameState.absorbTotalCount = currentTotal;
 
-    // 移除 initializeBagContent() 调用，改为在打开背包时才加载
+    console.log('重新计算的可用花瓣:', gameState.availablePetals);
+}
+
+// 从可用花瓣中扣除装备槽的花瓣
+function deductEquippedPetalsFromAvailable() {
+    // 统计装备槽中每种花瓣占用的数量
+    const equippedCounts = {};
+    gameState.equippedPetals.forEach(petal => {
+        if (petal && petal.type !== -1) {
+            const key = `${petal.type}-${petal.level}`;
+            equippedCounts[key] = (equippedCounts[key] || 0) + 1;
+        }
+    });
+
+    // 从availablePetals中扣除装备的花瓣
+    for (const [key, count] of Object.entries(equippedCounts)) {
+        const [type, level] = key.split('-').map(Number);
+
+        for (let petal of gameState.availablePetals) {
+            if (petal.type === type && petal.level === level && petal.count > 0) {
+                petal.count = Math.max(0, petal.count - count);
+                break;
+            }
+        }
+    }
+
+    console.log('装备槽扣除的花瓣:', equippedCounts);
 }
 
 // 调整可用花瓣数量，考虑合成槽中的花瓣
@@ -3984,8 +4194,8 @@ function handleDrop(e) {
 function parseServerBuild(buildData) {
     const availablePetals = [];
 
-    // 遍历petal0到petal13（共14种花瓣类型）
-    for (let i = 0; i < 14; i++) {
+    // 遍历petal0到petal14（共15种花瓣类型）
+    for (let i = 0; i < 15; i++) {
         const petalKey = `petal${i}`;
         const petalString = buildData[petalKey];
 
@@ -4106,30 +4316,11 @@ function returnPetalToBag(slotIndex) {
 
     console.log(`将槽位 ${slotIndex} 的花瓣归还到背包: ${equippedPetal.type}-${equippedPetal.level}`);
 
-    // 在背包中找到对应类型和等级的花瓣并增加数量
-    let found = false;
-    for (let petal of gameState.availablePetals) {
-        if (petal.type === equippedPetal.type && petal.level === equippedPetal.level) {
-            petal.count++;
-            console.log(`增加背包中花瓣数量: ${petal.type}-${petal.level}, 新数量: ${petal.count}`);
-            found = true;
-            break;
-        }
-    }
-
-    if (!found) {
-        console.log(`背包中没有找到对应花瓣 ${equippedPetal.type}-${equippedPetal.level}，创建新记录`);
-        // 如果背包中没有对应花瓣，创建一个新记录
-        gameState.availablePetals.push({
-            type: equippedPetal.type,
-            level: equippedPetal.level,
-            count: 1,
-            originalIndex: gameState.availablePetals.length
-        });
-    }
-
     // 清空装备槽
     gameState.equippedPetals[slotIndex] = null;
+
+    // 重新计算可用花瓣（会自动从allPetals重新计算并扣除装备的花瓣）
+    initializeAvailablePetals(true);
 
     // 更新UI
     const slot = equipmentSlots.querySelector(`.equipment-slot[data-index="${slotIndex}"]`);
@@ -4923,6 +5114,8 @@ function handleServerMessage(data) {
 
         switch(message.cmd) {
             case 'ABSORB_RESULT':
+                console.log('=== 收到 ABSORB_RESULT 消息 ===');
+                console.log('message:', message);
                 handleAbsorbResult(message);
                 break;
             case 'build': // 新用户，服务端分配了新ID
@@ -4971,11 +5164,15 @@ function handleServerMessage(data) {
                         gameState.serverBuild = message;
                         console.log('收到服务器bag信息:', message);
 
-                    // 如果在大厅界面，更新可用花瓣
+                        // 解析服务器数据并存储到allPetals
+                        const parsedPetals = parseServerBuild(message);
+                        gameState.allPetals = parsedPetals.map(petal => ({...petal}));
+                        console.log('更新allPetals:', gameState.allPetals);
+
+                        // 如果在大厅界面，更新可用花瓣
                         if (gameState.isLobby) {
-                            // 如果刚完成合成，服务器数据已经扣除了合成槽中的花瓣，不需要重复扣除
-                            const isPostSynthesis = gameState.isAbsorbing;
-                            initializeAvailablePetals(!isPostSynthesis);
+                            // 总是扣除合成槽，因为要基于当前的合成槽状态来计算可用花瓣
+                            initializeAvailablePetals(true);
                         }
                     }
 
@@ -7422,6 +7619,52 @@ const petalRenderMap = {
         ctx.ellipse(0, 0, p.radius, p.radius*1.35, 0, 0, Math.PI*2);
         ctx.fill();
         ctx.stroke();
+        ctx.closePath();
+    },
+    square: (p) => {
+        // 发光正方形花瓣，带粗边框
+        const glowSize = p.radius * 0.15; // 发光效果大小
+        const borderWidth = p.radius * 0.25; // 粗边框宽度
+
+        // 外层发光效果
+        ctx.shadowBlur = glowSize * 2;
+        ctx.shadowColor = blendColor('#ffff00', '#FF0000', blendAmount(p));
+
+        // 绘制发光外层
+        ctx.fillStyle = blendColor('rgba(255, 255, 100, 0.3)', 'rgba(255, 0, 0, 0.3)', blendAmount(p));
+        ctx.fillRect(-p.radius - glowSize, -p.radius - glowSize, (p.radius + glowSize) * 2, (p.radius + glowSize) * 2);
+
+        // 重置阴影
+        ctx.shadowBlur = 0;
+
+        // 主体正方形
+        ctx.fillStyle = blendColor('#ffeb3b', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+        }
+        ctx.fillRect(-p.radius, -p.radius, p.radius * 2, p.radius * 2);
+
+        // 粗边框
+        ctx.strokeStyle = blendColor('#ffc107', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.strokeStyle = "#FFFFFF";
+        }
+        ctx.lineWidth = borderWidth;
+        ctx.strokeRect(-p.radius, -p.radius, p.radius * 2, p.radius * 2);
+
+        // 内层装饰线条（增加层次感）
+        ctx.strokeStyle = blendColor('#fff59d', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+        }
+        ctx.lineWidth = borderWidth * 0.3;
+        ctx.strokeRect(-p.radius * 0.7, -p.radius * 0.7, p.radius * 1.4, p.radius * 1.4);
+
+        // 中心发光点
+        ctx.fillStyle = blendColor('rgba(255, 255, 255, 0.8)', 'rgba(255, 255, 255, 0.8)', blendAmount(p));
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius * 0.15, 0, Math.PI * 2);
+        ctx.fill();
         ctx.closePath();
     },
 };
