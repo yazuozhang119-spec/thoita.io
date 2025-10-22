@@ -2346,8 +2346,12 @@ function updateAbsorbPetalSelection() {
                 item.addEventListener('dragend', handleAbsorbPetalDragEnd);
 
                 // 添加点击事件（作为拖拽的替代）
-                item.addEventListener('click', () => {
-                    addPetalToFirstEmptySlot(petal, petal.originalIndex);
+                item.addEventListener('click', (e) => {
+                    if (e.shiftKey) {
+                        addAllPetalsToAbsorbSlots(petal, petal.originalIndex);
+                    } else {
+                        addPetalToFirstEmptySlot(petal, petal.originalIndex);
+                    }
                 });
 
                 petalContainer.appendChild(item);
@@ -2528,6 +2532,77 @@ function addPetalToAbsorbSlot(petalIndex, slotIndex) {
 function addPetalToFirstEmptySlot(petal, originalIndex) {
     // 直接调用添加函数，让它自己处理槽位逻辑
     addPetalToAbsorbSlot(originalIndex, 0); // 使用槽位0作为目标
+}
+
+// Shift+左键点击：添加所有同类花瓣到合成槽位
+function addAllPetalsToAbsorbSlots(petal, originalIndex) {
+    if (originalIndex >= 0 && originalIndex < gameState.availablePetals.length) {
+        const petal = gameState.availablePetals[originalIndex];
+
+        // 检查是否有足够的花瓣（至少需要5个）
+        if (petal.count < 5) {
+            alert('该花瓣数量不足5个，无法进行合成!');
+            return;
+        }
+
+        // 计算最多可以添加多少个花瓣（不能超过5个槽位，每个槽位最多容纳数量不限）
+        const maxCanAdd = Math.min(petal.count, 9999999); // 设置一个合理的上限
+
+        // 如果是第一次添加，设置当前合成类型
+        if (gameState.absorbTotalCount === 0) {
+            gameState.currentAbsorbType = petal.type;
+            gameState.currentAbsorbLevel = petal.level;
+        } else {
+            // 检查是否与当前合成类型相同
+            if (petal.type !== gameState.currentAbsorbType || petal.level !== gameState.currentAbsorbLevel) {
+                alert('只能合成相同类型和等级的花瓣!');
+                return;
+            }
+        }
+
+        // 计算实际可以添加的数量（确保不超过总槽位限制）
+        const availableSlots = 5; // 固定5个槽位
+        const actualAddAmount = Math.min(maxCanAdd, petal.count);
+
+        // 清空现有槽位并重新分配所有花瓣
+        for (let i = 0; i < 5; i++) {
+            gameState.absorbSlots[i] = {
+                type: petal.type,
+                level: petal.level,
+                originalIndex: originalIndex,
+                count: 0
+            };
+        }
+
+        // 平均分配花瓣到5个槽位
+        const baseCount = Math.floor(actualAddAmount / 5);
+        const remainder = actualAddAmount % 5;
+
+        for (let i = 0; i < 5; i++) {
+            gameState.absorbSlots[i].count = baseCount + (i < remainder ? 1 : 0);
+        }
+
+        // 更新总数量
+        gameState.absorbTotalCount = actualAddAmount;
+
+        // 减少可用花瓣数量
+        petal.count -= actualAddAmount;
+
+        console.log(`Shift+点击添加了 ${actualAddAmount} 个花瓣到合成槽位`);
+
+        // 更新所有槽位的显示
+        for (let i = 0; i < 5; i++) {
+            updateAbsorbSlotDisplay(i);
+        }
+
+        // 更新花瓣选择界面
+        if (absorbWindow.style.display === 'block') {
+            updateAbsorbPetalSelection();
+        }
+
+        // 更新合成按钮状态
+        updateAbsorbButton();
+    }
 }
 
 // 更新槽位显示
@@ -5374,7 +5449,10 @@ function handleServerMessage(data) {
                 startGame();
                 break;
 
-
+            case 'CHECKIN_RESULT':
+                // 处理签到结果
+                handleCheckinResult(message);
+                break;
 
             case 'GAME_DATA':
                 // 处理游戏数据
@@ -9428,3 +9506,314 @@ initGame();
 
 // 初始化start wave功能
 initStartWaveFeatures();
+
+// ==================== 签到功能 ====================
+
+// 签到窗口相关元素
+const checkinWindow = document.getElementById('checkinWindow');
+const checkinButton = document.getElementById('checkinButton');
+const closeCheckin = document.getElementById('closeCheckin');
+const checkinActionButton = document.getElementById('checkinActionButton');
+const checkinMessage = document.getElementById('checkinMessage');
+const checkinResult = document.getElementById('checkinResult');
+const checkinResultContent = document.getElementById('checkinResultContent');
+const checkinLightCones = document.getElementById('checkinLightCones');
+const checkinTitle = document.getElementById('checkinTitle');
+const checkinStreakDisplay = document.getElementById('checkinStreakDisplay');
+const checkinStreakText = document.getElementById('checkinStreakText');
+const checkinRewardDisplay = document.getElementById('checkinRewardDisplay');
+const checkinRewardItems = document.getElementById('checkinRewardItems');
+const checkinXpDisplay = document.getElementById('checkinXpDisplay');
+
+// 签到功能初始化
+function initCheckinFeatures() {
+    // 绑定事件监听器
+    if (checkinActionButton) {
+        checkinActionButton.addEventListener('click', performCheckin);
+    }
+
+    // 自动打开签到窗口
+    openCheckinWindow();
+
+    console.log('签到功能已初始化');
+}
+
+// 打开签到窗口
+function openCheckinWindow() {
+    if (checkinWindow) {
+        checkinWindow.style.display = 'block';
+        // 重置状态
+        resetCheckinUI();
+        // 请求签到状态
+        requestCheckinStatus();
+    }
+}
+
+// 关闭签到窗口
+function closeCheckinWindow() {
+    if (checkinWindow) {
+        checkinWindow.style.display = 'none';
+    }
+}
+
+// 重置签到界面
+function resetCheckinUI() {
+    if (checkinMessage) {
+        checkinMessage.textContent = '正在获取签到状态...';
+    }
+    if (checkinActionButton) {
+        checkinActionButton.disabled = true;
+        checkinActionButton.textContent = 'CLAIM';
+    }
+    if (checkinResult) {
+        checkinResult.style.display = 'none';
+    }
+
+    // 重置新增的元素
+    if (checkinLightCones) {
+        checkinLightCones.classList.remove('active');
+    }
+    if (checkinTitle) {
+        checkinTitle.textContent = '每日签到';
+    }
+    if (checkinStreakDisplay) {
+        checkinStreakDisplay.style.display = 'block';
+    }
+    if (checkinRewardDisplay) {
+        checkinRewardDisplay.style.display = 'none';
+    }
+    if (checkinStreakText) {
+        checkinStreakText.textContent = 'Loading...';
+        checkinStreakText.classList.remove('rainbow');
+    }
+    // 移除compact类，重置为正常大小
+    if (checkinWindow) {
+        checkinWindow.classList.remove('compact');
+    }
+}
+
+// 请求签到状态
+function requestCheckinStatus() {
+    // 暂时使用签到命令来获取状态，后续可以优化为单独的状态查询命令
+    sendToServer({
+        COMMAND: 'DAILY_CHECKIN'
+    });
+}
+
+// 执行签到
+function performCheckin() {
+    if (checkinActionButton) {
+        checkinActionButton.disabled = true;
+        checkinActionButton.textContent = '签到中...';
+    }
+
+    sendToServer({
+        COMMAND: 'DAILY_CHECKIN'
+    });
+}
+
+// 处理签到结果
+function handleCheckinResult(message) {
+    console.log('收到签到结果:', message);
+
+    if (message.success) {
+        // 签到成功 - 启用光锥效果
+        if (checkinLightCones) {
+            checkinLightCones.classList.add('active');
+        }
+
+        // 显示连续签到天数
+        if (message.streak && checkinStreakDisplay && checkinStreakText) {
+            checkinStreakDisplay.style.display = 'block';
+            if (message.streak === 0) {
+                checkinStreakText.textContent = 'No streak';
+            } else if (message.streak === 1) {
+                checkinStreakText.textContent = 'Streak: 1 Day!';
+            } else {
+                checkinStreakText.textContent = `Streak: ${message.streak} Days!`;
+                if (message.streak % 10 === 0) {
+                    checkinStreakText.classList.add('rainbow');
+                }
+            }
+        }
+
+        // 显示奖励信息 - 使用新的UI布局
+        if (message.rewards) {
+            if (checkinRewardDisplay) {
+                checkinRewardDisplay.style.display = 'block';
+            }
+
+            // 显示花瓣奖励
+            if (message.rewards.petals && message.rewards.petals.length > 0 && checkinRewardItems) {
+                checkinRewardItems.innerHTML = '';
+                message.rewards.petals.forEach(petal => {
+                    // 创建花瓣容器，类似petal-item
+                    const petalItem = document.createElement('div');
+                    petalItem.className = 'petal-item';
+                    petalItem.style.cssText = 'display: inline-block; margin: 8px; position: relative; width: 50px; height: 50px;';
+                    petalItem.title = `类型: ${objectTypeMap[petal[0]] || 'unknown'}, 等级: ${petal[1]} (${getLevelName(petal[1])})`;
+
+                    // 创建canvas元素
+                    const canvas = document.createElement('canvas');
+                    petalItem.appendChild(canvas);
+
+                    // 直接调用drawStaticPetalItem绘制花瓣
+                    const petalData = {
+                        type: petal[0],
+                        level: petal[1],
+                        count: 1
+                    };
+                    drawStaticPetalItem(petalData, canvas, {displaySize: 48});
+
+                    checkinRewardItems.appendChild(petalItem);
+                });
+            }
+
+            // 显示经验奖励
+            if (message.rewards.xp && checkinXpDisplay) {
+                checkinXpDisplay.textContent = `+${message.rewards.xp} xp`;
+            }
+        }
+
+        if (checkinActionButton) {
+            checkinActionButton.textContent = '签到';
+            checkinActionButton.disabled = false;  // 允许点击关闭
+            checkinActionButton.onclick = closeCheckinWindow;  // 点击关闭窗口
+        }
+
+        if (checkinMessage) {
+            checkinMessage.textContent = message.message || '签到成功！';
+            checkinStatus.style.display = 'none'; // 隐藏状态消息，因为成功时显示奖励
+        }
+
+        
+        // 兼容旧的奖励显示方式
+        if (message.rewards && checkinResult && checkinResultContent) {
+            let rewardText = '';
+            if (message.rewards.message) {
+                rewardText += `<p>${message.rewards.message}</p>`;
+            }
+            if (message.rewards.petals && message.rewards.petals.length > 0) {
+                rewardText += '<ul>';
+                message.rewards.petals.forEach(petal => {
+                    rewardText += `<li>花瓣类型 ${petal[0]} 等级 ${petal[1]} x1</li>`;
+                });
+                rewardText += '</ul>';
+            }
+            if (rewardText) {
+                checkinResultContent.innerHTML = rewardText;
+                checkinResult.style.display = 'block';
+            }
+        }
+
+        // 如果在大厅界面，可以刷新背包数据
+        if (gameState.isLobby) {
+            setTimeout(() => {
+                sendToServer({ COMMAND: 'REFRESH_BUILD' });
+            }, 1000);
+        }
+    } else {
+        // 签到失败或已经签到过
+        if (checkinMessage) {
+            checkinMessage.textContent = message.message || '签到失败';
+            checkinStatus.style.display = 'flex'; // 显示状态消息
+        }
+
+        // 如果已经签到过，3秒后自动关闭窗口
+        if (message.can_checkin === false) {
+            setTimeout(() => {
+                if (checkinWindow) {
+                    checkinWindow.style.display = 'none';
+                }
+            }, 3000);
+        }
+        if (checkinActionButton) {
+            if (message.can_checkin === false) {
+                checkinActionButton.style.display = 'none'; // 完全隐藏按钮
+                // 设置紧凑窗口模式
+                if (checkinWindow) {
+                    checkinWindow.classList.add('compact');
+                }
+                // 如果有倒计时，启动倒计时器
+                if (message.next_checkin_time) {
+                    startCountdown(message.next_checkin_time);
+                }
+                // 显示连续签到次数
+                if (message.streak && checkinStreakDisplay && checkinStreakText) {
+                    checkinStreakDisplay.style.display = 'block';
+                    if (message.streak === 0) {
+                        checkinStreakText.textContent = 'No streak';
+                    } else if (message.streak === 1) {
+                        checkinStreakText.textContent = 'Streak: 1 Day!';
+                    } else {
+                        checkinStreakText.textContent = `Streak: ${message.streak} Days!`;
+                        if (message.streak % 10 === 0) {
+                            checkinStreakText.classList.add('rainbow');
+                        }
+                    }
+                }
+            } else {
+                checkinActionButton.style.display = 'block'; // 显示按钮
+                checkinActionButton.textContent = '签到';
+                checkinActionButton.disabled = false;
+                // 移除紧凑窗口模式
+                if (checkinWindow) {
+                    checkinWindow.classList.remove('compact');
+                }
+            }
+        }
+        // 隐藏奖励显示
+        if (checkinRewardDisplay) {
+            checkinRewardDisplay.style.display = 'none';
+        }
+    }
+}
+
+// 倒计时器变量
+let countdownInterval = null;
+
+function startCountdown(seconds) {
+    // 清除之前的倒计时
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+    }
+
+    // 确保秒数是整数
+    seconds = Math.floor(seconds);
+
+    // 更新倒计时显示
+    function updateCountdown() {
+        if (seconds <= 0) {
+            checkinMessage.textContent = '现在可以签到了！';
+            checkinActionButton.textContent = 'CLAIM';
+            checkinActionButton.disabled = false;
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+            return;
+        }
+
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+
+        let timeString = '';
+        if (hours > 0) {
+            timeString = `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        } else {
+            timeString = `${minutes}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        checkinMessage.textContent = timeString;
+        seconds--;
+    }
+
+    updateCountdown();
+    countdownInterval = setInterval(updateCountdown, 1000);
+}
+
+// 初始化签到功能
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        initCheckinFeatures();
+    }, 100);
+});

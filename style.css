@@ -1993,4 +1993,403 @@ button {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
+/* ==================== 签到窗口样式 ==================== */
+
+#checkinWindow {
+    display: none;
+    position: absolute;
+    top: 15px;  /* 向下移动20px */
+    right: 20px;
+    width: 240px;
+    height: 220px;  /* 增加高度到220px */
+    background: #895adb;
+    border: 6px solid #6f49b1;
+    border-radius: 3px;
+    padding: 0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    color: white;
+    text-align: center;
+    box-sizing: border-box;
+    font-family: 'Ubuntu', sans-serif;
+    animation: slideIn 0.3s ease-out;
+    z-index: 16;
+}
+
+#checkinWindow.compact {
+    height: 130px;  /* 紧凑模式下的较小高度 */
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+#checkinWindow h2 {
+    display: none;
+}
+
+#checkinStatus {
+    position: absolute;
+    top: 50px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    z-index: 10;
+}
+
+#checkinMessage {
+    font-size: 16px !important;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
+    font-family: 'Ubuntu', sans-serif;
+    letter-spacing: -0.05px;
+    text-align: center;
+}
+
+#checkinButtonContainer {
+    position: absolute;
+    left: 0;
+    bottom: 8px;
+    width: 100%;
+    height: 50px;
+}
+
+.checkin-button {
+    background: #55bb55;
+    border: 5px solid #459745;
+    border-radius: 2px;
+    color: white;
+    padding: 0;
+    font-size: 14px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
+    min-width: 58px;
+    height: 34px;
+    font-family: 'Ubuntu', sans-serif;
+    letter-spacing: -0.05px;
+    position: absolute;
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.checkin-button:hover:not(:disabled) {
+    background: #55bb55;
+    border-color: #459745;
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.checkin-button:disabled {
+    background: #888;
+    border-color: #666;
+    cursor: not-allowed;
+}
+
+.checkin-button:active:not(:disabled) {
+    transform: translateX(-50%) scale(0.95);
+}
+
+.checkin-button:disabled {
+    background: #888;
+    border-color: #666;
+    cursor: not-allowed;
+    filter: none;
+}
+
+#checkinResult {
+    display: none;
+}
+
+#checkinResult h3 {
+    margin: 0 0 10px 0;
+    color: #fff;
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
+    font-size: 18px;
+    font-weight: 900;
+    font-family: 'Ubuntu', sans-serif;
+    letter-spacing: -0.05px;
+}
+
+#checkinResult h4 {
+    margin: 8px 0;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Ubuntu', sans-serif;
+}
+
+#checkinResultContent p {
+    margin: 8px 0;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    font-size: 14px;
+    font-weight: 400;
+    font-family: 'Ubuntu', sans-serif;
+}
+
+#checkinResultContent ul {
+    margin: 8px 0;
+    padding-left: 15px;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    font-family: 'Ubuntu', sans-serif;
+}
+
+#checkinResultContent li {
+    margin: 3px 0;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 400;
+    font-family: 'Ubuntu', sans-serif;
+}
+
+/* 光锥效果 */
+.checkin-light-cones {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    border-radius: 3px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    clip-path: inset(0 0 0 0 round 3px);
+}
+
+.checkin-light-cones.active {
+    opacity: 1;
+}
+
+.checkin-light-cones::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 300px;
+    height: 300px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 70%);
+    animation: rotateLightCones 10s linear infinite;
+}
+
+@keyframes rotateLightCones {
+    from {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+    to {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+/* 连续签到显示 */
+#checkinStreakDisplay {
+    position: absolute;
+    top: 15px;  /* 在状态消息上方 */
+    left: 0;
+    width: 100%;
+    text-align: center;
+}
+
+#checkinStreakText {
+    font-size: 22px;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.5);
+    font-family: 'Ubuntu', sans-serif;
+    letter-spacing: -0.05px;
+    text-align: center;
+    margin: 0 auto;
+}
+
+#checkinStreakText.rainbow {
+    animation: rainbowText 2s linear infinite;
+}
+
+@keyframes rainbowText {
+    0% { color: hsl(0, 60%, 60%); }
+    8.33% { color: hsl(30, 60%, 60%); }
+    16.66% { color: hsl(60, 60%, 60%); }
+    25% { color: hsl(90, 60%, 60%); }
+    33.33% { color: hsl(120, 60%, 60%); }
+    41.66% { color: hsl(150, 60%, 60%); }
+    50% { color: hsl(180, 60%, 60%); }
+    58.33% { color: hsl(210, 60%, 60%); }
+    66.66% { color: hsl(240, 60%, 60%); }
+    75% { color: hsl(270, 60%, 60%); }
+    83.33% { color: hsl(300, 60%, 60%); }
+    91.66% { color: hsl(330, 60%, 60%); }
+    100% { color: hsl(360, 60%, 60%); }
+}
+
+/* 奖励显示区域 */
+#checkinRewardDisplay {
+    position: absolute;
+    top: 55px;  /* 上移10px */
+    left: 0;
+    width: 100%;
+    text-align: center;
+    z-index: 10;
+}
+
+#checkinRewardText {
+    font-size: 18px;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.5);
+    font-family: 'Ubuntu', sans-serif;
+    letter-spacing: -0.05px;
+    margin-bottom: 0;
+    text-align: center;
+}
+
+#checkinRewardItems {
+    position: relative;
+    min-height: 45px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    margin-top: 5px;
+}
+
+#checkinXpDisplay {
+    display: none;
+}
+
+/* 关闭按钮样式 */
+#checkinWindow .close-button {
+    position: absolute;
+    top: 5px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
+    transition: color 0.2s ease;
+    font-family: 'Ubuntu', sans-serif;
+    z-index: 10;
+}
+
+#checkinWindow .close-button:hover {
+    color: #fff;
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    #checkinWindow {
+        top: 10px;
+        right: 10px;
+        width: 240px;
+        padding: 20px 18px;
+    }
+
+    #checkinWindow h2 {
+        font-size: 20px;
+        margin-bottom: 25px;
+    }
+
+    #checkinMessage {
+        font-size: 14px;
+    }
+
+    #checkinStreakText {
+        font-size: 16px;
+    }
+
+    #checkinRewardText {
+        font-size: 16px;
+    }
+
+    .checkin-button {
+        padding: 8px 18px;
+        font-size: 13px;
+        min-width: 58px;
+        height: 32px;
+    }
+
+    #checkinResult {
+        padding: 12px;
+        margin-top: 12px;
+    }
+
+    #checkinResult h3 {
+        font-size: 16px;
+    }
+
+    #checkinResultContent {
+        font-size: 12px;
+    }
+}
+
+/* 超小屏幕适配 */
+@media (max-width: 480px) {
+    #checkinWindow {
+        top: 5px;
+        right: 5px;
+        width: 220px;
+        padding: 18px 15px;
+    }
+
+    #checkinWindow h2 {
+        font-size: 18px;
+        margin-bottom: 20px;
+    }
+
+    #checkinMessage {
+        font-size: 13px;
+    }
+
+    #checkinStreakText {
+        font-size: 14px;
+    }
+
+    #checkinRewardText {
+        font-size: 14px;
+    }
+
+    .checkin-button {
+        padding: 6px 15px;
+        font-size: 12px;
+        min-width: 50px;
+        height: 30px;
+    }
+
+    #checkinResult {
+        padding: 10px;
+        margin-top: 10px;
+    }
+
+    #checkinResult h3 {
+        font-size: 14px;
+    }
+
+    #checkinResultContent {
+        font-size: 11px;
+    }
+}
+
 
