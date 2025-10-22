@@ -3832,6 +3832,13 @@ function showLobby() {
         autoEquipSavedBuild();
     }
 
+    // 延迟1秒后打开签到界面，确保大厅界面完全加载
+    setTimeout(() => {
+        if (typeof openCheckinWindow === 'function') {
+            openCheckinWindow();
+        }
+    }, 1000);
+
     // 更新房间信息
     updateRoomInfo();
 }
@@ -9531,9 +9538,6 @@ function initCheckinFeatures() {
     if (checkinActionButton) {
         checkinActionButton.addEventListener('click', performCheckin);
     }
-
-    // 自动打开签到窗口
-    openCheckinWindow();
 
     console.log('签到功能已初始化');
 }
