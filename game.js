@@ -1437,6 +1437,11 @@ window.gameState = {
     mouseActiveTimer: null,
     // 键盘移动帧计数器（用于降低更新频率）
     keyboardMoveFrame: 0,
+    // 键盘覆盖鼠标标志
+    keyboardOverrideMouse: false,
+    // 当前鼠标位置（用于持续发送）
+    currentMouseX: 0,
+    currentMouseY: 0,
     absorbTotalCount: 0, // 记录总花瓣数量
     currentAbsorbType: null,
     currentAbsorbLevel: null,
@@ -2699,6 +2704,57 @@ function updateAbsorbButton() {
         absorbActionButton.textContent = gameState.isAbsorbing ? '合成中...' : '合成';
     } else {
         absorbActionButton.textContent = '合成';
+    }
+
+    // 更新合成概率显示
+    const absorbChanceText = document.getElementById('absorbChanceText');
+    console.log('updateAbsorbButton - currentAbsorbLevel:', gameState.currentAbsorbLevel, 'absorbTotalCount:', gameState.absorbTotalCount);
+
+    if (absorbChanceText && gameState.currentAbsorbLevel !== null && gameState.currentAbsorbLevel < 19) {
+        // 定义合成概率
+        const absorb_chances = {
+            1: 0.3,   // common -> unusual: 30%
+            2: 0.25,  // unusual -> rare: 25%
+            3: 0.2,   // rare -> epic: 20%
+            4: 0.15,  // epic -> legendary: 15%
+            5: 0.1,   // legendary -> mythic: 10%
+            6: 0.08,  // mythic -> ultra: 8%
+            7: 0.05,  // ultra -> super: 5%
+            8: 0.04,  // super -> omega: 4%
+            9: 0.03,  // omega -> fabled: 3%
+            10: 0.02, // fabled -> divine: 2%
+            11: 0.01, // divine -> supreme: 1%
+            12: 0.01, // supreme -> omnipotent: 1%
+            13: 0.009, // omnipotent -> astral: 0.9%
+            14: 0.008, // astral -> celestial: 0.8%
+            15: 0.007, // celestial -> seraphic: 0.7%
+            16: 0.005, // seraphic -> paradisiac: 0.5%
+            17: 0.004, // paradisiac -> protean: 0.4%
+            18: 0.001  // protean -> unsurpassed: 0.1%
+        };
+
+        const chance = absorb_chances[gameState.currentAbsorbLevel];
+        console.log('Chance for level', gameState.currentAbsorbLevel, ':', chance);
+
+        if (chance !== undefined) {
+            const percentage = (chance * 100).toFixed(1);
+            absorbChanceText.textContent = `成功概率: ${percentage}%`;
+            absorbChanceText.style.color = chance < 0.05 ? '#ff6b6b' : chance < 0.15 ? '#ffa726' : '#66bb6a';
+            console.log('Setting probability text:', absorbChanceText.textContent);
+        } else {
+            absorbChanceText.textContent = '';
+        }
+    } else {
+        console.log('Probability display conditions not met');
+        if (absorbChanceText) {
+            absorbChanceText.textContent = '';
+        }
+    }
+
+    // 测试：直接设置一个文本来确保元素可见
+    if (absorbChanceText && gameState.currentAbsorbLevel === null && gameState.absorbTotalCount > 0) {
+        absorbChanceText.textContent = '请添加5个相同花瓣';
+        absorbChanceText.style.color = '#888';
     }
 }
 
@@ -5576,11 +5632,11 @@ function handleServerMessage(data) {
                     // 解析统一的对象列表
                     message.objects.forEach(obj => {
                         // 动态处理两种不同的传输格式
-                        let typeIdx, position, size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured;
+                        let typeIdx, position, size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured, player_name;
 
-                        if (obj.length >= 9) {
-                            // # 花朵使用扩展传输格式: [idx, position, max_size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured]
-                            [typeIdx, position, size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured] = obj;
+                        if (obj.length >= 10) {
+                            // # 花朵使用扩展传输格式: [idx, position, max_size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured, player_name]
+                            [typeIdx, position, size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured, player_name] = obj;
                         } else if (obj.length === 5) {
                             // 其他对象普通格式: [typeIdx, position, size, angle, is_injured]
                             [typeIdx, position, size, angle, is_injured] = obj;
@@ -5616,7 +5672,9 @@ function handleServerMessage(data) {
                             health: health,
                             max_health: max_health,
                             // 受伤状态
-                            is_injured: is_injured || false
+                            is_injured: is_injured || false,
+                            // 玩家名字（只有花朵对象才有）
+                            player_name: player_name || null
                         };
 
                         
@@ -5814,6 +5872,17 @@ function handleMouseMove(event) {
     // 计算角度
     gameState.playerAngle = Math.atan2(relativeY, relativeX);
 
+    // 除以考虑canvas缩放的屏幕高度的四分之一来实现动态速度控制
+    const canvasScale = gameState.scale || 1;
+    const divisor = (window.innerHeight / 4) / canvasScale;
+
+    const dynamicX = relativeX / divisor;
+    const dynamicY = relativeY / divisor;
+
+    // 保存当前鼠标位置
+    gameState.currentMouseX = dynamicX;
+    gameState.currentMouseY = dynamicY;
+
     // 标记鼠标处于活跃状态
     gameState.isMouseActive = true;
 
@@ -5822,16 +5891,24 @@ function handleMouseMove(event) {
         clearTimeout(gameState.mouseActiveTimer);
     }
 
-    // 设置新的定时器，1秒后重置鼠标活跃状态
+    // 设置新的定时器，1秒后重置鼠标活跃状态（不重置位置）
     gameState.mouseActiveTimer = setTimeout(() => {
         gameState.isMouseActive = false;
     }, 1000);
+}
 
-    // 发送鼠标位置到服务器
+// 持续发送鼠标位置信息
+function sendMousePosition() {
+    if (!gameState.connected || gameState.isLobby) return;
+
+    // 如果开启键盘移动，禁用鼠标移动控制，只保留左右键和滚轮
+    if (gameState.keyboardMovement) return;
+
+    // 时刻发送当前鼠标位置
     sendToServer({
         COMMAND: 'SEND_DATA',
         client_name: gameState.playerName,
-        data: [relativeX, relativeY, gameState.playerState],
+        data: [gameState.currentMouseX, gameState.currentMouseY, gameState.playerState],
         id: gameState.playerId
     });
 }
@@ -5870,17 +5947,14 @@ function handleMouseUp(event) {
     });
 }
 
-// 处理键盘移动和攻击
-function handleKeyboardInput() {
-    if (!gameState.connected || gameState.isLobby || !gameState.keyboardMovement) return;
+// 处理键盘攻击和防守状态（始终有效，不需要开启键盘移动设置）
+function handleKeyboardAttackDefense() {
+    if (!gameState.connected || gameState.isLobby) return;
 
-    // 如果鼠标处于活跃状态，暂停键盘移动以避免冲突
-    if (gameState.isMouseActive) return;
+    // 只有在有键盘按键按下时才处理攻击状态
+    let keyboardActive = gameState.keyboardAttack || gameState.keyboardDefend;
 
-    // 限制键盘移动更新频率，每3帧更新一次位置
-    gameState.keyboardMoveFrame++;
-    if (gameState.keyboardMoveFrame % 3 !== 0) {
-        // 只处理攻击状态，不处理移动
+    if (keyboardActive) {
         let newState = gameState.playerState;
         if (gameState.keyboardAttack && !gameState.keyboardDefend) {
             newState = 1; // 攻击
@@ -5900,7 +5974,28 @@ function handleKeyboardInput() {
                 id: gameState.playerId
             });
         }
-        return;
+    }
+}
+
+// 处理键盘移动和攻击
+function handleKeyboardInput() {
+    if (!gameState.connected || gameState.isLobby) return;
+
+    // 首先处理攻击和防守状态（始终有效）
+    handleKeyboardAttackDefense();
+
+    // 键盘移动需要开启键盘移动设置
+    if (!gameState.keyboardMovement) return;
+
+    // 如果鼠标处于活跃状态，标记键盘优先，让键盘操作覆盖鼠标
+    if (gameState.isMouseActive) {
+        gameState.keyboardOverrideMouse = true;
+    }
+
+    // 限制键盘移动更新频率，每3帧更新一次位置
+    gameState.keyboardMoveFrame++;
+    if (gameState.keyboardMoveFrame % 3 !== 0) {
+        return; // 移动状态更新时已经处理了攻击状态
     }
 
     // 计算移动方向
@@ -5916,21 +6011,28 @@ function handleKeyboardInput() {
         dx = (dx / length) * gameState.keyboardSpeed;
         dy = (dy / length) * gameState.keyboardSpeed;
 
-        // 限制移动速度，避免过快导致抖动
-        const maxSpeed = 3;
-        const finalDx = Math.max(-maxSpeed, Math.min(maxSpeed, dx));
-        const finalDy = Math.max(-maxSpeed, Math.min(maxSpeed, dy));
 
         // 计算角度（基于移动方向）
-        gameState.playerAngle = Math.atan2(finalDy, finalDx);
+        gameState.playerAngle = Math.atan2(dx, dy);
 
         // 发送移动指令到服务器（不直接修改本地位置，让服务器决定）
         sendToServer({
             COMMAND: 'SEND_DATA',
             client_name: gameState.playerName,
-            data: [finalDx, finalDy, gameState.playerState],
+            data: [dx, dy, gameState.playerState],
             id: gameState.playerId
         });
+    } else {
+        // 如果开启键盘移动但没有按任何移动键，发送[0,0]表示不移动
+        sendToServer({
+            COMMAND: 'SEND_DATA',
+            client_name: gameState.playerName,
+            data: [0, 0, gameState.playerState],
+            id: gameState.playerId
+        });
+
+        // 重置键盘覆盖标志，让鼠标可以重新工作
+        gameState.keyboardOverrideMouse = false;
     }
 
     // 处理攻击状态（只有在没有鼠标冲突时才处理）
@@ -6084,6 +6186,9 @@ function gameLoop(timestamp) {
 
         // 处理键盘输入（每帧都处理以确保流畅性）
         handleKeyboardInput();
+
+        // 持续发送鼠标位置（每帧都发送）
+        sendMousePosition();
 
         
         // 每10帧更新一次FPS显示，减少DOM操作
@@ -6297,8 +6402,8 @@ function drawOtherPlayerHealthBarAndFlower(barX, barY, flower) {
     }
 
     // 在血条左侧绘制小花朵
-    const flowerSize = 18;
-    const miniFlowerX = barX - flowerSize - 10; // 在血条左侧
+    const flowerSize = 36; // 与玩家自己的小花朵大小一致
+    const miniFlowerX = barX - flowerSize + 20; // 向右移动30像素
     const miniFlowerY = barY + barHeight / 2; // 垂直居中
 
     // 创建玩家对象用于绘制迷你花朵
@@ -6313,10 +6418,10 @@ function drawOtherPlayerHealthBarAndFlower(barX, barY, flower) {
     drawOtherPlayerMiniFlower(miniFlowerX, miniFlowerY, flowerSize, playerData);
 
     // 显示玩家名称（如果有）
-    if (flower.name || flower.id) {
+    if (flower.player_name || flower.id) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
         ctx.font = '12px Arial';
-        const playerName = flower.name || `Player ${flower.id}`;
+        const playerName = flower.player_name || `Player ${flower.id}`;
         ctx.fillText(playerName, barX, barY - 5);
     }
 }
@@ -6419,8 +6524,8 @@ function drawOtherPlayerHealthBar(flowerX, flowerY, flowerRadius, currentHealth,
     }
 
     // 在血条左侧绘制小花朵（参照玩家自己的样式）
-    const flowerSize = 18;
-    const miniFlowerX = barX - flowerSize - 10; // 在血条左侧
+    const flowerSize = 36; // 与玩家自己的小花朵大小一致
+    const miniFlowerX = barX - flowerSize + 20; // 向右移动30像素
     const miniFlowerY = barY + barHeight / 2; // 垂直居中
 
     // 绘制其他玩家的迷你花朵
@@ -9266,7 +9371,28 @@ window.showPerformanceStats = function() {
 
 // 键盘移动事件监听器
 document.addEventListener('keydown', (e) => {
-    // 只在游戏中处理键盘移动
+    // 在游戏中始终处理空格和shift键，不需要开启键盘移动设置
+    if (!gameState.isLobby && gameState.connected) {
+        const key = e.key.toLowerCase();
+
+        // 攻击键（空格）- 始终监听
+        if (key === ' ' || key === 'space') {
+            gameState.keys[' '] = true;
+            gameState.keys.Space = true;
+            gameState.keyboardAttack = true;
+            e.preventDefault();
+        }
+
+        // 防守键（Shift）- 始终监听
+        if (key === 'shift') {
+            gameState.keys.shift = true;
+            gameState.keys.Shift = true;
+            gameState.keyboardDefend = true;
+            e.preventDefault();
+        }
+    }
+
+    // 移动键需要开启键盘移动设置
     if (!gameState.isLobby && gameState.connected && gameState.keyboardMovement) {
         const key = e.key.toLowerCase();
 
@@ -9289,22 +9415,6 @@ document.addEventListener('keydown', (e) => {
         if (key === 'd' || key === 'arrowright') {
             gameState.keys.d = true;
             gameState.keys.ArrowRight = true;
-            e.preventDefault();
-        }
-
-        // 攻击键（空格）
-        if (key === ' ' || key === 'space') {
-            gameState.keys[' '] = true;
-            gameState.keys.Space = true;
-            gameState.keyboardAttack = true;
-            e.preventDefault();
-        }
-
-        // 防守键（Shift）
-        if (key === 'shift') {
-            gameState.keys.shift = true;
-            gameState.keys.Shift = true;
-            gameState.keyboardDefend = true;
             e.preventDefault();
         }
     }
@@ -9337,7 +9447,28 @@ document.addEventListener('keydown', (e) => {
 
 // 键盘释放事件监听器
 document.addEventListener('keyup', (e) => {
-    // 只在游戏中处理键盘移动
+    // 在游戏中始终处理空格和shift键，不需要开启键盘移动设置
+    if (!gameState.isLobby && gameState.connected) {
+        const key = e.key.toLowerCase();
+
+        // 攻击键（空格）- 始终监听
+        if (key === ' ' || key === 'space') {
+            gameState.keys[' '] = false;
+            gameState.keys.Space = false;
+            gameState.keyboardAttack = false;
+            e.preventDefault();
+        }
+
+        // 防守键（Shift）- 始终监听
+        if (key === 'shift') {
+            gameState.keys.shift = false;
+            gameState.keys.Shift = false;
+            gameState.keyboardDefend = false;
+            e.preventDefault();
+        }
+    }
+
+    // 移动键需要开启键盘移动设置
     if (!gameState.isLobby && gameState.connected && gameState.keyboardMovement) {
         const key = e.key.toLowerCase();
 
@@ -9360,22 +9491,6 @@ document.addEventListener('keyup', (e) => {
         if (key === 'd' || key === 'arrowright') {
             gameState.keys.d = false;
             gameState.keys.ArrowRight = false;
-            e.preventDefault();
-        }
-
-        // 攻击键（空格）
-        if (key === ' ' || key === 'space') {
-            gameState.keys[' '] = false;
-            gameState.keys.Space = false;
-            gameState.keyboardAttack = false;
-            e.preventDefault();
-        }
-
-        // 防守键（Shift）
-        if (key === 'shift') {
-            gameState.keys.shift = false;
-            gameState.keys.Shift = false;
-            gameState.keyboardDefend = false;
             e.preventDefault();
         }
     }
@@ -9905,4 +10020,4 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         initCheckinFeatures();
     }, 100);
-});
+})
