@@ -193,6 +193,36 @@ div#inventory,
     cursor: pointer;
 }
 
+/* 退出按钮样式 */
+.exit-button {
+    position: absolute;
+    top: 35px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 2px solid #333;
+    color: #333;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    display: none; /* 默认隐藏，只在游戏中显示 */
+    z-index: 1000;
+    transition: all 0.2s ease;
+}
+
+.exit-button:hover {
+    background-color: #ff4444;
+    color: white;
+    border-color: #cc0000;
+    transform: scale(1.1);
+}
+
+.exit-button:active {
+    transform: scale(0.95);
+}
+
 /* 新添加的样式 */
 #buttonContainer {
     display: flex;

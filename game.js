@@ -1321,7 +1321,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -1493,6 +1493,7 @@ const playerNameInput = document.getElementById('playerName');
 const startButton = document.getElementById('startButton');
 const gameOverScreen = document.getElementById('gameOver');
 const restartButton = document.getElementById('restartButton');
+const exitButton = document.getElementById('exitButton');
 const lobbyUI = document.getElementById('lobbyUI');
 const equipmentSlots = document.getElementById('equipmentSlots');
 const bagWindow = document.getElementById('bagWindow');
@@ -2136,6 +2137,11 @@ function initGame() {
     const restartButton = document.getElementById('restartButton');
     if (restartButton) {
         restartButton.addEventListener('click', restartGame);
+    }
+
+    // 退出按钮事件
+    if (exitButton) {
+        exitButton.addEventListener('click', exitGame);
     }
 
     // 大厅按钮事件
@@ -4879,6 +4885,78 @@ function restartGame() {
     }
 }
 
+// 显示退出按钮
+function showExitButton() {
+    if (exitButton) {
+        exitButton.style.display = 'block';
+    }
+}
+
+// 隐藏退出按钮
+function hideExitButton() {
+    if (exitButton) {
+        exitButton.style.display = 'none';
+    }
+}
+
+// 退出游戏
+function exitGame() {
+    // 设置为大厅状态
+    gameState.isLobby = true;
+    gameState.playerHealth = gameState.playerMaxHealth;
+
+    // 隐藏退出按钮
+    hideExitButton();
+
+    // 显示大厅界面
+    lobbyUI.style.display = 'flex';
+    readyButton.disabled = false;
+    readyButton.textContent = 'Ready';
+    readyButton.style.backgroundColor = '#1ea761'; // 重置为绿色
+
+    // 隐藏游戏UI
+    waveBar.style.display = 'none';
+
+    // 恢复大厅界面的canvas动画
+    resumeLobbyCanvasAnimations();
+
+    // 停止背景音乐
+    stopBackgroundMusic();
+
+    // 隐藏游戏中的inventory装备槽，只显示大厅的equipmentSlots
+    const inventory = document.getElementById('inventory');
+    const equipmentSlots = document.getElementById('equipmentSlots');
+    if (inventory) inventory.classList.add('hidden'); // 隐藏游戏中的装备槽
+    if (equipmentSlots) equipmentSlots.style.display = 'flex'; // 显示大厅的装备槽
+
+    // 清除房间信息和怪物summary信息
+    gameState.roomInfo = {};
+    gameState.mobsSummary = {};
+    gameState.currentRoom = null;
+    gameState.previousRoom = null;
+    gameState.wave = { current: 1, start_time: null, duration: 120, spawn_phase_duration: 60, is_spawn_phase: false };
+    gameState.effects = [];
+    gameState.mobs = [];
+    gameState.drops = [];
+    gameState.projectiles = [];
+    gameState.playerPosition = { x: 0, y: 0 };
+
+    // 更新房间信息显示
+    updateRoomInfo();
+    showRoomInfo(false);
+
+    console.log('退出游戏，返回大厅');
+
+    // 通知服务器玩家退出
+    if (gameState.connected) {
+        sendToServer({
+            COMMAND: 'EXIT_GAME',
+            client_name: gameState.playerName,
+            id: gameState.playerId
+        });
+    }
+}
+
 // 连接到服务器
 function connectToServer() {
     const storedPlayerId = localStorage.getItem('playerId');
@@ -6062,6 +6140,12 @@ function gameLoop(timestamp) {
 
         // 绘制所有玩家的血条和小花朵（包括自己和其他玩家）
         drawAllPlayersHealthBars();
+
+        // 显示退出按钮
+        showExitButton();
+    } else {
+        // 隐藏退出按钮
+        hideExitButton();
     }
 
 
@@ -6163,6 +6247,7 @@ function drawAllPlayersHealthBars() {
         });
     }
 }
+
 
 // 绘制其他玩家的血条和小花朵（在左上角显示）
 function drawOtherPlayerHealthBarAndFlower(barX, barY, flower) {
