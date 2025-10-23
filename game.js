@@ -2338,7 +2338,6 @@ function updateAbsorbPetalSelection() {
                 const item = document.createElement('div');
                 item.className = 'absorb-petal-item';
                 // 为第七级花瓣添加特殊的CSS类
-                  item.draggable = true;
                 item.dataset.index = petal.originalIndex;
                 item.title = `类型: ${petal.type}, 等级: ${petal.level} (${getLevelName(petal.level)}), 数量: ${petal.count}`;
 
@@ -2352,9 +2351,6 @@ function updateAbsorbPetalSelection() {
                 countBadge.className = 'absorb-petal-count';
                 countBadge.textContent = petal.count;
                 item.appendChild(countBadge);
-
-                item.addEventListener('dragstart', handleAbsorbPetalDragStart);
-                item.addEventListener('dragend', handleAbsorbPetalDragEnd);
 
                 // 添加点击事件（作为拖拽的替代）
                 item.addEventListener('click', (e) => {
@@ -2390,20 +2386,6 @@ function updateAbsorbPetalSelection() {
     });
 }
 
-// 拖拽开始处理
-function handleAbsorbPetalDragStart(e) {
-    const petalItem = e.target.closest('.absorb-petal-item');
-    if (!petalItem) return;
-
-    const index = petalItem.dataset.index;
-    e.dataTransfer.setData('text/plain', index);
-    petalItem.style.opacity = '0.5';
-}
-
-// 拖拽结束处理
-function handleAbsorbPetalDragEnd(e) {
-    e.target.style.opacity = '1';
-}
 
 // 拖拽经过处理
 function handleAbsorbDragOver(e) {
