@@ -1134,9 +1134,9 @@ div#inventory,
     top: 5vh; /* 使用视口高度的5% */
     left: 50%;
     transform: translateX(-50%);
-    width: 40vw; /* 使用视口宽度的40% */
-    max-width: 400px; /* 最大宽度限制 */
-    min-width: 300px; /* 最小宽度限制 */
+    width: 60vw; /* 增大宽度，使用视口宽度的60% */
+    max-width: 600px; /* 增大最大宽度限制 */
+    min-width: 400px; /* 增大最小宽度限制 */
     text-align: center;
     color: white;
     z-index: 5;
@@ -1497,46 +1497,40 @@ div#inventory,
 }
 
 #waveText {
-    font-size: 18px;
-    margin-bottom: 5px;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    font-size: 22px;
+    margin-bottom: 8px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    font-weight: bold;
+    letter-spacing: 1px;
 }
 
 #waveProgressContainer {
-    width: 100%;
-    height: 20px;
-    background-color: rgba(255, 255, 255, 0.3);
-    border-radius: 10px;
+    width: 50%; /* 宽度降低到一半 */
+    height: 20px; /* 高度还原 */
+    background-color: rgba(20, 20, 20, 0.8); /* 更深的背景色 */
+    border-radius: 10px; /* 圆角还原 */
     overflow: hidden;
     position: relative;
+    border: 3px solid #1a1a1a; /* 深黑色加粗边框 */
+    margin: 0 auto; /* 居中显示 */
 }
 
 #waveProgressFill {
     height: 100%;
     width: 0%;
-    transition: width 0.5s ease;
+    transition: width 0.3s ease, background 0.3s ease;
     position: relative;
+    background: linear-gradient(90deg, #4CAF50, #45a049); /* 默认绿色 */
 }
 
-#waveProgressFill.green {
-    background: linear-gradient(90deg, #4CAF50, #45a049);
+#waveProgressFill.spawn-phase {
+    background: linear-gradient(90deg, #4CAF50, #45a049); /* 绿色渐变 */
 }
 
-#waveProgressFill.red {
-    background: linear-gradient(90deg, #ff3333, #cc0000);
+#waveProgressFill.danger-phase {
+    background: linear-gradient(90deg, #ff3333, #cc0000); /* 红色渐变 */
 }
 
-.wave-phase-indicator {
-    position: absolute;
-    top: 0;
-    width: 2px;
-    height: 100%;
-    background-color: rgba(255, 255, 255, 0.7);
-}
-
-#spawnPhaseIndicator {
-    left: 50%;
-}
 
 /* 背包拖拽样式 */
 #bagContent.drag-over-bag {

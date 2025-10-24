@@ -1321,7 +1321,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -2414,23 +2414,27 @@ function updateWaveProgress() {
     const currentTime = Date.now() / 1000; // 转换为秒
     const elapsed = currentTime - gameState.wave.start_time;
 
-    // 计算进度百分比
-    const progressPercent = Math.min((elapsed / gameState.wave.duration) * 100, 100);
-
-    // 判断当前阶段
-    const isSpawnPhase = elapsed < gameState.wave.spawn_phase_duration;
-
     // 更新wave文本
     waveText.textContent = `Wave: ${gameState.wave.current}`;
 
-    // 更新进度条
-    waveProgressFill.style.width = `${progressPercent}%`;
+    // 计算当前阶段的进度
+    const spawnPhaseDuration = gameState.wave.spawn_phase_duration; // 前60秒
+    const dangerPhaseDuration = gameState.wave.duration - spawnPhaseDuration; // 后60秒
 
-    // 根据阶段切换颜色
-    if (isSpawnPhase) {
-        waveProgressFill.className = 'green';
+    if (elapsed <= spawnPhaseDuration) {
+        // 前60秒：绿色慢慢填满
+        const greenProgress = Math.min((elapsed / spawnPhaseDuration) * 100, 100);
+        waveProgressFill.style.width = `${greenProgress}%`;
+        waveProgressFill.className = 'spawn-phase';
+    } else if (elapsed <= gameState.wave.duration) {
+        // 后60秒：清空绿色，以红色慢慢填满
+        const redProgress = Math.min(((elapsed - spawnPhaseDuration) / dangerPhaseDuration) * 100, 100);
+        waveProgressFill.style.width = `${redProgress}%`;
+        waveProgressFill.className = 'danger-phase';
     } else {
-        waveProgressFill.className = 'red';
+        // 波次结束，重置
+        waveProgressFill.style.width = '100%';
+        waveProgressFill.className = 'danger-phase';
     }
 
     // 显示进度条
