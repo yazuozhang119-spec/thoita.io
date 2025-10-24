@@ -2339,7 +2339,7 @@ function updateAbsorbPetalSelection() {
                 item.className = 'absorb-petal-item';
                 // 为第七级花瓣添加特殊的CSS类
                 item.dataset.index = petal.originalIndex;
-                item.title = `类型: ${petal.type}, 等级: ${petal.level} (${getLevelName(petal.level)}), 数量: ${petal.count}`;
+                // 删除悬停显示 - 只保留背包界面
 
                 // 使用canvas绘制花瓣
                 const canvas = document.createElement('canvas');
@@ -3187,7 +3187,7 @@ function addPlayerCard(name, build, isCurrentPlayer, isReady = false) {
 
                 // 添加等级徽章
 
-                petalIcon.title = `类型: ${petalType}, 等级: ${petalLevel} (${getLevelName(petalLevel)})`;
+                // 删除悬停显示 - 只保留背包界面
                 playerBuild.appendChild(petalIcon);
             }
         });
@@ -4471,7 +4471,7 @@ function updateInventoryDisplay() {
             const canvas = document.createElement('canvas');
             drawPetalItem(petal, canvas, { displaySize: 50 });
             slot.appendChild(canvas);
-            slot.title = `类型: ${petal.type}, 等级: ${petal.level}`;
+            // 删除悬停显示 - 只保留背包界面
         } else {
             // 如果没有装备花瓣，显示空槽位
             slot.textContent = index + 1;
@@ -4724,7 +4724,18 @@ function updateBagContent() {
                 item.className = 'petal-item';
                 item.draggable = true;
                 item.dataset.index = petal.originalIndex;
-                item.title = `类型: ${petal.type}, 等级: ${petal.level} (${getLevelName(petal.level)}), 数量: ${petal.count}`;
+                // 使用新的花瓣数据显示系统
+                if (typeof PETALS_DATA !== 'undefined') {
+                    const petalData = PETALS_DATA.getPetalData(petal.type, petal.level);
+                    if (petalData) {
+                        const statsText = PETALS_DATA.getPetalStatsText(petal.type, petal.level);
+                        item.title = `${petalData.name} Lv.${petal.level} (${petalData.description})\n${statsText.stats.join('\n')}`;
+                    } else {
+                        item.title = `${petal.type} Lv.${petal.level} x${petal.count}`;
+                    }
+                } else {
+                    item.title = `${petal.type} Lv.${petal.level} x${petal.count}`;
+                }
 
                 // 创建canvas元素
                 const canvas = document.createElement('canvas');
@@ -9837,7 +9848,7 @@ function handleCheckinResult(message) {
                     const petalItem = document.createElement('div');
                     petalItem.className = 'petal-item';
                     petalItem.style.cssText = 'display: inline-block; margin: 8px; position: relative; width: 50px; height: 50px;';
-                    petalItem.title = `类型: ${objectTypeMap[petal[0]] || 'unknown'}, 等级: ${petal[1]} (${getLevelName(petal[1])})`;
+                    // 删除悬停显示 - 只保留背包界面
 
                     // 创建canvas元素
                     const canvas = document.createElement('canvas');

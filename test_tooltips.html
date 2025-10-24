@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>悬停显示测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .petal-item {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 2px solid #ccc;
+            margin: 5px;
+            border-radius: 4px;
+            text-align: center;
+            line-height: 50px;
+            background: #f9f9f9;
+            cursor: pointer;
+        }
+        .status {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>悬停显示修改测试</h1>
+
+    <div class="test-container">
+        <h2>PETALS_DATA 加载测试</h2>
+        <div id="data-status">正在检查...</div>
+    </div>
+
+    <div class="test-container">
+        <h2>背包界面悬停显示测试</h2>
+        <p>将鼠标悬停在下面的花瓣上查看新的显示格式：</p>
+        <div id="bag-test">
+            <!-- 测试花瓣将在这里生成 -->
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>特殊机制展示</h2>
+        <p>各种花瓣的特殊机制详细信息：</p>
+        <div id="mechanics-test">
+            <!-- 特殊机制展示 -->
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>其他界面悬停显示测试</h2>
+        <p>这些应该没有悬停显示（已被删除）：</p>
+        <div id="other-test">
+            <!-- 其他界面测试元素 -->
+        </div>
+    </div>
+
+    <script src="petals_data.js"></script>
+    <script>
+        // 测试PETALS_DATA是否正确加载
+        function testDataLoading() {
+            const statusEl = document.getElementById('data-status');
+            try {
+                if (typeof PETALS_DATA !== 'undefined') {
+                    statusEl.innerHTML = '<span class="status">✓ PETALS_DATA 加载成功</span>';
+
+                    // 测试获取花瓣数据
+                    const testPetal = PETALS_DATA.getPetalData('missile', 5);
+                    if (testPetal) {
+                        statusEl.innerHTML += '<br><span class="status">✓ 花瓣数据获取测试成功</span>';
+                        console.log('测试花瓣数据:', testPetal);
+                    } else {
+                        statusEl.innerHTML += '<br><span class="error">✗ 花瓣数据获取失败</span>';
+                    }
+                } else {
+                    statusEl.innerHTML = '<span class="error">✗ PETALS_DATA 未加载</span>';
+                }
+            } catch (error) {
+                statusEl.innerHTML = `<span class="error">✗ 加载错误: ${error.message}</span>`;
+            }
+        }
+
+        // 生成测试花瓣
+        function generateTestPetals() {
+            const bagTest = document.getElementById('bag-test');
+            const otherTest = document.getElementById('other-test');
+
+            if (typeof PETALS_DATA !== 'undefined') {
+                // 测试不同类型的花瓣，包括有特殊机制的
+                const testPetals = [
+                    { type: 'missile', level: 5, count: 3 },      // 导弹 - 投射物
+                    { type: 'basic', level: 10, count: 1 },       // 基础 - 简单攻击
+                    { type: 'leaf', level: 15, count: 5 },        // 叶子 - 有回血
+                    { type: 'thunder', level: 3, count: 2 },      // 雷电 - 连锁闪电
+                    { type: 'venom', level: 7, count: 1 },         // 毒液 - 中毒效果
+                    { type: 'shield', level: 5, count: 1 },        // 护盾 - 防御机制
+                    { type: 'bomb', level: 8, count: 2 },          // 炸弹 - 爆炸伤害
+                    { type: 'magnet', level: 10, count: 1 },       // 磁铁 - 拾取范围
+                    { type: 'thirdeye', level: 12, count: 1 },     // 第三只眼 - 公转半径
+                    { type: 'hornet_missile', level: 1, count: 1 }, // 黄蜂导弹 - 追踪
+                    { type: 'egg', level: 6, count: 3 },           // 蛋 - 孵化机制
+                    { type: 'stinger', level: 9, count: 2 }        // 刺针 - 多单体
+                ];
+
+                testPetals.forEach(petal => {
+                    // 背包界面测试
+                    const bagItem = document.createElement('div');
+                    bagItem.className = 'petal-item';
+                    bagItem.textContent = `${petal.type}\nLv.${petal.level}`;
+
+                    // 应用新的悬停显示格式
+                    const petalData = PETALS_DATA.getPetalData(petal.type, petal.level);
+                    if (petalData) {
+                        const statsText = PETALS_DATA.getPetalStatsText(petal.type, petal.level);
+                        bagItem.title = `${petalData.name} Lv.${petal.level} (${petalData.description})\n${statsText.stats.join('\n')}`;
+                    } else {
+                        bagItem.title = `${petal.type} Lv.${petal.level} x${petal.count}`;
+                    }
+
+                    bagTest.appendChild(bagItem);
+
+                    // 其他界面测试（应该没有悬停显示）
+                    const otherItem = document.createElement('div');
+                    otherItem.className = 'petal-item';
+                    otherItem.textContent = `${petal.type}\nLv.${petal.level}`;
+                    // 不设置title属性
+                    otherTest.appendChild(otherItem);
+                });
+            } else {
+                bagTest.innerHTML = '<span class="error">PETALS_DATA 未加载，无法生成测试花瓣</span>';
+                otherTest.innerHTML = '<span class="error">PETALS_DATA 未加载，无法生成测试花瓣</span>';
+            }
+        }
+
+        // 生成特殊机制展示
+        function generateMechanicsDisplay() {
+            const mechanicsTest = document.getElementById('mechanics-test');
+
+            if (typeof PETALS_DATA !== 'undefined') {
+                const mechanicsPetals = [
+                    { type: 'missile', level: 5, name: '导弹' },
+                    { type: 'wing', level: 8, name: '翅膀' },
+                    { type: 'thunder', level: 3, name: '雷电' },
+                    { type: 'venom', level: 7, name: '毒液' },
+                    { type: 'shield', level: 5, name: '护盾' },
+                    { type: 'bomb', level: 8, name: '炸弹' },
+                    { type: 'hornet_missile', level: 1, name: '黄蜂导弹' },
+                    { type: 'magnet', level: 10, name: '磁铁' },
+                    { type: 'thirdeye', level: 12, name: '第三只眼' },
+                    { type: 'egg', level: 6, name: '蛋' },
+                    { type: 'stinger', level: 9, name: '刺针' }
+                ];
+
+                mechanicsPetals.forEach(petal => {
+                    const statsText = PETALS_DATA.getPetalStatsText(petal.type, petal.level);
+                    if (statsText) {
+                        const displayDiv = document.createElement('div');
+                        displayDiv.style.cssText = 'background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #007bff;';
+
+                        const title = document.createElement('h4');
+                        title.textContent = `${petal.name} Lv.${petal.level}`;
+                        title.style.margin = '0 0 10px 0; color: #007bff;';
+
+                        const stats = document.createElement('div');
+                        stats.innerHTML = statsText.stats.join('<br>');
+                        stats.style.fontSize = '14px; line-height: 1.6;';
+
+                        displayDiv.appendChild(title);
+                        displayDiv.appendChild(stats);
+                        mechanicsTest.appendChild(displayDiv);
+                    }
+                });
+            } else {
+                mechanicsTest.innerHTML = '<span class="error">PETALS_DATA 未加载，无法显示特殊机制</span>';
+            }
+        }
+
+        // 页面加载完成后运行测试
+        window.addEventListener('load', function() {
+            testDataLoading();
+            generateTestPetals();
+            generateMechanicsDisplay();
+        });
+    </script>
+</body>
+</html>
