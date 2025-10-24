@@ -2150,9 +2150,9 @@ function initGame() {
     }
 
     // 大厅按钮事件
-    bagButton.addEventListener('click', () => showWindow('bag'));
-    absorbLobbyButton.addEventListener('click', () => showWindow('absorb'));
-    galleryButton.addEventListener('click', () => showWindow('gallery'));
+    bagButton.addEventListener('click', () => toggleWindow('bag'));
+    absorbLobbyButton.addEventListener('click', () => toggleWindow('absorb'));
+    galleryButton.addEventListener('click', () => toggleWindow('gallery'));
     readyButton.addEventListener('click', () => {
     if (readyButton.textContent === 'Ready') {
         readyToPlay();
@@ -4579,6 +4579,34 @@ function returnPetalToBag(slotIndex) {
     console.log(`槽位 ${slotIndex} 花瓣归还完成`);
 }
 
+// 切换窗口显示状态
+function toggleWindow(type) {
+    let windowElement;
+
+    switch(type) {
+        case 'bag':
+            windowElement = bagWindow;
+            break;
+        case 'absorb':
+            windowElement = absorbWindow;
+            break;
+        case 'gallery':
+            windowElement = galleryWindow;
+            break;
+        default:
+            return;
+    }
+
+    // 检查窗口当前状态（可能为空字符串，需要考虑CSS默认值）
+    const currentDisplay = windowElement.style.display || window.getComputedStyle(windowElement).display;
+
+    if (currentDisplay === 'block') {
+        hideWindow(type);
+    } else {
+        showWindow(type);
+    }
+}
+
 // 显示窗口
 function showWindow(type) {
     if (type === 'bag') {
@@ -4607,6 +4635,10 @@ function showWindow(type) {
 function hideWindow(type) {
     if (type === 'bag') {
         bagWindow.style.display = 'none';
+        // 隐藏tooltip
+        if (petalTooltip) {
+            petalTooltip.hide();
+        }
         // 关闭背包时清空内容，删除canvas
         const bagContent = document.getElementById('bagContent');
         bagContent.innerHTML = '';
@@ -4733,12 +4765,25 @@ function updateBagContent() {
                     const petalData = PETALS_DATA.getPetalData(petal.type, petal.level);
                     if (petalData) {
                         const statsText = PETALS_DATA.getPetalStatsText(petal.type, petal.level);
-                        item.title = `${petalData.name} Lv.${petal.level} (${petalData.description})\n${statsText.stats.join('\n')}`;
+                        // 存储花瓣数据到dataset中，供tooltip使用
+                        item.dataset.petalType = petal.type;
+                        item.dataset.petalLevel = petal.level;
+                        item.dataset.petalName = petalData.name;
+                        item.dataset.petalDescription = petalData.description;
+                        item.dataset.petalStats = JSON.stringify(statsText.stats);
                     } else {
-                        item.title = `${petal.type} Lv.${petal.level} x${petal.count}`;
+                        item.dataset.petalType = petal.type;
+                        item.dataset.petalLevel = petal.level;
+                        item.dataset.petalName = petal.type;
+                        item.dataset.petalDescription = '未知花瓣';
+                        item.dataset.petalStats = JSON.stringify([`数量: ${petal.count}`]);
                     }
                 } else {
-                    item.title = `${petal.type} Lv.${petal.level} x${petal.count}`;
+                    item.dataset.petalType = petal.type;
+                    item.dataset.petalLevel = petal.level;
+                    item.dataset.petalName = petal.type;
+                    item.dataset.petalDescription = '花瓣数据未加载';
+                    item.dataset.petalStats = JSON.stringify([`数量: ${petal.count}`]);
                 }
 
                 // 创建canvas元素
@@ -10012,9 +10057,103 @@ function startCountdown(seconds) {
     countdownInterval = setInterval(updateCountdown, 1000);
 }
 
-// 初始化签到功能
+// 自定义花瓣tooltip功能
+const petalTooltip = {
+    element: null,
+    contentElement: null,
+    isVisible: false,
+
+    init() {
+        this.element = document.getElementById('petalTooltip');
+        this.contentElement = this.element.querySelector('.tooltip-content');
+
+        // 添加全局鼠标移动事件监听器
+        document.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        document.addEventListener('scroll', this.hide.bind(this), true);
+
+        // 为背包窗口添加事件委托
+        const bagContent = document.getElementById('bagContent');
+        if (bagContent) {
+            bagContent.addEventListener('mouseover', this.handleMouseOver.bind(this));
+            bagContent.addEventListener('mouseout', this.handleMouseOut.bind(this));
+        }
+    },
+
+    handleMouseOver(event) {
+        const petalItem = event.target.closest('.petal-item');
+        if (petalItem && petalItem.dataset.petalName) {
+            this.show(petalItem);
+        }
+    },
+
+    handleMouseOut(event) {
+        const petalItem = event.target.closest('.petal-item');
+        if (petalItem) {
+            this.hide();
+        }
+    },
+
+    handleMouseMove(event) {
+        if (this.isVisible) {
+            this.position(event.clientX, event.clientY);
+        }
+    },
+
+    show(petalItem) {
+        const name = petalItem.dataset.petalName;
+        const level = petalItem.dataset.petalLevel;
+        const description = petalItem.dataset.petalDescription;
+        const stats = JSON.parse(petalItem.dataset.petalStats || '[]');
+
+        // 构建tooltip内容
+        let content = `<div class="tooltip-header">${name} Lv.${level}</div>`;
+        content += `<div style="color: #ccc; font-size: 12px; margin-bottom: 8px;">${description}</div>`;
+        content += '<div class="tooltip-stats">';
+
+        stats.forEach(stat => {
+            content += `<div class="tooltip-stat">${stat}</div>`;
+        });
+
+        content += '</div>';
+
+        this.contentElement.innerHTML = content;
+        this.element.style.display = 'block';
+        this.isVisible = true;
+    },
+
+    hide() {
+        this.element.style.display = 'none';
+        this.isVisible = false;
+    },
+
+    position(x, y) {
+        const tooltipRect = this.element.getBoundingClientRect();
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        const scrollX = window.pageXOffset;
+        const scrollY = window.pageYOffset;
+
+        let left = x + 15;
+        let top = y + 15;
+
+        // 防止tooltip超出屏幕边界
+        if (left + tooltipRect.width > windowWidth + scrollX) {
+            left = x - tooltipRect.width - 15;
+        }
+
+        if (top + tooltipRect.height > windowHeight + scrollY) {
+            top = y - tooltipRect.height - 15;
+        }
+
+        this.element.style.left = `${left + scrollX}px`;
+        this.element.style.top = `${top + scrollY}px`;
+    }
+};
+
+// 初始化tooltip
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
+        petalTooltip.init();
         initCheckinFeatures();
     }, 100);
 })

@@ -2424,4 +2424,59 @@ button {
     }
 }
 
+/* 自定义花瓣tooltip样式 */
+.petal-tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.4;
+    z-index: 10000;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    max-width: 280px;
+    word-wrap: break-word;
+}
+
+.tooltip-content {
+    white-space: pre-line;
+}
+
+.tooltip-content strong {
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+.tooltip-header {
+    font-weight: bold;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    color: #FFD700;
+}
+
+.tooltip-stats {
+    margin-top: 6px;
+}
+
+.tooltip-stat {
+    margin: 3px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.tooltip-stat-label {
+    color: #E0E0E0;
+    margin-right: 10px;
+}
+
+.tooltip-stat-value {
+    color: #FFFFFF;
+    font-weight: 500;
+}
+
 
