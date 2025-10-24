@@ -4835,118 +4835,88 @@ function updateBagContent() {
         }
     });
 
-    // 按花瓣类型分组，跳过索引2
-    const petalsByType = {};
-
+    // 收集所有有数量的花瓣（跳过索引2）
+    const ownedPetals = [];
     gameState.availablePetals.forEach((petal, index) => {
-        if (parseInt(petal.type) !== 2) { // 跳过索引2的花瓣
-            if (!petalsByType[petal.type]) {
-                petalsByType[petal.type] = [];
-            }
-            petalsByType[petal.type].push({...petal, originalIndex: index});
+        if (parseInt(petal.type) !== 2 && petal.count > 0) { // 跳过索引2的花瓣且数量大于0
+            ownedPetals.push({...petal, originalIndex: index});
         }
     });
 
-    // 获取所有类型并排序，跳过2
-    const types = Object.keys(petalsByType)
-        .filter(type => parseInt(type) !== 2)
-        .sort((a, b) => parseInt(a) - parseInt(b));
+    // 按等级降序排序，等级相同按类型升序
+    ownedPetals.sort((a, b) => {
+        if (a.level !== b.level) {
+            return b.level - a.level; // 等级降序
+        }
+        return parseInt(a.type) - parseInt(b.type); // 类型升序
+    });
 
-    types.forEach(type => {
-        // 为每个种类创建一行
-        const row = document.createElement('div');
-        row.className = 'petal-row';
-        row.style.display = 'flex';
-        row.style.alignItems = 'center';
-        row.style.marginBottom = '5px';
-        row.style.gap = '2px';
+    // 使用网格布局显示所有拥有的花瓣
+    bagContent.style.display = 'grid';
+    bagContent.style.gridTemplateColumns = 'repeat(auto-fill, 40px)';
+    bagContent.style.gap = '8px';
+    bagContent.style.padding = '0px';
+    bagContent.style.justifyContent = 'start';
 
-        // 查找该种类的所有花瓣（按等级分组）
-        const petalsByLevel = {};
-        petalsByType[type].forEach(petal => {
-            if (petal.count > 0) {
-                petalsByLevel[petal.level] = petal;
-            }
-        });
+    ownedPetals.forEach(petal => {
+        const item = document.createElement('div');
+        item.className = 'petal-item';
+        item.draggable = true;
+        item.dataset.index = petal.originalIndex;
+        item.style.position = 'relative';
+        item.style.display = 'flex';
+        item.style.flexDirection = 'column';
+        item.style.alignItems = 'center';
+        item.style.justifyContent = 'center';
+        item.style.margin = '0';
+        item.style.padding = '0';
+        item.style.width = '40px';
+        item.style.height = '40px';
 
-        // 显示1-19级，空缺的显示空白 - 19级新系统
-        for (let level = 1; level <= 19; level++) {
-            const petalContainer = document.createElement('div');
-            petalContainer.className = 'bag-petal-container';
-            petalContainer.style.position = 'relative';
-            petalContainer.style.width = '36px';
-            petalContainer.style.height = '36px';
-
-            if (petalsByLevel[level]) {
-                const petal = petalsByLevel[level];
-                const item = document.createElement('div');
-                item.className = 'petal-item';
-                item.draggable = true;
-                item.dataset.index = petal.originalIndex;
-                // 使用新的花瓣数据显示系统
-                if (typeof PETALS_DATA !== 'undefined') {
-                    const petalData = PETALS_DATA.getPetalData(petal.type, petal.level);
-                    if (petalData) {
-                        const statsText = PETALS_DATA.getPetalStatsText(petal.type, petal.level);
-                        // 存储花瓣数据到dataset中，供tooltip使用
-                        item.dataset.petalType = petal.type;
-                        item.dataset.petalLevel = petal.level;
-                        item.dataset.petalName = petalData.name;
-                        item.dataset.petalDescription = petalData.description;
-                        item.dataset.petalStats = JSON.stringify(statsText.stats);
-                    } else {
-                        item.dataset.petalType = petal.type;
-                        item.dataset.petalLevel = petal.level;
-                        item.dataset.petalName = petal.type;
-                        item.dataset.petalDescription = '未知花瓣';
-                        item.dataset.petalStats = JSON.stringify([`数量: ${petal.count}`]);
-                    }
-                } else {
-                    item.dataset.petalType = petal.type;
-                    item.dataset.petalLevel = petal.level;
-                    item.dataset.petalName = petal.type;
-                    item.dataset.petalDescription = '花瓣数据未加载';
-                    item.dataset.petalStats = JSON.stringify([`数量: ${petal.count}`]);
-                }
-
-                // 创建canvas元素
-                const canvas = document.createElement('canvas');
-                item.appendChild(canvas);
-
-                // 使用canvas绘制花瓣
-                drawPetalItem(petal, canvas, {displaySize:34.5});
-
-                // 添加数量标签
-                const countBadge = document.createElement('div');
-                countBadge.className = 'bag-petal-count';
-                countBadge.textContent = `x${petal.count}`;
-                item.appendChild(countBadge);
-
-                item.addEventListener('dragstart', handleDragStart);
-                item.addEventListener('dragend', handleDragEnd);
-
-                petalContainer.appendChild(item);
+        // 使用新的花瓣数据显示系统
+        if (typeof PETALS_DATA !== 'undefined') {
+            const petalData = PETALS_DATA.getPetalData(petal.type, petal.level);
+            if (petalData) {
+                const statsText = PETALS_DATA.getPetalStatsText(petal.type, petal.level);
+                // 存储花瓣数据到dataset中，供tooltip使用
+                item.dataset.petalType = petal.type;
+                item.dataset.petalLevel = petal.level;
+                item.dataset.petalName = petalData.name;
+                item.dataset.petalDescription = petalData.description;
+                item.dataset.petalStats = JSON.stringify(statsText.stats);
             } else {
-                // 空缺位置显示空白占位符
-                const placeholder = document.createElement('div');
-                placeholder.className = 'bag-petal-placeholder';
-                placeholder.style.width = '33px';
-                placeholder.style.height = '33px';
-                placeholder.style.border = '1px dashed rgba(255, 255, 255, 0.2)';
-                placeholder.style.borderRadius = '3px';
-                placeholder.style.display = 'flex';
-                placeholder.style.alignItems = 'center';
-                placeholder.style.justifyContent = 'center';
-                placeholder.style.color = 'rgba(255, 255, 255, 0.3)';
-                placeholder.style.fontSize = '9px';
-                placeholder.textContent = `Lv.${level}`;
-                petalContainer.appendChild(placeholder);
+                item.dataset.petalType = petal.type;
+                item.dataset.petalLevel = petal.level;
+                item.dataset.petalName = petal.type;
+                item.dataset.petalDescription = '未知花瓣';
+                item.dataset.petalStats = JSON.stringify([`数量: ${petal.count}`]);
             }
-
-            row.appendChild(petalContainer);
+        } else {
+            item.dataset.petalType = petal.type;
+            item.dataset.petalLevel = petal.level;
+            item.dataset.petalName = petal.type;
+            item.dataset.petalDescription = '花瓣数据未加载';
+            item.dataset.petalStats = JSON.stringify([`数量: ${petal.count}`]);
         }
 
-        bagContent.appendChild(row);
+        // 创建canvas元素
+        const canvas = document.createElement('canvas');
+        item.appendChild(canvas);
+
+        // 使用canvas绘制花瓣
+        drawPetalItem(petal, canvas, {displaySize: 40});
+
+        // 添加数量标签
+        const countBadge = document.createElement('div');
+        countBadge.className = 'bag-petal-count';
+        countBadge.textContent = `x${petal.count}`;
+        item.appendChild(countBadge);
+
+        // 添加拖拽事件
+        item.addEventListener('dragstart', handleDragStart);
+        item.addEventListener('dragend', handleDragEnd);
+
+        bagContent.appendChild(item);
     });
 }
 
