@@ -5983,6 +5983,24 @@ function handleServerMessage(data) {
                 handleViewAdjusted(message);
                 break;
 
+            case 'FORCE_REFRESH':
+                console.log('=== 收到强制刷新消息 ===');
+                console.log('原因:', message.data.reason);
+                console.log('消息:', message.data.message);
+
+                // 显示错误提示
+                if (message.data.reason === 'insufficient_petals') {
+                    alert(`装备验证失败: ${message.data.message}\n\n页面将自动刷新以更新您的花瓣库存。`);
+                } else {
+                    alert(`需要刷新页面: ${message.data.message}\n\n页面将自动刷新。`);
+                }
+
+                // 刷新页面
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+                break;
+
             default:
                 console.log('Unknown message:', message);
                 break;
