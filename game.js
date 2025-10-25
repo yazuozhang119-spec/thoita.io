@@ -13,6 +13,154 @@ function getDropCacheKey(petalType, petalLevel, baseSize) {
     return `${petalType}_${petalLevel}_${baseSize}_dpr${roundedScale}`;
 }
 
+// 添加设备检测和响应式处理
+function detectDeviceAndSetupUI() {
+    // 检测是否为移动设备
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // 检测屏幕尺寸
+    const isSmallScreen = window.innerWidth <= 768;
+    
+    // 检测触摸支持
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    
+    // 为移动设备添加特殊类名
+    if (isMobile || isSmallScreen || isTouchDevice) {
+        document.body.classList.add('mobile-device');
+        
+        // 调整游戏设置以适应移动设备
+        if (window.gameState) {
+            // 可以在这里调整游戏设置
+            window.gameState.isMobile = true;
+        }
+    } else {
+        document.body.classList.add('desktop-device');
+        if (window.gameState) {
+            window.gameState.isMobile = false;
+        }
+    }
+    
+    // 根据屏幕尺寸调整UI元素
+    adjustUIForScreenSize();
+    
+    // 添加设备类型类
+    if (isTouchDevice) {
+        document.body.classList.add('touch-device');
+    }
+    
+    if (window.devicePixelRatio > 1) {
+        document.body.classList.add('high-dpr');
+    }
+}
+
+// 根据屏幕尺寸调整UI元素
+function adjustUIForScreenSize() {
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+    
+    // 获取关键元素
+    const gameContainer = document.getElementById('gameContainer');
+    const waveBar = document.getElementById('waveBar');
+    const chatContainer = document.getElementById('chatContainer');
+    const settingsPanel = document.getElementById('settingsPanel');
+    const lobbyLayout = document.getElementById('lobbyLayout');
+    const leftPanel = document.getElementById('leftPanel');
+    
+    // 清除之前的屏幕尺寸类
+    document.body.classList.remove('screen-xs', 'screen-sm', 'screen-md', 'screen-lg');
+    
+    if (screenWidth <= 480) {
+        // 手机屏幕适配
+        document.body.classList.add('screen-xs');
+        if (waveBar) {
+            waveBar.style.top = '3vh';
+        }
+        if (chatContainer) {
+            chatContainer.style.width = '90vw';
+            chatContainer.style.right = '5vw';
+            chatContainer.style.bottom = '70px';
+        }
+        if (lobbyLayout) {
+            lobbyLayout.style.flexDirection = 'column';
+        }
+        if (leftPanel) {
+            leftPanel.style.width = '100%';
+            leftPanel.style.flexDirection = 'row';
+            leftPanel.style.justifyContent = 'center';
+            leftPanel.style.padding = '10px 0';
+            leftPanel.style.height = 'auto';
+        }
+    } else if (screenWidth <= 768) {
+        // 小平板屏幕适配
+        document.body.classList.add('screen-sm');
+        if (chatContainer) {
+            chatContainer.style.width = '300px';
+        }
+        if (lobbyLayout) {
+            lobbyLayout.style.flexDirection = 'column';
+        }
+        if (leftPanel) {
+            leftPanel.style.width = '100%';
+            leftPanel.style.flexDirection = 'row';
+            leftPanel.style.justifyContent = 'center';
+            leftPanel.style.padding = '15px 0';
+            leftPanel.style.height = 'auto';
+        }
+    } else if (screenWidth <= 1024) {
+        // 大平板/小桌面屏幕适配
+        document.body.classList.add('screen-md');
+        if (chatContainer) {
+            chatContainer.style.width = '320px';
+        }
+        if (lobbyLayout) {
+            lobbyLayout.style.flexDirection = 'row';
+        }
+        if (leftPanel) {
+            leftPanel.style.width = '60px';
+            leftPanel.style.flexDirection = 'column';
+            leftPanel.style.height = '100%';
+        }
+    } else {
+        // 大屏幕桌面适配
+        document.body.classList.add('screen-lg');
+        if (chatContainer) {
+            chatContainer.style.width = '350px';
+        }
+        if (lobbyLayout) {
+            lobbyLayout.style.flexDirection = 'row';
+        }
+        if (leftPanel) {
+            leftPanel.style.width = '60px';
+            leftPanel.style.flexDirection = 'column';
+            leftPanel.style.height = '100%';
+        }
+    }
+    
+    // 调整游戏容器尺寸
+    if (gameContainer) {
+        gameContainer.style.width = '100vw';
+        gameContainer.style.height = '100vh';
+    }
+}
+
+// 窗口大小改变时重新调整UI
+window.addEventListener('resize', function() {
+    // 添加防抖动处理
+    clearTimeout(window.resizeTimer);
+    window.resizeTimer = setTimeout(function() {
+        adjustUIForScreenSize();
+        // 如果有游戏渲染器，也需要通知它调整尺寸
+        if (window.gameRenderer) {
+            window.gameRenderer.handleResize();
+        }
+    }, 250);
+});
+
+// 在页面加载完成后执行设备检测
+document.addEventListener('DOMContentLoaded', function() {
+    detectDeviceAndSetupUI();
+});
+
 // 计算所有缩放因子
 function calculateScaleFactors() {
     // 安全检查，确保gameState已初始化
@@ -1321,7 +1469,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,

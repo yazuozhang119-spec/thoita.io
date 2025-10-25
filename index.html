@@ -92,31 +92,31 @@
                 <div id="leftPanel">
                     <div id="buttonContainer">
                         <button class="lobby-button" id="bagButton">背包</button>
-                                                <button class="lobby-button" id="absorbLobbyButton">合成</button>
+                        <button class="lobby-button" id="absorbLobbyButton">合成</button>
                         <button class="lobby-button" id="galleryButton">图鉴</button>
                     </div>
                 </div>
 
                 <div id="mainPanel">
                     <!-- 大厅标题 -->
-                    <h1 id="lobbyTitle" style="color: white; text-align: center; margin: 20px 0; font-size: 48px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">thoita.io</h1>
+                    <h1 id="lobbyTitle">thoita.io</h1>
                     <div id="equipmentSlots">
                         <!-- 装备槽将通过JS动态生成 -->
                     </div>
 
-                    <div id="selectRoomMessage" style="color: white; font-size: 16px; margin-bottom: 15px; text-align: center; display: none;">请选择房间</div>
-                    <div id="roomButtons" style="display: flex; gap: 10px; margin-bottom: 10px; justify-content: center;">
-                    <button id="newRoomButton" class="room-action-button">新建房间</button>
-                    <button id="findRoomButton" class="room-action-button">寻找</button>
-                    <button id="privateRoomButton" class="room-action-button">私人房间</button>
-                </div>
-                <button id="readyButton">Ready</button>
+                    <div id="selectRoomMessage">请选择房间</div>
+                    <div id="roomButtons">
+                        <button id="newRoomButton" class="room-action-button">新建房间</button>
+                        <button id="findRoomButton" class="room-action-button">寻找</button>
+                        <button id="privateRoomButton" class="room-action-button">私人房间</button>
+                    </div>
+                    <button id="readyButton">Ready</button>
 
                     <div id="roomInfo">
-                        <div id="noRoomMessage" style="color: rgba(255, 255, 255, 0.6); font-size: 14px; text-align: center; padding: 20px;">没有房间信息</div>
+                        <div id="noRoomMessage">没有房间信息</div>
                         <div id="roomWaveSettings" style="display: none;">
                             <div class="wave-setting-container">
-                                <label for="startWaveSlider"></label>
+                                <label for="startWaveSlider">起始波次设置</label>
                                 <div class="slider-container">
                                     <input type="range" id="startWaveSlider" min="0" max="1" value="1" class="wave-slider">
                                     <div class="slider-value-display">
@@ -171,7 +171,7 @@
                 <div id="absorbCenter">
                     <div id="absorbButtonContainer">
                         <button id="absorbActionButton" disabled>合成</button>
-                        <div id="absorbChanceText" style="font-size: 12px; color: #888; margin-top: 5px; min-height: 16px; white-space: nowrap;"></div>
+                        <div id="absorbChanceText"></div>
                     </div>
                 </div>
             </div>
@@ -189,12 +189,11 @@
                     <!-- 花瓣将通过JavaScript动态生成 -->
                 </div>
             </div>
-            </div>
         </div>
 
         <div id="checkinWindow">
             <div class="checkin-light-cones" id="checkinLightCones"></div>
-                        <div id="checkinStreakDisplay" style="display: none;">
+            <div id="checkinStreakDisplay" style="display: none;">
                 <div id="checkinStreakText"></div>
             </div>
             <div id="checkinContent">
@@ -251,7 +250,7 @@
         </div>
 
         <!-- 重新打开聊天按钮 -->
-        <button id="chatOpenButton" style="display: none;">💬</button>
+        <button id="chatOpenButton">💬</button>
 
         <!-- 设置按钮 -->
         <div id="settingsButton">
@@ -304,7 +303,7 @@
             </div>
         </div>
 
-        </div>
+    </div>
 
     <script src="flower.js"></script>
     <script src="petals_data.js"></script>
