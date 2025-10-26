@@ -1,3 +1,19 @@
+/* 防止用户选择文字 */
+* {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* 允许特定元素选择文本（如输入框） */
+input, textarea {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
 body {
     margin: 0;
     padding: 0;

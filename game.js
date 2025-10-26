@@ -2371,6 +2371,11 @@ function updateAbsorbPetalSelection() {
 
                 // 添加点击事件（作为拖拽的替代）
                 item.addEventListener('click', (e) => {
+                    // 检查是否正在合成中，如果是则禁止点击
+                    if (gameState.isAbsorbing) {
+                        return;
+                    }
+
                     if (e.shiftKey) {
                         addAllPetalsToAbsorbSlots(petal, petal.originalIndex);
                     } else {
@@ -2496,6 +2501,11 @@ function handleAbsorbDrop(e) {
 
 // 添加花瓣到合成槽位
 function addPetalToAbsorbSlot(petalIndex, slotIndex) {
+    // 检查是否正在合成中
+    if (gameState.isAbsorbing) {
+        return;
+    }
+
     if (petalIndex >= 0 && petalIndex < gameState.availablePetals.length) {
         const petal = gameState.availablePetals[petalIndex];
 
@@ -2505,17 +2515,16 @@ function addPetalToAbsorbSlot(petalIndex, slotIndex) {
             return;
         }
 
-        // 如果是第一次添加，设置当前合成类型
-        if (gameState.absorbTotalCount === 0) {
-            gameState.currentAbsorbType = petal.type;
-            gameState.currentAbsorbLevel = petal.level;
-        } else {
-            // 检查是否与当前合成类型相同
-            if (petal.type !== gameState.currentAbsorbType || petal.level !== gameState.currentAbsorbLevel) {
-                alert('只能合成相同类型和等级的花瓣!');
-                return;
-            }
+        // 如果合成槽不为空，且点击的花瓣与当前合成类型不同，清空合成槽
+        if (gameState.absorbTotalCount > 0 &&
+            (petal.type !== gameState.currentAbsorbType || petal.level !== gameState.currentAbsorbLevel)) {
+            // 调用现有的清空函数
+            returnAllPetalsFromAbsorbSlots();
         }
+
+        // 设置当前合成类型
+        gameState.currentAbsorbType = petal.type;
+        gameState.currentAbsorbLevel = petal.level;
 
         // 给每个槽位添加1个花瓣，不管槽位是否已有花瓣
         for (let i = 0; i < 5; i++) {
@@ -2555,6 +2564,11 @@ function addPetalToFirstEmptySlot(petal, originalIndex) {
 
 // Shift+左键点击：添加所有同类花瓣到合成槽位
 function addAllPetalsToAbsorbSlots(petal, originalIndex) {
+    // 检查是否正在合成中
+    if (gameState.isAbsorbing) {
+        return;
+    }
+
     if (originalIndex >= 0 && originalIndex < gameState.availablePetals.length) {
         const petal = gameState.availablePetals[originalIndex];
 
@@ -2567,17 +2581,16 @@ function addAllPetalsToAbsorbSlots(petal, originalIndex) {
         // 计算最多可以添加多少个花瓣（不能超过5个槽位，每个槽位最多容纳数量不限）
         const maxCanAdd = Math.min(petal.count, 9999999); // 设置一个合理的上限
 
-        // 如果是第一次添加，设置当前合成类型
-        if (gameState.absorbTotalCount === 0) {
-            gameState.currentAbsorbType = petal.type;
-            gameState.currentAbsorbLevel = petal.level;
-        } else {
-            // 检查是否与当前合成类型相同
-            if (petal.type !== gameState.currentAbsorbType || petal.level !== gameState.currentAbsorbLevel) {
-                alert('只能合成相同类型和等级的花瓣!');
-                return;
-            }
+        // 如果合成槽不为空，且点击的花瓣与当前合成类型不同，清空合成槽
+        if (gameState.absorbTotalCount > 0 &&
+            (petal.type !== gameState.currentAbsorbType || petal.level !== gameState.currentAbsorbLevel)) {
+            // 调用现有的清空函数
+            returnAllPetalsFromAbsorbSlots();
         }
+
+        // 设置当前合成类型
+        gameState.currentAbsorbType = petal.type;
+        gameState.currentAbsorbLevel = petal.level;
 
         // 计算实际可以添加的数量（确保不超过总槽位限制）
         const availableSlots = 5; // 固定5个槽位
@@ -2657,6 +2670,11 @@ function updateAbsorbSlotDisplay(slotIndex) {
 
 // 从合成槽位移除花瓣（一次只移除1个）
 function removePetalFromAbsorbSlot(slotIndex) {
+    // 检查是否正在合成中
+    if (gameState.isAbsorbing) {
+        return;
+    }
+
     const petal = gameState.absorbSlots[slotIndex];
     if (petal && petal.count > 0) {
         console.log(`从槽位 ${slotIndex} 移除1个花瓣，当前数量: ${petal.count}`);
@@ -2695,6 +2713,11 @@ function removePetalFromAbsorbSlot(slotIndex) {
 
 // 一键返还所有合成槽的花瓣到选择界面
 function returnAllPetalsFromAbsorbSlots() {
+    // 检查是否正在合成中
+    if (gameState.isAbsorbing) {
+        return;
+    }
+
     console.log('开始一键返还所有合成槽的花瓣');
 
     // 收集所有需要返还的花瓣
@@ -4730,8 +4753,41 @@ function toggleWindow(type) {
     }
 }
 
+// 关闭所有窗口
+function closeAllWindows() {
+    // 直接关闭窗口，避免重复调用hideWindow的逻辑
+    if (bagWindow) bagWindow.style.display = 'none';
+    if (absorbWindow) absorbWindow.style.display = 'none';
+    if (galleryWindow) galleryWindow.style.display = 'none';
+
+    // 执行关闭时的清理逻辑
+    // 隐藏tooltip
+    if (petalTooltip) {
+        petalTooltip.hide();
+    }
+    // 关闭背包时清空内容，删除canvas
+    const bagContent = document.getElementById('bagContent');
+    if (bagContent) bagContent.innerHTML = '';
+    // 关闭合成界面时清空内容，删除canvas
+    const absorbPetalSelection = document.getElementById('absorbPetalSelection');
+    if (absorbPetalSelection) absorbPetalSelection.innerHTML = '';
+    // 清空合成槽位显示
+    if (absorbSlotsContainer) {
+        const absorbSlots = absorbSlotsContainer.querySelectorAll('.absorb-slot');
+        absorbSlots.forEach(slot => {
+            slot.innerHTML = '';
+            slot.classList.remove('filled');
+        });
+    }
+    // 暂停动画以节省性能
+    pausePetalAnimation();
+}
+
 // 显示窗口
 function showWindow(type) {
+    // 先关闭所有其他窗口
+    closeAllWindows();
+
     if (type === 'bag') {
         bagWindow.style.display = 'block';
         // 打开背包时才加载内容
