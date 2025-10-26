@@ -10366,12 +10366,36 @@ const petalTooltip = {
 
     show(petalItem) {
         const name = petalItem.dataset.petalName;
-        const level = petalItem.dataset.petalLevel;
+        const level = parseInt(petalItem.dataset.petalLevel);
         const description = petalItem.dataset.petalDescription;
         const stats = JSON.parse(petalItem.dataset.petalStats || '[]');
 
+        // 稀有度中文翻译
+        const rarityNames = {
+            1: '普通',    // common
+            2: '非凡',    // unusual
+            3: '稀有',    // rare
+            4: '史诗',    // epic
+            5: '传说',    // legendary
+            6: '神话',    // mythic
+            7: '究极',    // ultra
+            8: '超级',    // super
+            9: '欧米伽',  // omega
+            10: '传说',    // fabled
+            11: '神圣',   // divine
+            12: '至高',   // supreme
+            13: '全能',   // omnipotent
+            14: '星空',   // astral
+            15: '天堂',   // celestial
+            16: '炽天使', // seraphic
+            17: '天国',   // paradisiac
+            18: '千变',   // protean
+            19: '无上'    // unsurpassed
+        };
+
         // 构建tooltip内容
-        let content = `<div class="tooltip-header">${name} Lv.${level}</div>`;
+        const rarityName = rarityNames[level] || `Lv.${level}`;
+        let content = `<div class="tooltip-header">${name} ${rarityName}</div>`;
         content += `<div style="color: #ccc; font-size: 12px; margin-bottom: 8px;">${description}</div>`;
         content += '<div class="tooltip-stats">';
 
