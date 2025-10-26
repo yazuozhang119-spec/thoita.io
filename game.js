@@ -922,6 +922,30 @@ function drawStaticPetalItem(petal, canvas, options) {
             // 重置阴影
             ctx.shadowBlur = 0;
         },
+
+        pearl: (p) => {
+            ctx.lineWidth = p.radius / 5;
+            ctx.fillStyle = blendColor('#fffcd1', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#cfcca9', '#FF0000', blendAmount(p));
+            let color3 = blendColor('#ffffff', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+                color3 = "#FFFFFF";
+            }
+
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.fillStyle = color3;
+            ctx.beginPath();
+            ctx.arc(p.radius*0.3, -p.radius*0.3, p.radius*0.3, 0, Math.PI*2);
+            ctx.fill();
+            ctx.closePath();
+        },
     };
 
     // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
@@ -1091,7 +1115,8 @@ function drawStaticPetalItem(petal, canvas, options) {
             11: 'stinger',
             12: 'orange',
             13: 'egg',
-            14: 'square'
+            14: 'square',
+            15: 'pearl'
         };
 
         const renderType = typeMap[type] || 'basic';
@@ -1130,7 +1155,8 @@ function drawStaticPetalItem(petal, canvas, options) {
         11: '刺针',
         12: '橙子',
         13: '蛋',
-        14: '方块'
+        14: '方块',
+        15: '珍珠'
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -1302,11 +1328,12 @@ const objectTypeMap = {
     12: 'orange',
     13: 'egg',
     14: 'square',
+    15: 'pearl',
     // 怪物类型
     22: 'rock',
     24: 'ladybug',
     26: 'centipede0',
-    15: 'thunderelement',
+    28: 'thunderelement',
     16: 'venomspider',
     17: 'shieldguardian',
     18: 'bombbeetle',
@@ -1321,7 +1348,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -3802,6 +3829,30 @@ function drawPetalInContext(petal, ctx, displaySize) {
             // 重置阴影
             ctx.shadowBlur = 0;
         },
+
+        pearl: (p) => {
+            ctx.lineWidth = p.radius / 5;
+            ctx.fillStyle = blendColor('#fffcd1', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#cfcca9', '#FF0000', blendAmount(p));
+            let color3 = blendColor('#ffffff', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+                color3 = "#FFFFFF";
+            }
+
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.fillStyle = color3;
+            ctx.beginPath();
+            ctx.arc(p.radius*0.3, -p.radius*0.3, p.radius*0.3, 0, Math.PI*2);
+            ctx.fill();
+            ctx.closePath();
+        },
     };
 
     // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
@@ -3874,7 +3925,8 @@ function drawPetalInContext(petal, ctx, displaySize) {
             11: 'stinger',
             12: 'orange',
             13: 'egg',
-            14: 'square'
+            14: 'square',
+            15: 'pearl'
         };
 
         if(typeof type === 'integer' || typeof type === 'number'){
@@ -3914,7 +3966,8 @@ function drawPetalInContext(petal, ctx, displaySize) {
         11: '刺针',
         12: '橙子',
         13: '蛋',
-        14: '方块'
+        14: '方块',
+        15: '珍珠'
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -4202,7 +4255,7 @@ function calculateTotalAvailablePetals() {
     const totalPetals = [];
 
     // 解析服务器完整数据
-    for (let i = 0; i < 15; i++) {  // 扩展到14以包含square花瓣
+    for (let i = 0; i < 16; i++) {  // 扩展到14以包含square花瓣
         const petalKey = `petal${i}`;
         const petalString = gameState.serverBuild[petalKey];
 
@@ -4570,8 +4623,8 @@ function handleDrop(e) {
 function parseServerBuild(buildData) {
     const availablePetals = [];
 
-    // 遍历petal0到petal14（共15种花瓣类型）
-    for (let i = 0; i < 15; i++) {
+    // 遍历petal0到petal15（共16种花瓣类型，包含pearl）
+    for (let i = 0; i <= 15; i++) {
         const petalKey = `petal${i}`;
         const petalString = buildData[petalKey];
 
@@ -5891,7 +5944,7 @@ function handleServerMessage(data) {
 
                         
                         // 根据类型分类到不同数组
-                        if (typeIdx >= 0 && typeIdx <= 14) {
+                        if (typeIdx >= 0 && typeIdx <= 15) {
                             // 花瓣类型 (0-14)
                             baseObject.type = typeIdx;
                             gameState.petals.push(baseObject);
@@ -8405,6 +8458,30 @@ const petalRenderMap = {
 
         // 重置阴影
         ctx.shadowBlur = 0;
+    },
+
+    pearl: (p) => {
+        ctx.lineWidth = p.radius / 5;
+        ctx.fillStyle = blendColor('#fffcd1', '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor('#cfcca9', '#FF0000', blendAmount(p));
+        let color3 = blendColor('#ffffff', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF";
+            color3 = "#FFFFFF";
+        }
+
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+
+        ctx.fillStyle = color3;
+        ctx.beginPath();
+        ctx.arc(p.radius*0.3, -p.radius*0.3, p.radius*0.3, 0, Math.PI*2);
+        ctx.fill();
+        ctx.closePath();
     },
 };
 
