@@ -2,9 +2,221 @@
 const memoizedColors = {};
 const damageFlash = false;
 
+// enemy.js 中的辅助函数
+function blendColor(color1, color2, t) {
+    const memoizedIndex = color1 + '_' + color2 + '_' + t;
+    if (memoizedColors[memoizedIndex] !== undefined) {
+        return memoizedColors[memoizedIndex];
+    }
+    const rgb1 = {
+        r: parseInt(color1.slice(1, 3), 16),
+        g: parseInt(color1.slice(3, 5), 16),
+        b: parseInt(color1.slice(5, 7), 16)
+    }
+    const rgb2 = {
+        r: parseInt(color2.slice(1, 3), 16),
+        g: parseInt(color2.slice(3, 5), 16),
+        b: parseInt(color2.slice(5, 7), 16)
+    }
+
+    const result = rgbToHex(Math.floor(rgb1.r * (1 - t) + rgb2.r * t), Math.floor(rgb1.g * (1 - t) + rgb2.g * t), Math.floor(rgb1.b * (1 - t) + rgb2.b * t));
+    memoizedColors[memoizedIndex] = result;
+    return result;
+}
+
+function rgbToHex(r, g, b) {
+    return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+}
+
+function componentToHex(c) {
+    var hex = c.toString(16);
+    return hex.length == 1 ? "0" + hex : hex;
+}
+
+function blendAmount(e) {
+    return Math.max(0, 1 - e.ticksSinceLastDamaged / 166.5);
+}
+
+function checkForFirstFrame(e) {
+    return (e.lastTicksSinceLastDamaged < 13 && !damageFlash);
+}
+
+// 获取当前时间（用于动画）
+function getCurrentTime() {
+    return Date.now();
+}
+
 // 掉落物矢量图缓存系统
 const dropImageCache = new Map();
 const MAX_CACHE_SIZE = 1000; // 最大缓存数量
+
+// 蚂蚁SVG动画系统
+const antSpriteCache = new Map();
+const antAnimationFrameData = new Map();
+
+// 蚂蚁类型配置
+const antTypeConfig = {
+    'soldierant': { prefix: 's', frameCount: 3 },
+    'workerant': { prefix: 'w', frameCount: 4 },
+    'babyant': { prefix: 'b', frameCount: 3 },
+    'antqueen': { prefix: 'q', frameCount: 4 }
+};
+
+// 预加载蚂蚁SVG动画
+async function preloadAntSprites() {
+    console.log('🐜 开始预加载蚂蚁SVG动画...');
+
+    for (const [antType, config] of Object.entries(antTypeConfig)) {
+        const frames = [];
+
+        for (let i = 1; i <= config.frameCount; i++) {
+            // 尝试多个可能的路径
+            const possiblePaths = [
+                `ant/${config.prefix}${i}.svg`,
+                `./ant/${config.prefix}${i}.svg`,
+                `static/ant/${config.prefix}${i}.svg`,
+                `./static/ant/${config.prefix}${i}.svg`
+            ];
+
+            let svgLoaded = false;
+            for (const path of possiblePaths) {
+                try {
+                    const svg = await loadSVG(path);
+                    frames.push(svg);
+                    svgLoaded = true;
+                    console.log(`✅ 蚂蚁SVG加载成功: ${antType} frame ${i} from path: ${path}`);
+                    break;
+                } catch (error) {
+                    console.log(`⚠️ 路径失败: ${path}, 尝试下一个路径...`);
+                }
+            }
+
+            if (!svgLoaded) {
+                console.error(`❌ 所有路径都失败，无法加载蚂蚁SVG: ${antType} frame ${i}`);
+            }
+        }
+
+        if (frames.length > 0) {
+            antSpriteCache.set(antType, frames);
+            antAnimationFrameData.set(antType, {
+                frameCount: frames.length,
+                currentFrame: 0,
+                frameTimer: 0,
+                frameInterval: 2 // 每2帧切换一次
+            });
+            console.log(`✅ ${antType} 加载完成: ${frames.length}/${config.frameCount} 帧`);
+        } else {
+            console.warn(`⚠️ ${antType} 未能加载任何SVG帧，将使用fallback渲染`);
+        }
+    }
+
+    // 检查加载结果
+    let totalLoaded = 0;
+    let totalExpected = Object.keys(antTypeConfig).length;
+    for (const antType of Object.keys(antTypeConfig)) {
+        if (antSpriteCache.has(antType) && antSpriteCache.get(antType).length > 0) {
+            totalLoaded++;
+        }
+    }
+
+    console.log(`🎉 蚂蚁SVG动画预加载完成: ${totalLoaded}/${totalExpected} 种蚂蚁加载成功`);
+
+    if (totalLoaded < totalExpected) {
+        console.warn(`⚠️ 部分蚂蚁SVG加载失败，将使用彩色圆形fallback渲染`);
+    }
+}
+
+// 加载单个SVG文件
+async function loadSVG(filename) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            console.log(`✅ SVG加载成功: ${filename}, 尺寸: ${img.width}x${img.height}`);
+            resolve(img);
+        };
+        img.onerror = (error) => {
+            console.error(`❌ SVG加载失败: ${filename}`, error);
+            reject(error);
+        };
+        console.log(`📥 开始加载SVG: ${filename}`);
+        img.src = filename;
+    });
+}
+
+// 获取当前蚂蚁动画帧
+function getCurrentAntFrame(antType) {
+    const frameData = antAnimationFrameData.get(antType);
+    if (!frameData) return null;
+
+    const frames = antSpriteCache.get(antType);
+    if (!frames || frames.length === 0) return null;
+
+    return frames[frameData.currentFrame];
+}
+
+// 更新蚂蚁动画帧
+function updateAntAnimations() {
+    for (const [antType, frameData] of antAnimationFrameData) {
+        frameData.frameTimer++;
+
+        if (frameData.frameTimer >= frameData.frameInterval) {
+            frameData.frameTimer = 0;
+            frameData.currentFrame = (frameData.currentFrame + 1) % frameData.frameCount;
+        }
+    }
+}
+
+// 绘制带动画的蚂蚁（现在使用矢量绘制）
+function drawAntSprite(x, y, size, angle, antType, is_injured = false) {
+    console.log(`🐜 绘制蚂蚁(矢量绘制): ${antType}, 尺寸: ${size}, 角度: ${angle}, 受伤: ${is_injured}`);
+
+    // 使用矢量绘制替代SVG动画
+    switch (antType) {
+        case 'soldierant':
+        case 'soldier':
+            drawVectorSoldierAnt(x, y, size, angle, is_injured);
+            break;
+        case 'workerant':
+        case 'worker':
+            drawVectorWorkerAnt(x, y, size, angle, is_injured);
+            break;
+        case 'babyant':
+        case 'baby':
+            drawVectorBabyAnt(x, y, size, angle, is_injured);
+            break;
+        case 'antqueen':
+        case 'queen':
+            drawVectorAntQueen(x, y, size, angle, is_injured);
+            break;
+        default:
+            // 默认绘制简单圆形
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+
+            // 根据蚂蚁类型设置不同颜色
+            let color = '#808080'; // 默认灰色
+            if (antType.includes('soldier')) color = '#8B4513'; // 棕红色
+            else if (antType.includes('worker')) color = '#696969'; // 深灰色
+            else if (antType.includes('baby')) color = '#DEB887'; // 浅棕色
+            else if (antType.includes('queen')) color = '#483D8B'; // 紫黑色
+
+            ctx.fillStyle = is_injured ? '#FFFFFF' : color;
+            ctx.fill();
+
+            // 添加类型标识文字
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = `bold ${Math.max(10, size/3)}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const shortName = antType.replace('ant', '').replace(/^(soldier|worker|baby|queen).*$/, '$1').substring(0, 1).toUpperCase();
+            ctx.fillText(shortName, 0, 0);
+
+            ctx.restore();
+    }
+}
 
 // 生成缓存键 - 考虑设备像素比
 function getDropCacheKey(petalType, petalLevel, baseSize) {
@@ -946,6 +1158,38 @@ function drawStaticPetalItem(petal, canvas, options) {
             ctx.fill();
             ctx.closePath();
         },
+
+        bud: (p) => {
+            ctx.lineWidth = 3;
+
+            ctx.fillStyle = blendColor('#c02dd6', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#9c24ad', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+            for(let i = 5; i--; i>0){
+                ctx.beginPath();
+                ctx.arc(p.radius * Math.sin(i * 6.28318/5), p.radius * Math.cos(i * 6.28318/5), p.radius*0.8, 0, Math.PI*2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.closePath();
+            }
+
+
+            ctx.fillStyle = blendColor('#ebac00', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#b38302', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+        },
     };
 
     // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
@@ -1116,7 +1360,8 @@ function drawStaticPetalItem(petal, canvas, options) {
             12: 'orange',
             13: 'egg',
             14: 'square',
-            15: 'pearl'
+            15: 'pearl',
+            16: 'bud'
         };
 
         const renderType = typeMap[type] || 'basic';
@@ -1156,7 +1401,8 @@ function drawStaticPetalItem(petal, canvas, options) {
         12: '橙子',
         13: '蛋',
         14: '方块',
-        15: '珍珠'
+        15: '珍珠',
+        16: '花蕾'
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -1329,16 +1575,24 @@ const objectTypeMap = {
     13: 'egg',
     14: 'square',
     15: 'pearl',
+    16: 'bud',
     // 怪物类型
     22: 'rock',
     24: 'ladybug',
     26: 'centipede0',
     28: 'thunderelement',
-    16: 'venomspider',
+    33: 'venomspider',
     17: 'shieldguardian',
     18: 'bombbeetle',
     23: 'hornet',  // 移动到23避免冲突
     25: 'beetle',
+    27: 'bee',
+    34: 'healbug',
+    // 蚂蚁类型
+    29: 'soldierant',
+    30: 'workerant',
+    31: 'babyant',
+    32: 'antqueen',
     // 花朵类型
     19: 'flower',
     // 掉落物类型
@@ -1348,7 +1602,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'ws://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -1519,6 +1773,7 @@ const absorbLobbyButton = document.getElementById('absorbLobbyButton');
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+
 const healthFill = document.getElementById('healthFill');
 const fpsDisplay = document.getElementById('fps');
 const startScreen = document.getElementById('startScreen');
@@ -3853,6 +4108,38 @@ function drawPetalInContext(petal, ctx, displaySize) {
             ctx.fill();
             ctx.closePath();
         },
+
+        bud: (p) => {
+            ctx.lineWidth = 3;
+
+            ctx.fillStyle = blendColor('#c02dd6', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#9c24ad', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+            for(let i = 5; i--; i>0){
+                ctx.beginPath();
+                ctx.arc(p.radius * Math.sin(i * 6.28318/5), p.radius * Math.cos(i * 6.28318/5), p.radius*0.8, 0, Math.PI*2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.closePath();
+            }
+
+
+            ctx.fillStyle = blendColor('#ebac00', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#b38302', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+        },
     };
 
     // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
@@ -3926,7 +4213,8 @@ function drawPetalInContext(petal, ctx, displaySize) {
             12: 'orange',
             13: 'egg',
             14: 'square',
-            15: 'pearl'
+            15: 'pearl',
+            16: 'bud'
         };
 
         if(typeof type === 'integer' || typeof type === 'number'){
@@ -3967,7 +4255,8 @@ function drawPetalInContext(petal, ctx, displaySize) {
         12: '橙子',
         13: '蛋',
         14: '方块',
-        15: '珍珠'
+        15: '珍珠',
+        16: '花蕾'
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -4255,7 +4544,7 @@ function calculateTotalAvailablePetals() {
     const totalPetals = [];
 
     // 解析服务器完整数据
-    for (let i = 0; i < 16; i++) {  // 扩展到14以包含square花瓣
+    for (let i = 0; i <= 16; i++) {  // 扩展到14以包含square花瓣
         const petalKey = `petal${i}`;
         const petalString = gameState.serverBuild[petalKey];
 
@@ -4624,7 +4913,7 @@ function parseServerBuild(buildData) {
     const availablePetals = [];
 
     // 遍历petal0到petal15（共16种花瓣类型，包含pearl）
-    for (let i = 0; i <= 15; i++) {
+    for (let i = 0; i <= 16; i++) {
         const petalKey = `petal${i}`;
         const petalString = buildData[petalKey];
 
@@ -5944,7 +6233,7 @@ function handleServerMessage(data) {
 
                         
                         // 根据类型分类到不同数组
-                        if (typeIdx >= 0 && typeIdx <= 15) {
+                        if (typeIdx >= 0 && typeIdx <= 16) {
                             // 花瓣类型 (0-14)
                             baseObject.type = typeIdx;
                             gameState.petals.push(baseObject);
@@ -6040,27 +6329,10 @@ function handleServerMessage(data) {
                     }
                 }
 
-                // 检查游戏结束
+                // 玩家死亡时不显示GameOver界面，等待游戏引擎结束
                 if (gameState.playerHealth <= 0) {
-                    gameOverScreen.style.display = 'flex';
-
-                    // 游戏结束时立即清除房间信息和怪物summary信息
-                    gameState.roomInfo = {};
-                    gameState.mobsSummary = {};
-                    gameState.currentRoom = null;
-                    gameState.previousRoom = null;
-                    gameState.wave = { current: 1, start_time: null, duration: 120, spawn_phase_duration: 60, is_spawn_phase: false };
-                    gameState.effects = [];
-                    gameState.mobs = [];
-                    gameState.drops = [];
-                    gameState.projectiles = [];
-                    gameState.playerPosition = { x: 0, y: 0 };
-
-                    // 更新房间信息显示
-                    updateRoomInfo();
-                    showRoomInfo(false);
-
-                    console.log('游戏结束，已清除房间信息、怪物summary和游戏实体信息');
+                    console.log('玩家死亡，等待游戏引擎结束...');
+                    // 只播放死亡音效，不显示GameOver界面
                 }
                 break;
 
@@ -6108,6 +6380,57 @@ function handleServerMessage(data) {
                 setTimeout(() => {
                     location.reload();
                 }, 1000);
+                break;
+
+            case 'PLAYER_REVIVED':
+                if (message.data.player_id === gameState.playerId) {
+                    console.log('=== 玩家已复活 ===');
+                    // 更新玩家状态
+                    gameState.playerHealth = message.data.health;
+                    gameState.playerMaxHealth = message.data.max_health;
+                    gameState.playerPosition = {
+                        x: message.data.position[0],
+                        y: message.data.position[1]
+                    };
+                    updateHealthBar();
+
+                    // 恢复背景音乐
+                    startBackgroundMusic();
+                }
+                break;
+
+            case 'GAME_OVER':
+                console.log('=== 收到游戏结束消息 ===');
+                console.log('游戏结束原因:', message.data.reason);
+                console.log('游戏结束消息:', message.data.message);
+
+                // 显示GameOver界面
+                const gameOverScreen = document.getElementById('gameOver');
+                if (gameOverScreen) {
+                    gameOverScreen.style.display = 'flex';
+                    console.log('已显示GameOver界面');
+                }
+
+                // 停止背景音乐
+                stopBackgroundMusic();
+
+                // 清理游戏状态
+                gameState.roomInfo = {};
+                gameState.mobsSummary = {};
+                gameState.currentRoom = null;
+                gameState.previousRoom = null;
+                gameState.wave = { current: 1, start_time: null, duration: 120, spawn_phase_duration: 60, is_spawn_phase: false };
+                gameState.effects = [];
+                gameState.mobs = [];
+                gameState.drops = [];
+                gameState.projectiles = [];
+                gameState.playerPosition = { x: 0, y: 0 };
+
+                // 更新房间信息显示
+                updateRoomInfo();
+                showRoomInfo(false);
+
+                console.log('游戏结束，已清除房间信息、怪物summary和游戏实体信息');
                 break;
 
             default:
@@ -6507,6 +6830,7 @@ function gameLoop(timestamp) {
 
         // 绘制背景网格
         drawBackground();
+
 
         // 绘制游戏对象
         drawGameObjects();
@@ -7017,6 +7341,7 @@ function drawGameObjects() {
 
 // 绘制单个对象
 function drawObject(obj) {
+
     // 使用画布尺寸计算屏幕坐标
     const playerCenterX = config.baseCanvasWidth / 2;
     const playerCenterY = config.baseCanvasHeight / 2;
@@ -7073,12 +7398,23 @@ function drawObject(obj) {
                    obj.name.includes('rock') || obj.name.includes('ladybug') || obj.name.includes('mob') ||
                    obj.name.includes('bombbeetle') || obj.name.includes('shield') ||
                    obj.name.includes('venomspider') || obj.name.includes('thunderelement') ||
-                   obj.name.includes('beetle'))) {
+                   obj.name.includes('beetle') || obj.name.includes('soldierant') ||
+                   obj.name.includes('workerant') || obj.name.includes('babyant') ||
+                   obj.name.includes('antqueen')|| obj.name.includes('workerant') || 
+                   obj.name.includes('healbug') ||obj.name.includes('bee'))) {
+
+
             // 使用服务器传输的原始大小，不应用最小尺寸限制
             const mobSize = Math.max(width, height);
 
-
-            drawVectorMonster(screenX, screenY, mobSize, obj.name, -obj.angle, obj.is_injured);
+            // 现在所有怪物都使用矢量绘制，包括蚂蚁
+            if (obj.name.includes('soldierant') || obj.name.includes('workerant') ||
+                obj.name.includes('babyant') || obj.name.includes('antqueen')) {
+                drawVectorMonster(screenX, screenY, mobSize, obj.name, -obj.angle, obj.is_injured);
+            } else {
+                // 使用矢量绘制其他怪物
+                drawVectorMonster(screenX, screenY, mobSize, obj.name, -obj.angle, obj.is_injured);
+            }
         } else if (obj.name && obj.name.includes('drop')) {
             // 收集物 - 使用服务器传输的原始大小，但size应该是直径
             const dropSize = Math.max(width, height) / 2;  // 这是半径
@@ -7611,12 +7947,19 @@ function drawMobsSummary() {
         'hornet': drawVectorHornet,
         'rock': drawVectorRock,
         'ladybug': drawVectorLadybug,
+        'healbug': drawVectorHealbug,
+        'bee': drawVectorBee,
         'centipede0': drawVectorCentipede,
         'thunderelement': drawVectorThunderElement,
         'venomspider': drawVectorVenomSpider,
         'shieldguardian': drawVectorShieldGuardian,
         'bombbeetle': drawVectorBombBeetle,
-        'beetle': drawVectorBeetle
+        'beetle': drawVectorBeetle,
+        // 蚂蚁类怪物使用矢量绘制
+        'soldierant': drawVectorSoldierAnt,
+        'workerant': drawVectorWorkerAnt,
+        'babyant': drawVectorBabyAnt,
+        'antqueen': drawVectorAntQueen
     };
 
     // 根据等级设置边框和背景颜色 - 使用和花瓣相同的颜色表
@@ -8483,6 +8826,38 @@ const petalRenderMap = {
         ctx.fill();
         ctx.closePath();
     },
+
+    bud: (p) => {
+        ctx.lineWidth = 3;
+
+        ctx.fillStyle = blendColor('#c02dd6', '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor('#9c24ad', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF";
+        }
+        for(let i = 5; i--; i>0){
+            ctx.beginPath();
+            ctx.arc(p.radius * Math.sin(i * 6.28318/5), p.radius * Math.cos(i * 6.28318/5), p.radius*0.8, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+        }
+
+
+        ctx.fillStyle = blendColor('#ebac00', '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor('#b38302', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF";
+        }
+
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+    },
 };
 
 // 绘制花瓣形状（完全按照petal.js标准）
@@ -9128,6 +9503,205 @@ function drawVectorLadybug(x, y, size, angle, is_injured = false) {
     ctx.restore();
 }
 
+// 完全按照 enemy.js 中的 Shiny Ladybug 绘制方式 - healbug
+function drawVectorHealbug(x, y, size, angle, is_injured = false) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    // 图片渲染使用 size 作为直径，所以矢量也需要用 size/2
+    const actualSize = size / 2;
+    const e = {
+        render: {
+            angle: 0,
+            radius: actualSize
+        },
+        ticksSinceLastDamaged: 1000,
+        lastTicksSinceLastDamaged: 1000,
+        rarity: 1,
+        data: [0.5, 0.3, 0.5, 0.4, 0.2, 0.7, 0.6, 0.5, 0.3, 0.2, 0.8, 0.4, 0.7, 0.3, 0.6, 0.4, 0.5, 0.8, 0.2, 0.6, 0.3, 0.7, 0.4, 0.5, 0.6, 0.2, 0.8]
+    };
+
+    // 完全复制 enemy.js 中的 Shiny Ladybug 绘制逻辑
+    let bodyColor = blendColor("#ebeb34", "#FF0000", Math.max(0, 0)); // blendAmount(e)
+    let dotColor = blendColor("#111111", "#FF0000", Math.max(0, 0));
+    let headColor = blendColor("#111111", "#FF0000", Math.max(0, 0));
+
+    // 如果受伤，将颜色向白色偏向
+    if (is_injured) {
+        bodyColor = shiftToWhite(bodyColor);
+        headColor = shiftToWhite(headColor);
+        dotColor = shiftToWhite(dotColor);
+    }
+
+    // 由于没有 damageFlash，简化 checkForFirstFrame
+    const isFirstFrame = false;
+    if (isFirstFrame) {
+        bodyColor = "#FFFFFF";
+        headColor = "#FFFFFF";
+        dotColor = "#FFFFFF";
+    }
+
+    ctx.rotate(e.render.angle + Math.PI);
+
+    ctx.strokeStyle = blendColor(headColor, "#000000", 0.19);
+    ctx.fillStyle = headColor;
+    ctx.lineWidth = e.render.radius / 5;
+
+    // head (little black thing sticking out)
+    ctx.beginPath();
+    ctx.arc(-e.render.radius / 2, 0, e.render.radius / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    // main body
+    ctx.strokeStyle = blendColor(bodyColor, "#000000", 0.19);
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.arc(0, 0, e.render.radius, (5.9375 / 5) * Math.PI, (4.0625 / 5) * Math.PI);
+    ctx.quadraticCurveTo(-10, 0, Math.cos((5.9375 / 5) * Math.PI) * e.render.radius, Math.sin((5.9375 / 5) * Math.PI) * e.render.radius);
+    ctx.closePath();
+
+    ctx.fill();
+    ctx.save();
+    ctx.clip();
+
+    // ladybug spots (使用 dotColor 而不是 headColor)
+    ctx.fillStyle = dotColor;
+    for (let i = 0; i < (Math.ceil(Math.min(e.rarity, 5) ** 1.5) * 3) + 9; i += 3) {
+        ctx.beginPath();
+        ctx.arc((-0.5 + e.data[i]) * e.render.radius / 30 * 35, (-0.5 + e.data[i + 1] * e.render.radius / 30 * 35), e.render.radius / 30 * (5 + e.data[i + 2] * 5), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+    }
+    ctx.restore();
+
+    ctx.beginPath();
+    ctx.arc(0, 0, e.render.radius, (5.9375 / 5) * Math.PI, (4.0625 / 5) * Math.PI);
+    ctx.quadraticCurveTo(-10, 0, Math.cos((5.9375 / 5) * Math.PI) * e.render.radius, Math.sin((5.9375 / 5) * Math.PI) * e.render.radius);
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.rotate(-e.render.angle - Math.PI);
+    ctx.restore();
+}
+
+// 完全按照 enemy.js 中的 Bee 绘制方式
+function drawVectorBee(x, y, size, angle, is_injured = false) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    // 图片渲染使用 size 作为直径，所以矢量也需要用 size/2
+    const actualSize = size / 2;
+    const e = {
+        render: {
+            angle: 0,
+            radius: actualSize
+        },
+        ticksSinceLastDamaged: 1000,
+        lastTicksSinceLastDamaged: 1000
+    };
+
+    // 完全复制 enemy.js 中的 Bee 绘制逻辑
+    let bodyColor = blendColor("#ffe763", "#FF0000", Math.max(0, 0)); // blendAmount(e)
+    let stripesColor = blendColor("#333333", "#FF0000", Math.max(0, 0));
+
+    // 如果受伤，将颜色向白色偏向
+    if (is_injured) {
+        bodyColor = shiftToWhite(bodyColor);
+        stripesColor = shiftToWhite(stripesColor);
+    }
+
+    // 由于没有 damageFlash，简化 checkForFirstFrame
+    const isFirstFrame = false;
+    if (isFirstFrame) {
+        bodyColor = "#FFFFFF";
+        stripesColor = "#FFFFFF";
+    }
+
+    ctx.lineJoin = 'round';
+    ctx.rotate(e.render.angle + Math.PI / 2);
+
+    // stinger/ tail thing
+    ctx.strokeStyle = stripesColor;
+    ctx.fillStyle = stripesColor;
+    ctx.lineWidth = e.render.radius / 6;
+    ctx.beginPath();
+    ctx.moveTo(0, e.render.radius * 1.23);
+    ctx.lineTo(-e.render.radius * .41, e.render.radius * .65);
+    ctx.lineTo(e.render.radius * .41, e.render.radius * .65);
+    ctx.lineTo(0, e.render.radius * 1.23);
+    ctx.stroke();
+    ctx.fill();
+    ctx.closePath();
+
+    ctx.fillStyle = bodyColor;
+
+    // body fill
+    ctx.beginPath();
+    ctx.ellipse(0, 0, e.render.radius * 2 / 3, e.render.radius, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // stripes
+    ctx.fillStyle = stripesColor;
+    ctx.beginPath();
+    ctx.moveTo(-e.render.radius * 0.45, -e.render.radius * 2 / 3);
+    ctx.lineTo(-e.render.radius * 0.55, -e.render.radius * 1 / 3);
+    ctx.lineTo(e.render.radius * 0.55, -e.render.radius * 1 / 3);
+    ctx.lineTo(e.render.radius * 0.45, -e.render.radius * 2 / 3);
+    ctx.fill();
+    ctx.fillRect(-e.render.radius * 0.65, 0, e.render.radius * 2 * 0.65, e.render.radius / 3);
+    ctx.beginPath();
+    ctx.moveTo(-e.render.radius * 0.45, e.render.radius * 2 / 3);
+    ctx.lineTo(-e.render.radius * 0.15, e.render.radius);
+    ctx.lineTo(e.render.radius * 0.15, e.render.radius);
+    ctx.lineTo(e.render.radius * 0.45, e.render.radius * 2 / 3);
+    ctx.fill();
+
+    ctx.strokeStyle = blendColor(bodyColor, "#000000", 0.19);
+    ctx.lineWidth = e.render.radius * .15;
+
+    // body stroke
+    ctx.beginPath();
+    ctx.ellipse(0, 0, e.render.radius * 2 / 3, e.render.radius, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.closePath();
+
+    // antennae
+    ctx.strokeStyle = stripesColor;
+    ctx.lineWidth = e.render.radius * .09;
+
+    // antennae
+    ctx.beginPath();
+    ctx.moveTo(-e.render.radius * .155, -e.render.radius * .81);
+    ctx.quadraticCurveTo(-e.render.radius * .23, -e.render.radius * 1.1, -e.render.radius * .5, -e.render.radius * 1.3);
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.beginPath();
+    ctx.moveTo(e.render.radius * .155, -e.render.radius * .81);
+    ctx.quadraticCurveTo(e.render.radius * .23, -e.render.radius * 1.1, e.render.radius * .5, -e.render.radius * 1.3);
+    ctx.stroke();
+    ctx.closePath();
+
+    // little bulbs at the ends
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.beginPath();
+    ctx.arc(-e.render.radius * .5, -e.render.radius * 1.3, e.render.radius * .165, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.closePath();
+
+    ctx.beginPath();
+    ctx.arc(e.render.radius * .5, -e.render.radius * 1.3, e.render.radius * .165, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.closePath();
+
+    ctx.rotate(-e.render.angle - Math.PI / 2);
+    ctx.restore();
+}
+
 // 完全按照 enemy.js 的 Centipede 绘制方式
 function drawVectorCentipede(x, y, size, angle) {
     ctx.save();
@@ -9570,6 +10144,434 @@ function drawVectorThunderElement(x, y, size, angle, is_injured = false) {
     ctx.restore();
 }
 
+// 绘制兵蚁（完全按照enemy.js中的Soldier Ant绘制方法）
+function drawVectorSoldierAnt(x, y, size, angle, is_injured = false) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(.8, .8); // 缩小兵蚁的显示，确保身体完全位于碰撞箱内
+
+    // 创建完全符合enemy.js格式的enemy对象
+    const e = {
+        render: {
+            x: x,
+            y: y,
+            angle: angle,
+            radius: size / 2,
+            time: getCurrentTime() / 1000, // 初始化时间
+            lastX: x,
+            lastY: y
+        },
+        ticksSinceLastDamaged: is_injured ? 10 : 1000,
+        lastTicksSinceLastDamaged: 1000,
+        team: "mob"
+    };
+
+    // 更新动画时间
+    e.render.time = getCurrentTime() / 1000;
+
+    let body, bodyBorder;
+
+    // 如果is_injured为true，直接使用白色
+    if (is_injured) {
+        body = "#ffffff";
+        bodyBorder = "#ffffff";
+    } else {
+        // 否则使用正常的颜色（不用红色混合）
+        body = e.team === "flower" ? "#fbea6f" : "#555555";
+        bodyBorder = e.team === "flower" ? "#cfbd53" : "#454545";
+
+        // 如果是受伤的第一帧，也显示白色
+        if (checkForFirstFrame(e)) {
+            body = "#ffffff";
+            bodyBorder = "#ffffff";
+        }
+    }
+
+    // legs (实际上是颚)
+    ctx.strokeStyle = "#292929";
+    ctx.lineWidth = e.render.radius * 0.41;
+
+    ctx.rotate(e.render.angle);
+
+    let angle1 = Math.cos(getCurrentTime() / 250 + e.render.time * 8) * 0.04;
+
+    ctx.beginPath();
+
+    ctx.moveTo(e.render.radius * 0.62, e.render.radius * -0.45);
+    ctx.rotate(angle1);
+    ctx.quadraticCurveTo(e.render.radius * 0.93, e.render.radius * -0.59, e.render.radius * 1.53, e.render.radius * -0.31);
+    ctx.rotate(-angle1);
+
+    ctx.moveTo(e.render.radius * 0.62, e.render.radius * 0.45);
+    ctx.rotate(-angle1);
+    ctx.quadraticCurveTo(e.render.radius * 0.93, e.render.radius * 0.59, e.render.radius * 1.53, e.render.radius * 0.31);
+    ctx.rotate(angle1);
+
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.fillStyle = body;
+    ctx.strokeStyle = bodyBorder;
+
+    ctx.beginPath();
+    ctx.arc(e.render.radius * -0.91, e.render.radius * 0, e.render.radius * 0.65, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    let wingAngle = Math.cos(getCurrentTime() / 80 + e.render.time * 20) / 3 - 0.02;
+    ctx.fillStyle = "#ffffff";
+    ctx.globalAlpha *= 0.3;
+
+    ctx.beginPath();
+
+    ctx.rotate(wingAngle);
+    ctx.ellipse(e.render.radius * -0.98, e.render.radius * -0.54, e.render.radius * 0.79, e.render.radius * 0.42, 15 * ((Math.PI * 2) / 360), 0, Math.PI * 2);
+    ctx.rotate(-wingAngle);
+
+    ctx.rotate(-wingAngle);
+    ctx.ellipse(e.render.radius * -0.98, e.render.radius * 0.54, e.render.radius * 0.79, e.render.radius * 0.42, -15 * ((Math.PI * 2) / 360), 0, Math.PI * 2);
+    ctx.rotate(wingAngle);
+
+    ctx.fill();
+    ctx.closePath();
+
+    ctx.globalAlpha *= 1 / 0.3;
+
+    ctx.fillStyle = body;
+    ctx.strokeStyle = bodyBorder;
+
+    ctx.beginPath();
+    ctx.arc(e.render.radius * 0.15, e.render.radius * 0, e.render.radius * 0.89, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.rotate(-e.render.angle);
+    ctx.restore();
+}
+
+// 绘制工蚁（完全按照enemy.js中的Worker Ant绘制方法）
+function drawVectorWorkerAnt(x, y, size, angle, is_injured = false) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(.8, .8); // 缩小工蚁的显示，确保身体完全位于碰撞箱内
+
+    // 创建完全符合enemy.js格式的enemy对象
+    const e = {
+        render: {
+            x: x,
+            y: y,
+            angle: angle,
+            radius: size / 2,
+            time: getCurrentTime() / 1000, // 初始化时间
+            lastX: x,
+            lastY: y
+        },
+        ticksSinceLastDamaged: is_injured ? 10 : 1000,
+        lastTicksSinceLastDamaged: 1000,
+        team: "mob"
+    };
+
+    // 更新动画时间
+    e.render.time = getCurrentTime() / 1000;
+
+    let body, bodyBorder;
+
+    // 如果is_injured为true，直接使用白色
+    if (is_injured) {
+        body = "#ffffff";
+        bodyBorder = "#ffffff";
+    } else {
+        // 否则使用正常的颜色（不用红色混合）
+        body = e.team === "flower" ? "#fbea6f" : "#555555";
+        bodyBorder = e.team === "flower" ? "#cfbd53" : "#454545";
+
+        // 如果是受伤的第一帧，也显示白色
+        if (checkForFirstFrame(e)) {
+            body = "#ffffff";
+            bodyBorder = "#ffffff";
+        }
+    }
+
+    // legs (实际上是颚)
+    ctx.strokeStyle = "#292929";
+    ctx.lineWidth = e.render.radius * 0.41;
+
+    ctx.rotate(e.render.angle);
+
+    let angle1 = Math.cos(getCurrentTime() / 280 + e.render.time * 6) * 0.035;
+
+    ctx.beginPath();
+
+    ctx.moveTo(e.render.radius * 0.62, e.render.radius * -0.45);
+    ctx.rotate(angle1);
+    ctx.quadraticCurveTo(e.render.radius * 0.93, e.render.radius * -0.59, e.render.radius * 1.53, e.render.radius * -0.31);
+    ctx.rotate(-angle1);
+
+    ctx.moveTo(e.render.radius * 0.62, e.render.radius * 0.45);
+    ctx.rotate(-angle1);
+    ctx.quadraticCurveTo(e.render.radius * 0.93, e.render.radius * 0.59, e.render.radius * 1.53, e.render.radius * 0.31);
+    ctx.rotate(angle1);
+
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.fillStyle = body;
+    ctx.strokeStyle = bodyBorder;
+
+    ctx.beginPath();
+    ctx.arc(e.render.radius * -0.91, e.render.radius * 0, e.render.radius * 0.65, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.beginPath();
+    ctx.arc(e.render.radius * 0.15, e.render.radius * 0, e.render.radius * 0.89, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.rotate(-e.render.angle);
+    ctx.restore();
+}
+
+// 绘制幼蚁（完全按照enemy.js中的Baby Ant绘制方法）
+function drawVectorBabyAnt(x, y, size, angle, is_injured = false) {
+    ctx.save();
+    ctx.translate(x, y);
+
+    // 创建完全符合enemy.js格式的enemy对象
+    const e = {
+        render: {
+            x: x,
+            y: y,
+            angle: angle,
+            radius: size / 2,
+            time: getCurrentTime() / 1000, // 初始化时间
+            lastX: x,
+            lastY: y
+        },
+        ticksSinceLastDamaged: is_injured ? 10 : 1000,
+        lastTicksSinceLastDamaged: 1000,
+        team: "mob"
+    };
+
+    // 更新动画时间
+    e.render.time = getCurrentTime() / 1000;
+
+    let body, bodyBorder;
+
+    // 如果is_injured为true，直接使用白色
+    if (is_injured) {
+        body = "#ffffff";
+        bodyBorder = "#ffffff";
+    } else {
+        // 否则使用正常的颜色（不用红色混合）
+        body = e.team === "flower" ? "#fbea6f" : "#555555";
+        bodyBorder = e.team === "flower" ? "#cfbd53" : "#454545";
+
+        // 如果是受伤的第一帧，也显示白色
+        if (checkForFirstFrame(e)) {
+            body = "#ffffff";
+            bodyBorder = "#ffffff";
+        }
+    }
+
+    // legs
+    ctx.strokeStyle = "#292929";
+    ctx.lineWidth = e.render.radius * 0.41;
+
+    ctx.rotate(e.render.angle);
+
+    ctx.translate(e.render.radius * -0.15, 0);
+
+    let angle1 = Math.cos(getCurrentTime() / 300 + e.render.time * 5) * 0.03;
+
+    ctx.beginPath();
+
+    ctx.moveTo(e.render.radius * 0.62, e.render.radius * -0.45);
+    ctx.rotate(angle1);
+    ctx.quadraticCurveTo(e.render.radius * 0.93, e.render.radius * -0.59, e.render.radius * 1.53, e.render.radius * -0.31);
+    ctx.rotate(-angle1);
+
+    ctx.moveTo(e.render.radius * 0.62, e.render.radius * 0.45);
+    ctx.rotate(-angle1);
+    ctx.quadraticCurveTo(e.render.radius * 0.93, e.render.radius * 0.59, e.render.radius * 1.53, e.render.radius * 0.31);
+    ctx.rotate(angle1);
+
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.fillStyle = body;
+    ctx.strokeStyle = bodyBorder;
+
+    ctx.fillStyle = body;
+    ctx.strokeStyle = bodyBorder;
+
+    ctx.beginPath();
+    ctx.arc(e.render.radius * 0.15, e.render.radius * 0, e.render.radius * 0.89, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.translate(e.render.radius * 0.15, 0);
+
+    ctx.rotate(-e.render.angle);
+    ctx.restore();
+}
+
+// 绘制蚁后（完全按照enemy.js中的Queen Ant绘制方法）
+function drawVectorAntQueen(x, y, size, angle, is_injured = false) {
+    ctx.save();
+    ctx.translate(x, y);
+
+    // 创建完全符合enemy.js格式的enemy对象
+    const e = {
+        render: {
+            x: x,
+            y: y,
+            angle: angle,
+            radius: size / 2,
+            time: getCurrentTime() / 1000, // 初始化时间
+            lastX: x,
+            lastY: y
+        },
+        ticksSinceLastDamaged: is_injured ? 10 : 1000,
+        lastTicksSinceLastDamaged: 1000,
+        team: "mob"
+    };
+
+    // 完全复制enemy.js中的Queen Ant绘制代码
+    ctx.lastTransform73408 = ctx.getTransform();
+    ctx.scale(.8, .8); // 调整蚁后的显示大小为0.8倍
+
+    // 更新动画时间
+    e.render.time = getCurrentTime() / 1000;
+
+    let body, bodyOutline;
+
+    // 如果is_injured为true，直接使用白色
+    if (is_injured) {
+        body = "#ffffff";
+        bodyOutline = "#ffffff";
+    } else {
+        // 否则使用正常的颜色（不用红色混合）
+        body = '#555555';
+        bodyOutline = '#454545';
+
+        // 如果是受伤的第一帧，也显示白色
+        if (checkForFirstFrame(e)) {
+            body = "#ffffff";
+            bodyOutline = "#ffffff";
+        }
+    }
+
+    // "legs" no they are jaws you dumbbum-
+    // 如果is_injured为true，颚部也用白色
+    if (is_injured) {
+        ctx.strokeStyle = "#ffffff";
+    } else {
+        ctx.strokeStyle = '#292929';
+        // 如果是受伤的第一帧，也显示白色
+        if (checkForFirstFrame(e)) {
+            ctx.strokeStyle = "#ffffff";
+        }
+    }
+    ctx.lineWidth = e.render.radius / 3.75;
+
+    ctx.rotate(e.render.angle);
+
+    ctx.translate(-e.render.radius * 0.52, 0);
+
+    let angle1 = Math.cos(getCurrentTime() / 240 + e.render.time * 7) * 0.045;
+    ctx.translate(e.render.radius * 1.2, e.render.radius * 0.4); // 1
+    ctx.rotate(angle1);
+    ctx.beginPath();
+    ctx.lineTo(-e.render.radius * 0.4, e.render.radius * 0.05);
+    ctx.quadraticCurveTo(e.render.radius * 0.7, e.render.radius * 0.05, e.render.radius * 0.9, -e.render.radius * 0.125);
+    ctx.stroke();
+    ctx.closePath();
+    ctx.rotate(-angle1);
+    ctx.translate(-e.render.radius * 1.2, -e.render.radius * 0.4); // 0
+
+    ctx.translate(e.render.radius * 1.2, -e.render.radius * 0.4); // 1
+    ctx.rotate(-angle1);
+    ctx.beginPath();
+    ctx.lineTo(-e.render.radius * 0.4, -e.render.radius * 0.05);
+    ctx.quadraticCurveTo(e.render.radius * 0.7, -e.render.radius * 0.05, e.render.radius * 0.9, e.render.radius * 0.125);
+    ctx.stroke();
+    ctx.closePath();
+    ctx.rotate(angle1);
+    ctx.translate(-e.render.radius * 1.2, e.render.radius * 0.4); // 0
+
+    ctx.lineWidth = e.render.radius / 5;
+    ctx.fillStyle = body;
+    ctx.strokeStyle = bodyOutline;
+    ctx.beginPath();
+    ctx.arc(-e.render.radius * 3 / 4, 0, e.render.radius * 13 / 12.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.beginPath();
+    ctx.arc(e.render.radius * 1 / 4, 0, e.render.radius * 11.5 / 12.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    //Wings
+    ctx.globalAlpha *= 0.3;
+    ctx.fillStyle = "white";
+    let wingAngle = Math.cos(getCurrentTime() / 90 + e.render.time * 15) / 2.5 - 0.015;
+    ctx.translate(e.render.radius * 0.4, 0); // -0.4
+    ctx.rotate(wingAngle);
+    ctx.translate(e.render.radius * -0.1, e.render.radius * 0.4); // -0.5
+    ctx.beginPath();
+    ctx.ellipse(-e.render.radius * 0.7, 0, e.render.radius * 1.1, e.render.radius * 0.45, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.translate(-(e.render.radius * -0.1), -(e.render.radius * 0.4)) // -0.4
+    ctx.rotate(-wingAngle);
+    ctx.rotate(-wingAngle);
+    ctx.translate(e.render.radius * -0.1, -e.render.radius * 0.4); // -0.5
+    ctx.beginPath();
+    ctx.ellipse(-e.render.radius * 0.7, 0, e.render.radius * 1.1, e.render.radius * 0.45, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.translate(-(e.render.radius * -0.1), (e.render.radius * 0.4)) // -0.4
+    ctx.rotate(wingAngle);
+    ctx.translate(e.render.radius * -0.4, 0); // 0
+    ctx.globalAlpha *= (1 / 0.3);
+
+    ctx.rotate(-e.render.angle);
+
+    ctx.lineWidth = e.render.radius / 5;
+
+    // 受伤时头部也是白色
+    if (is_injured) {
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "#ffffff";
+    } else {
+        ctx.fillStyle = body;
+        ctx.strokeStyle = bodyOutline;
+        // 如果是受伤的第一帧，也显示白色
+        if (checkForFirstFrame(e)) {
+            ctx.fillStyle = "#ffffff";
+            ctx.strokeStyle = "#ffffff";
+        }
+    }
+
+    ctx.rotate(e.render.angle);
+    // head
+    ctx.beginPath();
+    ctx.arc(e.render.radius, 0, e.render.radius * 9.5 / 12.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.setTransform(ctx.lastTransform73408);
+    ctx.restore();
+}
+
 // 绘制通用怪物形状（矢量版本）- 兼容旧版
 function drawVectorMonster(x, y, size, type, angle, is_injured = false) {
     // 根据类型调用具体的绘制函数
@@ -9579,6 +10581,12 @@ function drawVectorMonster(x, y, size, type, angle, is_injured = false) {
             break;
         case 'ladybug':
             drawVectorLadybug(x, y, size, angle, is_injured);
+            break;
+        case 'healbug':
+            drawVectorHealbug(x, y, size, angle, is_injured);
+            break;
+        case 'bee':
+            drawVectorBee(x, y, size, angle, is_injured);
             break;
         case 'centipede':
         case 'centipede0':  // 蜈蚣头部（有触角）
@@ -9608,8 +10616,18 @@ function drawVectorMonster(x, y, size, type, angle, is_injured = false) {
         case 'shieldguardian':
             drawVectorShieldGuardian(x, y, size, angle, is_injured);
             break;
-        case 'beetle':
-            drawVectorBeetle(x, y, size, angle, is_injured);
+        case 'soldierant':
+            drawVectorSoldierAnt(x, y, size, angle, is_injured);
+            break;
+        case 'workerant':
+            drawVectorWorkerAnt(x, y, size, angle, is_injured);
+            break;
+        case 'babyant':
+            drawVectorBabyAnt(x, y, size, angle, is_injured);
+            break;
+        case 'antqueen':
+            drawVectorAntQueen(x, y, size, angle, is_injured);
+            break;
         default:
             // 默认绘制简单圆形
             ctx.save();
@@ -9622,6 +10640,8 @@ function drawVectorMonster(x, y, size, type, angle, is_injured = false) {
             ctx.restore();
     }
 }
+
+// 蚂蚁SVG动画系统已替代矢量绘制
 
 // 性能测试：渲染模式切换
 window.toggleRenderingMode = function() {
