@@ -4865,5 +4865,63 @@ const petalRenderMap = {
         if(shapes.length === 1 && shapes[0].length === 0){
             petalRenderMap.Basic(p);
         }
+    },
+
+    Rita: (p) => {
+        ctx.lineWidth = 3;
+
+        // 主色调为紫色，带有转换能力的象征
+        const primaryColor = blendColor('#9b59b6', '#FF0000', blendAmount(p));
+        const secondaryColor = blendColor('#8e44ad', '#FF0000', blendAmount(p));
+
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF";
+        } else {
+            ctx.fillStyle = primaryColor;
+            ctx.strokeStyle = secondaryColor;
+        }
+
+        // 绘制六边形主体
+        ctx.beginPath();
+        for(let i = 0; i < 6; i++) {
+            const angle = (Math.PI * 2 / 6) * i;
+            const x = Math.cos(angle) * p.radius * 0.9;
+            const y = Math.sin(angle) * p.radius * 0.9;
+            if(i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // 绘制内部转换符号（类似太极图的简化版）
+        ctx.fillStyle = blendColor('#f39c12', '#FF0000', blendAmount(p));
+        ctx.beginPath();
+        ctx.arc(-p.radius * 0.3, 0, p.radius * 0.25, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+
+        ctx.fillStyle = blendColor('#ffffff', '#FF0000', blendAmount(p));
+        ctx.beginPath();
+        ctx.arc(p.radius * 0.3, 0, p.radius * 0.25, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+
+        // 中心装饰圆点
+        ctx.fillStyle = blendColor('#e74c3c', '#FF0000', blendAmount(p));
+        ctx.beginPath();
+        ctx.arc(-p.radius * 0.3, 0, p.radius * 0.08, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+
+        ctx.fillStyle = blendColor('#e74c3c', '#FF0000', blendAmount(p));
+        ctx.beginPath();
+        ctx.arc(p.radius * 0.3, 0, p.radius * 0.08, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
     }
 }

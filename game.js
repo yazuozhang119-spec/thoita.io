@@ -1156,6 +1156,36 @@ function drawStaticPetalItem(petal, canvas, options) {
             ctx.stroke();
             ctx.closePath();
         },
+        rita: (p) => {
+        ctx.beginPath();
+        ctx.fillStyle = blendColor("#e03f3f", '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor("#a12222", '#FF0000', blendAmount(p));
+        ctx.lineWidth = 3;
+        if (checkForFirstFrame(p)) {
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF"
+        }
+        ctx.rotate(Math.PI / 4)
+        for (let i = 0; i <= 3; i++) {
+            ctx.lineTo(Math.cos(i * Math.PI * 2 / 3) * p.radius, Math.sin(i * Math.PI * 2 / 3) * p.radius);
+        }
+        ctx.rotate(-Math.PI / 4)
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+        ctx.beginPath();
+        ctx.fillStyle = blendColor(blendColor("#e03f3f", '#ffffff', 0.3), '#FF0000', blendAmount(p));
+        if (checkForFirstFrame(p)) {
+            ctx.fillStyle = "#FFFFFF";
+        }
+        ctx.rotate(Math.PI / 4)
+        for (let i = 0; i <= 3; i++) {
+            ctx.lineTo(Math.cos(i * Math.PI * 2 / 3) * p.radius * 0.4, Math.sin(i * Math.PI * 2 / 3) * p.radius * 0.4);
+        }
+        ctx.rotate(-Math.PI / 4)
+        ctx.fill();
+        ctx.closePath();
+    },
     };
 
     // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
@@ -1328,7 +1358,8 @@ function drawStaticPetalItem(petal, canvas, options) {
             14: 'square',
             15: 'pearl',
             16: 'bud',
-            17: 'antegg'
+            17: 'antegg',
+            18: 'rita'
         };
 
         const renderType = typeMap[type] || 'basic';
@@ -1370,7 +1401,8 @@ function drawStaticPetalItem(petal, canvas, options) {
         14: '方块',
         15: '珍珠',
         16: '花蕾',
-        17: '蚂蚁蛋'
+        17: '蚂蚁蛋',
+        18: 'Rita'
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -1545,6 +1577,7 @@ const objectTypeMap = {
     15: 'pearl',
     16: 'bud',
     17: 'antegg',
+    18: 'rita',
     // 怪物类型
     22: 'rock',
     24: 'ladybug',
@@ -1553,7 +1586,7 @@ const objectTypeMap = {
     33: 'venomspider',
     35: 'friendlysoldierant',
     36: 'shieldguardian',
-    18: 'bombbeetle',
+    37: 'bombbeetle',
     23: 'hornet',  // 移动到23避免冲突
     25: 'beetle',
     27: 'bee',
@@ -4128,6 +4161,36 @@ function drawPetalInContext(petal, ctx, displaySize) {
             ctx.stroke();
             ctx.closePath();
         },
+        rita: (p) => {
+        ctx.beginPath();
+        ctx.fillStyle = blendColor("#e03f3f", '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor("#a12222", '#FF0000', blendAmount(p));
+        ctx.lineWidth = 3;
+        if (checkForFirstFrame(p)) {
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF"
+        }
+        ctx.rotate(Math.PI / 4)
+        for (let i = 0; i <= 3; i++) {
+            ctx.lineTo(Math.cos(i * Math.PI * 2 / 3) * p.radius, Math.sin(i * Math.PI * 2 / 3) * p.radius);
+        }
+        ctx.rotate(-Math.PI / 4)
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+        ctx.beginPath();
+        ctx.fillStyle = blendColor(blendColor("#e03f3f", '#ffffff', 0.3), '#FF0000', blendAmount(p));
+        if (checkForFirstFrame(p)) {
+            ctx.fillStyle = "#FFFFFF";
+        }
+        ctx.rotate(Math.PI / 4)
+        for (let i = 0; i <= 3; i++) {
+            ctx.lineTo(Math.cos(i * Math.PI * 2 / 3) * p.radius * 0.4, Math.sin(i * Math.PI * 2 / 3) * p.radius * 0.4);
+        }
+        ctx.rotate(-Math.PI / 4)
+        ctx.fill();
+        ctx.closePath();
+    },
     };
 
     // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
@@ -4203,7 +4266,8 @@ function drawPetalInContext(petal, ctx, displaySize) {
             14: 'square',
             15: 'pearl',
             16: 'bud',
-            17: 'antegg'
+            17: 'antegg',
+            18: 'rita'
         };
 
         if(typeof type === 'integer' || typeof type === 'number'){
@@ -4246,7 +4310,8 @@ function drawPetalInContext(petal, ctx, displaySize) {
         14: '方块',
         15: '珍珠',
         16: '花蕾',
-        17: '蚂蚁蛋'
+        17: '蚂蚁蛋',
+        18: 'Rita'
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -4534,7 +4599,7 @@ function calculateTotalAvailablePetals() {
     const totalPetals = [];
 
     // 解析服务器完整数据
-    for (let i = 0; i <= 17; i++) {  // 扩展到14以包含square花瓣
+    for (let i = 0; i <= 18; i++) {  // 扩展到14以包含square花瓣
         const petalKey = `petal${i}`;
         const petalString = gameState.serverBuild[petalKey];
 
@@ -4903,7 +4968,7 @@ function parseServerBuild(buildData) {
     const availablePetals = [];
 
     // 遍历petal0到petal15（共16种花瓣类型，包含pearl）
-    for (let i = 0; i <= 17; i++) {
+    for (let i = 0; i <= 18; i++) {
         const petalKey = `petal${i}`;
         const petalString = buildData[petalKey];
 
@@ -6223,7 +6288,7 @@ function handleServerMessage(data) {
 
                         
                         // 根据类型分类到不同数组
-                        if (typeIdx >= 0 && typeIdx <= 17) {
+                        if (typeIdx >= 0 && typeIdx <= 18) {
                             // 花瓣类型 (0-14)
                             baseObject.type = typeIdx;
                             gameState.petals.push(baseObject);
@@ -8865,6 +8930,37 @@ const petalRenderMap = {
         ctx.arc(0, 0, p.radius * 9 / 10, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
+        ctx.closePath();
+    },
+
+    rita: (p) => {
+        ctx.beginPath();
+        ctx.fillStyle = blendColor("#e03f3f", '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor("#a12222", '#FF0000', blendAmount(p));
+        ctx.lineWidth = 3;
+        if (checkForFirstFrame(p)) {
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF"
+        }
+        ctx.rotate(Math.PI / 4)
+        for (let i = 0; i <= 3; i++) {
+            ctx.lineTo(Math.cos(i * Math.PI * 2 / 3) * p.radius, Math.sin(i * Math.PI * 2 / 3) * p.radius);
+        }
+        ctx.rotate(-Math.PI / 4)
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+        ctx.beginPath();
+        ctx.fillStyle = blendColor(blendColor("#e03f3f", '#ffffff', 0.3), '#FF0000', blendAmount(p));
+        if (checkForFirstFrame(p)) {
+            ctx.fillStyle = "#FFFFFF";
+        }
+        ctx.rotate(Math.PI / 4)
+        for (let i = 0; i <= 3; i++) {
+            ctx.lineTo(Math.cos(i * Math.PI * 2 / 3) * p.radius * 0.4, Math.sin(i * Math.PI * 2 / 3) * p.radius * 0.4);
+        }
+        ctx.rotate(-Math.PI / 4)
+        ctx.fill();
         ctx.closePath();
     },
 };
