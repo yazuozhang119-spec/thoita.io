@@ -1587,6 +1587,7 @@ const objectTypeMap = {
     35: 'friendlysoldierant',
     36: 'shieldguardian',
     37: 'bombbeetle',
+    38: 'sandstorm',
     23: 'hornet',  // 移动到23避免冲突
     25: 'beetle',
     27: 'bee',
@@ -7456,7 +7457,8 @@ function drawObject(obj) {
                    obj.name.includes('beetle') || obj.name.includes('soldierant') ||
                    obj.name.includes('workerant') || obj.name.includes('babyant') ||
                    obj.name.includes('antqueen')|| obj.name.includes('workerant') || 
-                   obj.name.includes('healbug') ||obj.name.includes('bee'))) {
+                   obj.name.includes('healbug') ||obj.name.includes('bee') ||
+                   obj.name.includes('sandstorm'))) {
 
 
             // 使用服务器传输的原始大小，不应用最小尺寸限制
@@ -10829,6 +10831,85 @@ function drawVectorAntEgg(x, y, size, angle, is_injured = false) {
     ctx.restore();
 }
 
+// 完全按照 enemy.js 中的 Sandstorm 绘制方式
+function drawVectorSandstorm(x, y, size, angle, is_injured = false) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    // 创建模拟的enemy对象结构
+    const currentTime = Date.now();
+    const e = {
+        radius: size / 2, // size是直径
+        render: {
+            radius: size / 2,
+            angle: angle
+        },
+        team: 'enemy', // 默认为敌人
+        ticksSinceLastDamaged: is_injured ? 0 : 100,
+        lastTicksSinceLastDamaged: is_injured ? 0 : 100,
+        startRotation: undefined,
+        renderRotation: 0
+    };
+
+    // Sandstorm drawing method (完全按照 enemy.js)
+    let inner = blendColor(e.team === 'flower' ? "#cfbb50" : "#d6ba36", "#FF0000", Math.max(0, blendAmount(e)));
+    let middle = blendColor(e.team === 'flower' ? "#e6d059" : "#dfc85c", "#FF0000", Math.max(0, blendAmount(e)));
+    let outer = blendColor(e.team === 'flower' ? "#ffe763" : "#ebda8e", "#FF0000", Math.max(0, blendAmount(e)));
+
+    if (checkForFirstFrame(e)) {
+        inner = "#ffffff";
+        outer = "#ffffff";
+        middle = "#ffffff";
+    }
+
+    if (e.startRotation === undefined) {
+        e.startRotation = 2 * Math.PI * Math.random();
+    }
+    e.renderRotation = currentTime / 200 + e.startRotation;
+
+    ctx.rotate(e.renderRotation);
+
+    ctx.fillStyle = outer;
+    ctx.strokeStyle = ctx.fillStyle;
+    ctx.lineWidth = e.render.radius * 0.2;
+    ctx.beginPath();
+    for (let i = 7; i--; i > 0) {
+        ctx.lineTo(e.render.radius * Math.cos(i * Math.PI / 3), e.render.radius * Math.sin(i * Math.PI / 3));
+    }
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+    ctx.rotate(-e.renderRotation);
+
+    ctx.rotate(-e.renderRotation);
+    ctx.fillStyle = middle;
+    ctx.strokeStyle = ctx.fillStyle;
+    ctx.beginPath();
+    for (let i = 7; i--; i > 0) {
+        ctx.lineTo(e.render.radius * Math.cos(i * Math.PI / 3) * 2 / 3, e.render.radius * Math.sin(i * Math.PI / 3) * 2 / 3);
+    }
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.rotate(e.renderRotation);
+
+    ctx.rotate(e.renderRotation * 0.5);
+    ctx.fillStyle = inner;
+    ctx.strokeStyle = ctx.fillStyle;
+    ctx.beginPath();
+    for (let i = 7; i--; i > 0) {
+        ctx.lineTo(e.render.radius * Math.cos(i * Math.PI / 3) * 1 / 3.25, e.render.radius * Math.sin(i * Math.PI / 3) * 1 / 3.25);
+    }
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+    ctx.rotate(-e.renderRotation * 0.5);
+
+    ctx.restore();
+}
+
 // 绘制通用怪物形状（矢量版本）- 兼容旧版
 function drawVectorMonster(x, y, size, type, angle, is_injured = false) {
     // 根据类型调用具体的绘制函数
@@ -10854,6 +10935,9 @@ function drawVectorMonster(x, y, size, type, angle, is_injured = false) {
             break;
         case 'rock':
             drawVectorRock(x, y, size, angle, is_injured);
+            break;
+        case 'sandstorm':
+            drawVectorSandstorm(x, y, size, angle, is_injured);
             break;
         case 'bombbeetle':
             drawVectorBombBeetle(x, y, size, angle, is_injured);
