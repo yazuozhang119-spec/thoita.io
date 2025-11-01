@@ -10838,7 +10838,6 @@ function drawVectorSandstorm(x, y, size, angle, is_injured = false) {
     ctx.rotate(angle);
 
     // 创建模拟的enemy对象结构
-    const currentTime = Date.now();
     const e = {
         radius: size / 2, // size是直径
         render: {
@@ -10848,8 +10847,7 @@ function drawVectorSandstorm(x, y, size, angle, is_injured = false) {
         team: 'enemy', // 默认为敌人
         ticksSinceLastDamaged: is_injured ? 0 : 100,
         lastTicksSinceLastDamaged: is_injured ? 0 : 100,
-        startRotation: undefined,
-        renderRotation: 0
+        startRotation: undefined
     };
 
     // Sandstorm drawing method (完全按照 enemy.js)
@@ -10866,9 +10864,9 @@ function drawVectorSandstorm(x, y, size, angle, is_injured = false) {
     if (e.startRotation === undefined) {
         e.startRotation = 2 * Math.PI * Math.random();
     }
-    e.renderRotation = currentTime / 200 + e.startRotation;
+    const renderRotation = performance.now() / 200 + e.startRotation;
 
-    ctx.rotate(e.renderRotation);
+    ctx.rotate(renderRotation);
 
     ctx.fillStyle = outer;
     ctx.strokeStyle = ctx.fillStyle;
@@ -10880,9 +10878,9 @@ function drawVectorSandstorm(x, y, size, angle, is_injured = false) {
     ctx.fill();
     ctx.stroke();
     ctx.closePath();
-    ctx.rotate(-e.renderRotation);
+    ctx.rotate(-renderRotation);
 
-    ctx.rotate(-e.renderRotation);
+    ctx.rotate(-renderRotation);
     ctx.fillStyle = middle;
     ctx.strokeStyle = ctx.fillStyle;
     ctx.beginPath();
@@ -10893,9 +10891,9 @@ function drawVectorSandstorm(x, y, size, angle, is_injured = false) {
     ctx.stroke();
     ctx.closePath();
 
-    ctx.rotate(e.renderRotation);
+    ctx.rotate(renderRotation);
 
-    ctx.rotate(e.renderRotation * 0.5);
+    ctx.rotate(renderRotation * 0.5);
     ctx.fillStyle = inner;
     ctx.strokeStyle = ctx.fillStyle;
     ctx.beginPath();
@@ -10905,7 +10903,7 @@ function drawVectorSandstorm(x, y, size, angle, is_injured = false) {
     ctx.fill();
     ctx.stroke();
     ctx.closePath();
-    ctx.rotate(-e.renderRotation * 0.5);
+    ctx.rotate(-renderRotation * 0.5);
 
     ctx.restore();
 }
