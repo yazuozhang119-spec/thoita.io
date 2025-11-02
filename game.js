@@ -482,7 +482,13 @@ levelColors = {
         16: { border: '#a16649', bg: '#c77e5b', fancy: { border: '#a16649', hue: 19, light: 57, sat: 49, spread: 15, period: 1.5, stars: 2 } }, // seraphic
         17: { border: '#cfcfcf', bg: '#ffffff', fancy: { border: '#cfcfcf', hue: 180, light: 93, sat: 100, spread: 80, period: 1.5, stars: 2 } }, // transcendent
         18: { border: '#d1a3ba', bg: '#f6c5de', fancy: { border: '#d1a3ba', hue: 341, light: 89, sat: 100, spread: 40, period: 1, stars: 2 } }, // ethereal
-        19: { border: '#974d63', bg: '#7f0226', fancy: { border: '#974d63', hue: 343, light: 26, sat: 97, spread: 20, period: 0.75, stars: 2 } }  // galactic
+        19: { border: '#974d63', bg: '#7f0226', fancy: { border: '#974d63', hue: 343, light: 26, sat: 97, spread: 20, period: 0.75, stars: 2 } }, // galactic
+        20: { border: '#ff6b35', bg: '#ff8c42', fancy: { border: '#ff6b35', hue: 18, light: 62, sat: 100, spread: 30, period: 0.6, stars: 3, particles: true } }, // beyond - 火焰橙
+        21: { border: '#4ecdc4', bg: '#44a3aa', fancy: { border: '#4ecdc4', hue: 176, light: 58, sat: 67, spread: 25, period: 0.5, stars: 3, particles: true } }, // ascendant - 青绿色
+        22: { border: '#a8e6cf', bg: '#7fcdbb', fancy: { border: '#a8e6cf', hue: 160, light: 75, sat: 54, spread: 35, period: 0.4, stars: 3, particles: true, rainbow: true } }, // quantum - 量子绿
+        23: { border: '#2c003e', bg: '#512b58', fancy: { border: '#2c003e', hue: 275, light: 18, sat: 89, spread: 45, period: 0.3, stars: 4, particles: true, dark: true } }, // void - 深紫虚空
+        24: { border: '#ffd700', bg: '#ffed4e', fancy: { border: '#ffd700', hue: 50, light: 71, sat: 100, spread: 50, period: 0.25, stars: 4, particles: true, divine: true } }, // genesis - 创世金
+        25: { border: '#1e90ff', bg: '#4169e1', fancy: { border: '#1e90ff', hue: 210, light: 55, sat: 100, spread: 60, period: 0.2, stars: 5, particles: true, divine: true, absolute: true } }  // absolute - 宝石蓝
     };
 
 
@@ -1239,7 +1245,13 @@ function drawStaticPetalItem(petal, canvas, options) {
         16: { border: '#a16649', bg: '#c77e5b', fancy: { border: '#a16649', hue: 19, light: 57, sat: 49, spread: 15, period: 1.5, stars: 2 } }, // seraphic
         17: { border: '#cfcfcf', bg: '#ffffff', fancy: { border: '#cfcfcf', hue: 180, light: 93, sat: 100, spread: 80, period: 1.5, stars: 2 } }, // transcendent
         18: { border: '#d1a3ba', bg: '#f6c5de', fancy: { border: '#d1a3ba', hue: 341, light: 89, sat: 100, spread: 40, period: 1, stars: 2 } }, // ethereal
-        19: { border: '#974d63', bg: '#7f0226', fancy: { border: '#974d63', hue: 343, light: 26, sat: 97, spread: 20, period: 0.75, stars: 2 } }  // galactic
+        19: { border: '#974d63', bg: '#7f0226', fancy: { border: '#974d63', hue: 343, light: 26, sat: 97, spread: 20, period: 0.75, stars: 2 } }, // galactic
+        20: { border: '#ff6b35', bg: '#ff8c42', fancy: { border: '#ff6b35', hue: 18, light: 62, sat: 100, spread: 30, period: 0.6, stars: 3, particles: true } }, // beyond - 火焰橙
+        21: { border: '#4ecdc4', bg: '#44a3aa', fancy: { border: '#4ecdc4', hue: 176, light: 58, sat: 67, spread: 25, period: 0.5, stars: 3, particles: true } }, // ascendant - 青绿色
+        22: { border: '#a8e6cf', bg: '#7fcdbb', fancy: { border: '#a8e6cf', hue: 160, light: 75, sat: 54, spread: 35, period: 0.4, stars: 3, particles: true, rainbow: true } }, // quantum - 量子绿
+        23: { border: '#2c003e', bg: '#512b58', fancy: { border: '#2c003e', hue: 275, light: 18, sat: 89, spread: 45, period: 0.3, stars: 4, particles: true, dark: true } }, // void - 深紫虚空
+        24: { border: '#ffd700', bg: '#ffed4e', fancy: { border: '#ffd700', hue: 50, light: 71, sat: 100, spread: 50, period: 0.25, stars: 4, particles: true, divine: true } }, // genesis - 创世金
+        25: { border: '#1e90ff', bg: '#4169e1', fancy: { border: '#1e90ff', hue: 210, light: 55, sat: 100, spread: 60, period: 0.2, stars: 5, particles: true, divine: true, absolute: true } }  // absolute - 宝石蓝
     };
 
     const levelColor = levelColors[petal.level] || levelColors[1];
@@ -1658,7 +1670,7 @@ const config = {
 };
 
 // 游戏状态
-// 获取等级名称 - 19级新系统
+// 获取等级名称 - 25级新系统
 function getLevelName(level) {
     const levelNames = {
         1: "common",
@@ -1679,7 +1691,13 @@ function getLevelName(level) {
         16: "seraphic",
         17: "paradisiac",
         18: "protean",
-        19: "unsurpassed"
+        19: "unsurpassed",
+        20: "beyond",
+        21: "ascendant",
+        22: "quantum",
+        23: "void",
+        24: "genesis",
+        25: "absolute"
     };
     return levelNames[level] || "unknown";
 }
@@ -2664,7 +2682,7 @@ function updateAbsorbPetalSelection() {
         });
 
         // 显示1-19级，空缺的显示空白 - 19级新系统
-        for (let level = 1; level <= 19; level++) {
+        for (let level = 1; level <= 25; level++) {
             const petalContainer = document.createElement('div');
             petalContainer.className = 'absorb-petal-container';
             petalContainer.style.position = 'relative';
@@ -3149,8 +3167,8 @@ function updateAbsorbButton() {
     const absorbChanceText = document.getElementById('absorbChanceText');
     console.log('updateAbsorbButton - currentAbsorbLevel:', gameState.currentAbsorbLevel, 'absorbTotalCount:', gameState.absorbTotalCount);
 
-    if (absorbChanceText && gameState.currentAbsorbLevel !== null && gameState.currentAbsorbLevel < 19) {
-        // 定义合成概率
+    if (absorbChanceText && gameState.currentAbsorbLevel !== null && gameState.currentAbsorbLevel < 25) {
+        // 定义合成概率 - 25级系统
         const absorb_chances = {
             1: 0.3,   // common -> unusual: 30%
             2: 0.25,  // unusual -> rare: 25%
@@ -3169,7 +3187,14 @@ function updateAbsorbButton() {
             15: 0.007, // celestial -> seraphic: 0.7%
             16: 0.005, // seraphic -> paradisiac: 0.5%
             17: 0.004, // paradisiac -> protean: 0.4%
-            18: 0.001  // protean -> unsurpassed: 0.1%
+            18: 0.001, // protean -> unsurpassed: 0.1%
+            19: 0.0009, // unsurpassed -> eternal: 0.09%
+            20: 0.0008, // eternal -> infinite: 0.08%
+            21: 0.0007, // infinite -> transcendent: 0.07%
+            22: 0.0005, // transcendent -> cosmic: 0.05%
+            23: 0.0004, // cosmic -> divine_essence: 0.04%
+            24: 0.0003, // divine_essence -> celestial_force: 0.03%
+            25: 0.0001  // celestial_force -> ultimate: 0.01% (最高级)
         };
 
         const chance = absorb_chances[gameState.currentAbsorbLevel];
@@ -3207,8 +3232,8 @@ function startAbsorb() {
     }
 
     // 检查是否尝试合成最高等级花瓣
-    if (gameState.currentAbsorbLevel >= 19) {
-        alert('19级花瓣已达到最高等级，无法继续合成!');
+    if (gameState.currentAbsorbLevel >= 25) {
+        alert('25级花瓣已达到最高等级，无法继续合成!');
         return;
     }
 
@@ -4280,7 +4305,13 @@ function drawPetalInContext(petal, ctx, displaySize) {
         16: { border: '#a16649', bg: '#c77e5b', fancy: { border: '#a16649', hue: 19, light: 57, sat: 49, spread: 15, period: 1.5, stars: 2 } }, // seraphic
         17: { border: '#cfcfcf', bg: '#ffffff', fancy: { border: '#cfcfcf', hue: 180, light: 93, sat: 100, spread: 80, period: 1.5, stars: 2 } }, // transcendent
         18: { border: '#d1a3ba', bg: '#f6c5de', fancy: { border: '#d1a3ba', hue: 341, light: 89, sat: 100, spread: 40, period: 1, stars: 2 } }, // ethereal
-        19: { border: '#974d63', bg: '#7f0226', fancy: { border: '#974d63', hue: 343, light: 26, sat: 97, spread: 20, period: 0.75, stars: 2 } }  // galactic
+        19: { border: '#974d63', bg: '#7f0226', fancy: { border: '#974d63', hue: 343, light: 26, sat: 97, spread: 20, period: 0.75, stars: 2 } }, // galactic
+        20: { border: '#ff6b35', bg: '#ff8c42', fancy: { border: '#ff6b35', hue: 18, light: 62, sat: 100, spread: 30, period: 0.6, stars: 3, particles: true } }, // beyond - 火焰橙
+        21: { border: '#4ecdc4', bg: '#44a3aa', fancy: { border: '#4ecdc4', hue: 176, light: 58, sat: 67, spread: 25, period: 0.5, stars: 3, particles: true } }, // ascendant - 青绿色
+        22: { border: '#a8e6cf', bg: '#7fcdbb', fancy: { border: '#a8e6cf', hue: 160, light: 75, sat: 54, spread: 35, period: 0.4, stars: 3, particles: true, rainbow: true } }, // quantum - 量子绿
+        23: { border: '#2c003e', bg: '#512b58', fancy: { border: '#2c003e', hue: 275, light: 18, sat: 89, spread: 45, period: 0.3, stars: 4, particles: true, dark: true } }, // void - 深紫虚空
+        24: { border: '#ffd700', bg: '#ffed4e', fancy: { border: '#ffd700', hue: 50, light: 71, sat: 100, spread: 50, period: 0.25, stars: 4, particles: true, divine: true } }, // genesis - 创世金
+        25: { border: '#1e90ff', bg: '#4169e1', fancy: { border: '#1e90ff', hue: 210, light: 55, sat: 100, spread: 60, period: 0.2, stars: 5, particles: true, divine: true, absolute: true } }  // absolute - 宝石蓝
     };
 
     const levelColor = levelColors[petal.level] || levelColors[1];
@@ -4672,11 +4703,11 @@ function calculateTotalAvailablePetals() {
         const petalKey = `petal${i}`;
         const petalString = gameState.serverBuild[petalKey];
 
-        if (petalString && petalString.length === 76) {
+        if (petalString && petalString.length === 100) {
             const petalType = i;
 
             // 每4个数字表示一个等级的花瓣数量
-            for (let level = 1; level <= 19; level++) {
+            for (let level = 1; level <= 25; level++) {
                 const startIndex = (level - 1) * 4;
                 const countStr = petalString.substring(startIndex, startIndex + 4);
                 const count = parseInt(countStr, 10);
@@ -5041,11 +5072,11 @@ function parseServerBuild(buildData) {
         const petalKey = `petal${i}`;
         const petalString = buildData[petalKey];
 
-        if (petalString && petalString.length === 76) {
+        if (petalString && petalString.length === 100) {
             const petalType = i; // petal0对应类型0（missile），以此类推
 
-            // 每4个数字表示一个等级的花瓣数量，共19个等级
-            for (let level = 1; level <= 19; level++) {
+            // 每4个数字表示一个等级的花瓣数量，共25个等级
+            for (let level = 1; level <= 25; level++) {
                 const startIndex = (level - 1) * 4;
                 const countStr = petalString.substring(startIndex, startIndex + 4);
                 const count = parseInt(countStr, 10);
@@ -8112,7 +8143,13 @@ function drawMobsSummary() {
         16: { border: '#a16649', bg: '#c77e5b', fancy: { border: '#a16649', hue: 19, light: 57, sat: 49, spread: 15, period: 1.5, stars: 2 } }, // seraphic
         17: { border: '#cfcfcf', bg: '#ffffff', fancy: { border: '#cfcfcf', hue: 180, light: 93, sat: 100, spread: 80, period: 1.5, stars: 2 } }, // transcendent
         18: { border: '#d1a3ba', bg: '#f6c5de', fancy: { border: '#d1a3ba', hue: 341, light: 89, sat: 100, spread: 40, period: 1, stars: 2 } }, // ethereal
-        19: { border: '#974d63', bg: '#7f0226', fancy: { border: '#974d63', hue: 343, light: 26, sat: 97, spread: 20, period: 0.75, stars: 2 } }  // galactic
+        19: { border: '#974d63', bg: '#7f0226', fancy: { border: '#974d63', hue: 343, light: 26, sat: 97, spread: 20, period: 0.75, stars: 2 } }, // galactic
+        20: { border: '#ff6b35', bg: '#ff8c42', fancy: { border: '#ff6b35', hue: 18, light: 62, sat: 100, spread: 30, period: 0.6, stars: 3, particles: true } }, // beyond - 火焰橙
+        21: { border: '#4ecdc4', bg: '#44a3aa', fancy: { border: '#4ecdc4', hue: 176, light: 58, sat: 67, spread: 25, period: 0.5, stars: 3, particles: true } }, // ascendant - 青绿色
+        22: { border: '#a8e6cf', bg: '#7fcdbb', fancy: { border: '#a8e6cf', hue: 160, light: 75, sat: 54, spread: 35, period: 0.4, stars: 3, particles: true, rainbow: true } }, // quantum - 量子绿
+        23: { border: '#2c003e', bg: '#512b58', fancy: { border: '#2c003e', hue: 275, light: 18, sat: 89, spread: 45, period: 0.3, stars: 4, particles: true, dark: true } }, // void - 深紫虚空
+        24: { border: '#ffd700', bg: '#ffed4e', fancy: { border: '#ffd700', hue: 50, light: 71, sat: 100, spread: 50, period: 0.25, stars: 4, particles: true, divine: true } }, // genesis - 创世金
+        25: { border: '#1e90ff', bg: '#4169e1', fancy: { border: '#1e90ff', hue: 210, light: 55, sat: 100, spread: 60, period: 0.2, stars: 5, particles: true, divine: true, absolute: true } }  // absolute - 宝石蓝
     };
 
     // 遍历每种怪物类型
