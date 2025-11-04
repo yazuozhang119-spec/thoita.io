@@ -1223,6 +1223,56 @@ function drawStaticPetalItem(petal, canvas, options) {
             ctx.stroke();
             ctx.closePath();
         },
+
+        card: (p) => {
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.fillStyle = blendColor('#ffffff', '#FF0000', blendAmount(p));
+            let border = ctx.strokeStyle = blendColor('#cfcfcf', '#FF0000', blendAmount(p));
+            let stripe = blendColor('#202020', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+                stripe = "#FFFFFF";
+                border = "#FFFFFF";
+            }
+            ctx.beginPath();
+            ctx.roundRect(-p.radius * 1.2, -p.radius * 0.8, p.radius * 2.4, p.radius * 1.6, p.radius / 4);
+            ctx.fill();
+            ctx.closePath();
+
+            ctx.strokeStyle = stripe;
+
+            ctx.beginPath();
+            ctx.moveTo(-p.radius * 1.1, p.radius * 0.35);
+            ctx.lineTo(p.radius * 1.1, p.radius * 0.35);
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.strokeStyle = border ;
+            ctx.beginPath();
+            ctx.roundRect(-p.radius * 1.2, -p.radius * 0.8, p.radius * 2.4, p.radius * 1.6, p.radius / 4);
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.fillStyle = blendColor('#d4af37', '#FF0000', blendAmount(p));
+            ctx.beginPath();
+            ctx.roundRect(-p.radius * 0.9, -p.radius * 0.45, p.radius * 0.8, p.radius * 0.5, p.radius / 4);
+            ctx.fill();
+            ctx.closePath();
+
+            ctx.fillStyle = blendColor('#FF9500', '#FF0000', blendAmount(p));
+            ctx.beginPath();
+            ctx.arc(p.radius * 0.4, -p.radius * 0.2, p.radius / 4, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.closePath();
+
+            ctx.fillStyle = blendColor('#FF1500', '#FF0000', blendAmount(p));
+            ctx.beginPath();
+            ctx.arc(p.radius * 0.7, -p.radius * 0.2, p.radius / 4, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.closePath();
+        },
     };
 
     // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
@@ -1403,7 +1453,8 @@ function drawStaticPetalItem(petal, canvas, options) {
             16: 'bud',
             17: 'antegg',
             18: 'rita',
-            19: 'stick'
+            19: 'stick',
+            20: 'card'
         };
 
         const renderType = typeMap[type] || 'basic';
@@ -1447,7 +1498,8 @@ function drawStaticPetalItem(petal, canvas, options) {
         16: '花蕾',
         17: '蚂蚁蛋',
         18: 'Rita',
-        19: '棍'
+        19: '棍',
+        20: '卡牌'
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -1645,15 +1697,16 @@ const objectTypeMap = {
     31: 'babyant',
     32: 'antqueen',
     // 花朵类型
-    20: 'flower',
+    41: 'flower',
     // 掉落物类型
     21: 'drop',
-    40: 'centipede1'  // 蜈蚣身体
+    40: 'centipede1',  // 蜈蚣身体
+    20: 'card'
 };
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -3187,12 +3240,12 @@ function updateAbsorbButton() {
             15: 0.007, // celestial -> seraphic: 0.7%
             16: 0.005, // seraphic -> paradisiac: 0.5%
             17: 0.004, // paradisiac -> protean: 0.4%
-            18: 0.001, // protean -> unsurpassed: 0.1%
-            19: 0.0009, // unsurpassed -> eternal: 0.09%
-            20: 0.0008, // eternal -> infinite: 0.08%
-            21: 0.0007, // infinite -> transcendent: 0.07%
-            22: 0.0005, // transcendent -> cosmic: 0.05%
-            23: 0.0004, // cosmic -> divine_essence: 0.04%
+            18: 0.003, // protean -> unsurpassed: 0.1%
+            19: 0.002, // unsurpassed -> eternal: 0.09%
+            20: 0.001, // eternal -> infinite: 0.08%
+            21: 0.0009, // infinite -> transcendent: 0.07%
+            22: 0.0007, // transcendent -> cosmic: 0.05%
+            23: 0.0005, // cosmic -> divine_essence: 0.04%
             24: 0.0003, // divine_essence -> celestial_force: 0.03%
             25: 0.0001  // celestial_force -> ultimate: 0.01% (最高级)
         };
@@ -4283,6 +4336,56 @@ function drawPetalInContext(petal, ctx, displaySize) {
             ctx.stroke();
             ctx.closePath();
         },
+
+        card: (p) => {
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.fillStyle = blendColor('#ffffff', '#FF0000', blendAmount(p));
+            let border = ctx.strokeStyle = blendColor('#cfcfcf', '#FF0000', blendAmount(p));
+            let stripe = blendColor('#202020', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+                stripe = "#FFFFFF";
+                border = "#FFFFFF";
+            }
+            ctx.beginPath();
+            ctx.roundRect(-p.radius * 1.2, -p.radius * 0.8, p.radius * 2.4, p.radius * 1.6, p.radius / 4);
+            ctx.fill();
+            ctx.closePath();
+
+            ctx.strokeStyle = stripe;
+
+            ctx.beginPath();
+            ctx.moveTo(-p.radius * 1.1, p.radius * 0.35);
+            ctx.lineTo(p.radius * 1.1, p.radius * 0.35);
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.strokeStyle = border ;
+            ctx.beginPath();
+            ctx.roundRect(-p.radius * 1.2, -p.radius * 0.8, p.radius * 2.4, p.radius * 1.6, p.radius / 4);
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.fillStyle = blendColor('#d4af37', '#FF0000', blendAmount(p));
+            ctx.beginPath();
+            ctx.roundRect(-p.radius * 0.9, -p.radius * 0.45, p.radius * 0.8, p.radius * 0.5, p.radius / 4);
+            ctx.fill();
+            ctx.closePath();
+
+            ctx.fillStyle = blendColor('#FF9500', '#FF0000', blendAmount(p));
+            ctx.beginPath();
+            ctx.arc(p.radius * 0.4, -p.radius * 0.2, p.radius / 4, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.closePath();
+
+            ctx.fillStyle = blendColor('#FF1500', '#FF0000', blendAmount(p));
+            ctx.beginPath();
+            ctx.arc(p.radius * 0.7, -p.radius * 0.2, p.radius / 4, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.closePath();
+        },
     };
 
     // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
@@ -4366,7 +4469,8 @@ function drawPetalInContext(petal, ctx, displaySize) {
             16: 'bud',
             17: 'antegg',
             18: 'rita',
-            19: 'stick'
+            19: 'stick',
+            20: 'card'
         };
 
         if(typeof type === 'integer' || typeof type === 'number'){
@@ -4411,7 +4515,8 @@ function drawPetalInContext(petal, ctx, displaySize) {
         16: '花蕾',
         17: '蚂蚁蛋',
         18: 'Rita',
-        19: '棍'
+        19: '棍',
+        20: '卡牌'
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -4699,7 +4804,7 @@ function calculateTotalAvailablePetals() {
     const totalPetals = [];
 
     // 解析服务器完整数据
-    for (let i = 0; i <= 19; i++) {  // 扩展到14以包含square花瓣
+    for (let i = 0; i <= 20; i++) {  // 扩展到14以包含square花瓣
         const petalKey = `petal${i}`;
         const petalString = gameState.serverBuild[petalKey];
 
@@ -5068,7 +5173,7 @@ function parseServerBuild(buildData) {
     const availablePetals = [];
 
     // 遍历petal0到petal15（共16种花瓣类型，包含pearl）
-    for (let i = 0; i <= 19; i++) {
+    for (let i = 0; i <= 20; i++) {
         const petalKey = `petal${i}`;
         const petalString = buildData[petalKey];
 
@@ -6388,12 +6493,12 @@ function handleServerMessage(data) {
 
                         
                         // 根据类型分类到不同数组
-                        if (typeIdx >= 0 && typeIdx <= 19) {
+                        if (typeIdx >= 0 && typeIdx <= 20) {
                             // 花瓣类型 (0-14)
                             baseObject.type = typeIdx;
                             gameState.petals.push(baseObject);
                         }
-                        else if (typeIdx === 20) {
+                        else if (typeIdx === 41) {
                             // 花朵类型 (20)
                             gameState.flowers.push(baseObject);
                         } else if (typeIdx === 21) {
@@ -9104,6 +9209,56 @@ const petalRenderMap = {
         ctx.moveTo(p.radius * 0.01, p.radius * 0);
         ctx.lineTo(p.radius * 0.88, p.radius * -0.06);
         ctx.stroke();
+        ctx.closePath();
+    },
+
+    card: (p) => {
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.fillStyle = blendColor('#ffffff', '#FF0000', blendAmount(p));
+        let border = ctx.strokeStyle = blendColor('#cfcfcf', '#FF0000', blendAmount(p));
+        let stripe = blendColor('#202020', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF";
+            stripe = "#FFFFFF";
+            border = "#FFFFFF";
+        }
+        ctx.beginPath();
+        ctx.roundRect(-p.radius * 1.2, -p.radius * 0.8, p.radius * 2.4, p.radius * 1.6, p.radius / 4);
+        ctx.fill();
+        ctx.closePath();
+
+        ctx.strokeStyle = stripe;
+
+        ctx.beginPath();
+        ctx.moveTo(-p.radius * 1.1, p.radius * 0.35);
+        ctx.lineTo(p.radius * 1.1, p.radius * 0.35);
+        ctx.stroke();
+        ctx.closePath();
+
+        ctx.strokeStyle = border ;
+        ctx.beginPath();
+        ctx.roundRect(-p.radius * 1.2, -p.radius * 0.8, p.radius * 2.4, p.radius * 1.6, p.radius / 4);
+        ctx.stroke();
+        ctx.closePath();
+
+        ctx.fillStyle = blendColor('#d4af37', '#FF0000', blendAmount(p));
+        ctx.beginPath();
+        ctx.roundRect(-p.radius * 0.9, -p.radius * 0.45, p.radius * 0.8, p.radius * 0.5, p.radius / 4);
+        ctx.fill();
+        ctx.closePath();
+
+        ctx.fillStyle = blendColor('#FF9500', '#FF0000', blendAmount(p));
+        ctx.beginPath();
+        ctx.arc(p.radius * 0.4, -p.radius * 0.2, p.radius / 4, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.closePath();
+
+        ctx.fillStyle = blendColor('#FF1500', '#FF0000', blendAmount(p));
+        ctx.beginPath();
+        ctx.arc(p.radius * 0.7, -p.radius * 0.2, p.radius / 4, 0, 2 * Math.PI);
+        ctx.fill();
         ctx.closePath();
     },
 };
