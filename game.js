@@ -1791,8 +1791,8 @@ window.gameState = {
     loadedResources: 0,
     totalResources: 0,
     isLobby: true,
-    equipmentSlots: 10,
-    equippedPetals: Array(10).fill(null),
+    equipmentSlots: 20,
+    equippedPetals: Array(20).fill(null),
     availablePetals: [],
     allPetals: [], // 存储完整的原始背包数据，每次都从这里计算可用花瓣
     // petalImages: {}, // 不再使用图片
@@ -4643,76 +4643,384 @@ function showLobby() {
 function initializeEquipmentSlots() {
     equipmentSlots.innerHTML = '';
 
-    // 创建一行，10个槽位
-    const rowDiv = document.createElement('div');
-    rowDiv.className = 'equipment-row';
+    // 创建两行，每行10个槽位，总共20个槽位
+    for (let row = 0; row < 2; row++) {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'equipment-row';
 
-    for (let slotIndex = 0; slotIndex < 10; slotIndex++) {
-        const slot = document.createElement('div');
-        slot.className = 'equipment-slot';
-        slot.dataset.index = slotIndex;
+        for (let col = 0; col < 10; col++) {
+            const slotIndex = row * 10 + col; // 计算全局槽位索引 (0-19)
+            const slot = document.createElement('div');
+            slot.className = 'equipment-slot';
+            slot.dataset.index = slotIndex;
 
-        // 添加拖拽事件监听
-        slot.addEventListener('dragover', handleDragOver);
-        slot.addEventListener('dragenter', handleDragEnter);
-        slot.addEventListener('dragleave', handleDragLeave);
-        slot.addEventListener('drop', handleDrop);
+            // 添加拖拽事件监听
+            slot.addEventListener('dragover', handleDragOver);
+            slot.addEventListener('dragenter', handleDragEnter);
+            slot.addEventListener('dragleave', handleDragLeave);
+            slot.addEventListener('drop', handleDrop);
 
-        // 添加基础的拖拽事件监听（用于装备了花瓣的情况）
-        slot.addEventListener('mousedown', (e) => {
-            const petal = gameState.equippedPetals[slotIndex];
-            if (petal && petal.type !== undefined && petal.level !== undefined) {
-                slot.draggable = true;
-            } else {
-                slot.draggable = false;
-            }
-        });
+            // 添加基础的拖拽事件监听（用于装备了花瓣的情况）
+            slot.addEventListener('mousedown', (e) => {
+                const petal = gameState.equippedPetals[slotIndex];
+                if (petal && petal.type !== undefined && petal.level !== undefined) {
+                    slot.draggable = true;
+                } else {
+                    slot.draggable = false;
+                }
+            });
 
-        slot.addEventListener('dragstart', (e) => {
-            const petal = gameState.equippedPetals[slotIndex];
-            if (petal && petal.type !== undefined && petal.level !== undefined) {
-                const dragData = {
-                    type: 'equipment',
-                    slotIndex: slotIndex,
-                    petal: petal
-                };
-                const dragString = JSON.stringify(dragData);
+            slot.addEventListener('dragstart', (e) => {
+                const petal = gameState.equippedPetals[slotIndex];
+                if (petal && petal.type !== undefined && petal.level !== undefined) {
+                    const dragData = {
+                        type: 'equipment',
+                        slotIndex: slotIndex,
+                        petal: petal
+                    };
+                    const dragString = JSON.stringify(dragData);
 
-                // 设置拖拽数据
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', dragString);
-                e.dataTransfer.setData('sourceIndex', slotIndex.toString());
+                    // 设置拖拽数据
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', dragString);
+                    e.dataTransfer.setData('sourceIndex', slotIndex.toString());
 
-                // 设置拖拽图像（使用槽位本身）
-                try {
-                    e.dataTransfer.setDragImage(slot, 25, 25);
-                } catch (error) {
-                    console.log('设置拖拽图像失败，使用默认图像');
+                    // 设置拖拽图像（使用槽位本身）
+                    try {
+                        e.dataTransfer.setDragImage(slot, 25, 25);
+                    } catch (error) {
+                        console.log('设置拖拽图像失败，使用默认图像');
+                    }
+
+                    slot.classList.add('dragging');
+                    console.log('拖拽数据已设置，拖拽数据长度:', dragString.length);
+                } else {
+                    console.log(`槽位 ${slotIndex} 为空，阻止拖拽`);
+                    e.preventDefault();
+                }
+            });
+
+            slot.addEventListener('dragend', (e) => {
+                slot.classList.remove('dragging');
+            });
+
+            // 添加点击交换功能
+            slot.addEventListener('click', (e) => {
+                // 阻止事件冒泡
+                e.stopPropagation();
+
+                // 获取主副槽对应关系
+                const correspondingSlot = getCorrespondingSlot(slotIndex);
+                if (correspondingSlot === null) {
+                    return; // 没有对应的槽位
                 }
 
-                slot.classList.add('dragging');
-                console.log('拖拽数据已设置，拖拽数据长度:', dragString.length);
-            } else {
-                console.log(`槽位 ${slotIndex} 为空，阻止拖拽`);
-                e.preventDefault();
-            }
-        });
+                // 执行交换（带动画），不检查是否有花瓣
+                swapPetalsWithAnimation(slotIndex, correspondingSlot);
+            });
 
-        slot.addEventListener('dragend', (e) => {
-            slot.classList.remove('dragging');
-        });
+            // 添加提示文本
+            const hint = document.createElement('div');
+            hint.textContent = slotIndex + 1;
+            hint.style.color = 'rgba(255, 255, 255, 0.5)';
+            hint.style.fontSize = '12px';
+            slot.appendChild(hint);
 
-        // 添加提示文本
-        const hint = document.createElement('div');
-        hint.textContent = slotIndex + 1;
-        hint.style.color = 'rgba(255, 255, 255, 0.5)';
-        hint.style.fontSize = '12px';
-        slot.appendChild(hint);
+            rowDiv.appendChild(slot);
+        }
 
-        rowDiv.appendChild(slot);
+        equipmentSlots.appendChild(rowDiv);
+    }
+}
+
+// 处理快捷键花瓣交换
+function handlePetalSwapByHotkey(slotIndex) {
+    // 检查槽位是否有效
+    if (slotIndex < 0 || slotIndex >= 10 || slotIndex >= gameState.equipmentSlots) {
+        return;
     }
 
-    equipmentSlots.appendChild(rowDiv);
+    // 获取对应槽位
+    const correspondingSlot = getCorrespondingSlot(slotIndex);
+    if (correspondingSlot === null || correspondingSlot >= gameState.equipmentSlots) {
+        return;
+    }
+
+    // 根据当前状态执行交换（不检查是否有花瓣，直接交换）
+    if (gameState.isLobby) {
+        // 大厅内交换
+        swapPetalsWithAnimation(slotIndex, correspondingSlot);
+    } else {
+        // 游戏内交换
+        swapInGamePetalsWithAnimation(slotIndex, correspondingSlot);
+    }
+
+    console.log(`快捷键 ${slotIndex + 1}: 交换槽位 ${slotIndex + 1} 和 ${correspondingSlot + 1}`);
+}
+
+// 获取主副槽对应关系
+// 第一行(0-9)和第二行(10-19)对应位置的槽位可以交换
+function getCorrespondingSlot(slotIndex) {
+    if (slotIndex >= 0 && slotIndex < 10) {
+        // 第一行，对应第二行相同位置
+        return slotIndex + 10;
+    } else if (slotIndex >= 10 && slotIndex < 20) {
+        // 第二行，对应第一行相同位置
+        return slotIndex - 10;
+    }
+    return null; // 无效槽位
+}
+
+// 交换两个槽位的花瓣
+function swapPetals(slot1, slot2) {
+    swapPetalsWithAnimation(slot1, slot2);
+}
+
+// 渲染锁机制，防止同一时间多次渲染
+let isEquipmentRendering = false;
+let isInventoryRendering = false;
+
+function lockedEquipmentRender() {
+    if (!isEquipmentRendering) {
+        isEquipmentRendering = true;
+        requestAnimationFrame(() => {
+            updateEquipmentSlots();
+            isEquipmentRendering = false;
+        });
+    }
+}
+
+function lockedInventoryRender() {
+    if (!isInventoryRendering) {
+        isInventoryRendering = true;
+        requestAnimationFrame(() => {
+            updateInventoryDisplay();
+            isInventoryRendering = false;
+        });
+    }
+}
+
+// 大厅带动画交换两个槽位的花瓣
+function swapPetalsWithAnimation(slot1, slot2) {
+    // 检查槽位是否有效
+    if (slot1 < 0 || slot1 >= gameState.equipmentSlots ||
+        slot2 < 0 || slot2 >= gameState.equipmentSlots) {
+        console.error('无效的槽位索引:', slot1, slot2);
+        return;
+    }
+
+    // 获取槽位元素
+    const equipmentSlotsContainer = document.getElementById('equipmentSlots');
+    const rows = equipmentSlotsContainer.children;
+    let slot1Element, slot2Element;
+
+    if (slot1 < 10) {
+        slot1Element = rows[0].children[slot1];
+    } else {
+        slot1Element = rows[1].children[slot1 - 10];
+    }
+
+    if (slot2 < 10) {
+        slot2Element = rows[0].children[slot2];
+    } else {
+        slot2Element = rows[1].children[slot2 - 10];
+    }
+
+    // 立即执行数据交换
+    const temp = gameState.equippedPetals[slot1];
+    gameState.equippedPetals[slot1] = gameState.equippedPetals[slot2];
+    gameState.equippedPetals[slot2] = temp;
+
+    // 保存构筑到服务器
+    saveCurrentBuild();
+
+    // 添加动画类
+    if (slot1Element && slot2Element) {
+        // 获取元素的实际位置和大小
+        const rect1 = slot1Element.getBoundingClientRect();
+        const rect2 = slot2Element.getBoundingClientRect();
+
+        // 计算位置偏移
+        const deltaX = rect2.left - rect1.left;
+        const deltaY = rect2.top - rect1.top;
+
+        // 计算缩放比例（50px -> 42px = 0.84, 42px -> 50px = 1.19）
+        const scale1to2 = 42 / 50; // 0.84
+        const scale2to1 = 50 / 42; // 1.19
+
+        // 设置CSS变量
+        if (slot1 < 10) {
+            // 主槽 -> 副槽
+            slot1Element.style.setProperty('--swap-x', `${deltaX}px`);
+            slot1Element.style.setProperty('--swap-y', `${deltaY}px`);
+            slot1Element.style.setProperty('--swap-scale', scale1to2);
+
+            slot2Element.style.setProperty('--swap-x', `${-deltaX}px`);
+            slot2Element.style.setProperty('--swap-y', `${-deltaY}px`);
+            slot2Element.style.setProperty('--swap-scale', scale2to1);
+        } else {
+            // 副槽 -> 主槽
+            slot1Element.style.setProperty('--swap-x', `${deltaX}px`);
+            slot1Element.style.setProperty('--swap-y', `${deltaY}px`);
+            slot1Element.style.setProperty('--swap-scale', scale2to1);
+
+            slot2Element.style.setProperty('--swap-x', `${-deltaX}px`);
+            slot2Element.style.setProperty('--swap-y', `${-deltaY}px`);
+            slot2Element.style.setProperty('--swap-scale', scale1to2);
+        }
+
+        slot1Element.classList.add('swapping');
+        slot2Element.classList.add('swapping');
+
+        if (slot1 < 10) {
+            slot1Element.classList.add('swapping-forward');
+            slot2Element.classList.add('swapping-backward');
+        } else {
+            slot1Element.classList.add('swapping-backward');
+            slot2Element.classList.add('swapping-forward');
+        }
+
+        // 0.3秒后等待动画完成，先渲染再清理
+        setTimeout(() => {
+            // 先渲染新的内容，确保正确的状态显示
+            lockedEquipmentRender();
+
+            // 渲染完成后清理动画相关的CSS
+            requestAnimationFrame(() => {
+                slot1Element.style.transform = '';
+                slot2Element.style.transform = '';
+                slot1Element.style.removeProperty('--swap-x');
+                slot1Element.style.removeProperty('--swap-y');
+                slot1Element.style.removeProperty('--swap-scale');
+                slot2Element.style.removeProperty('--swap-x');
+                slot2Element.style.removeProperty('--swap-y');
+                slot2Element.style.removeProperty('--swap-scale');
+
+                slot1Element.classList.remove('swapping', 'swapping-forward', 'swapping-backward');
+                slot2Element.classList.remove('swapping', 'swapping-forward', 'swapping-backward');
+            });
+        }, 300);
+    }
+
+    console.log(`交换槽位 ${slot1 + 1} 和 ${slot2 + 1} 的花瓣`);
+}
+
+// 游戏内交换两个槽位的花瓣
+function swapInGamePetals(slot1, slot2) {
+    swapInGamePetalsWithAnimation(slot1, slot2);
+}
+
+// 游戏内带动画交换两个槽位的花瓣
+function swapInGamePetalsWithAnimation(slot1, slot2) {
+    // 检查槽位是否有效
+    if (slot1 < 0 || slot1 >= gameState.equipmentSlots ||
+        slot2 < 0 || slot2 >= gameState.equipmentSlots) {
+        console.error('无效的槽位索引:', slot1, slot2);
+        return;
+    }
+
+    // 获取槽位元素
+    const inventory = document.getElementById('inventory');
+    const firstRow = inventory.children[0];
+    const secondRow = inventory.children[1];
+
+    let slot1Element, slot2Element;
+    if (slot1 < 10) {
+        slot1Element = firstRow.children[slot1];
+    } else {
+        slot1Element = secondRow.children[slot1 - 10];
+    }
+
+    if (slot2 < 10) {
+        slot2Element = firstRow.children[slot2];
+    } else {
+        slot2Element = secondRow.children[slot2 - 10];
+    }
+
+    // 立即执行数据交换
+    const temp = gameState.equippedPetals[slot1];
+    gameState.equippedPetals[slot1] = gameState.equippedPetals[slot2];
+    gameState.equippedPetals[slot2] = temp;
+
+    // 发送SWAP_PETAL命令到服务器
+    sendToServer({
+        COMMAND: 'SWAP_PETAL',
+        client_name: gameState.playerName,
+        slot1: slot1,
+        slot2: slot2,
+        room_id: gameState.currentRoom,
+        id: gameState.playerId
+    });
+
+    // 添加动画类
+    if (slot1Element && slot2Element) {
+        // 获取元素的实际位置和大小
+        const rect1 = slot1Element.getBoundingClientRect();
+        const rect2 = slot2Element.getBoundingClientRect();
+
+        // 计算位置偏移
+        const deltaX = rect2.left - rect1.left;
+        const deltaY = rect2.top - rect1.top;
+
+        // 计算缩放比例（50px -> 42px = 0.84, 42px -> 50px = 1.19）
+        const scale1to2 = 42 / 50; // 0.84
+        const scale2to1 = 50 / 42; // 1.19
+
+        // 设置CSS变量
+        if (slot1 < 10) {
+            // 主槽 -> 副槽
+            slot1Element.style.setProperty('--swap-x', `${deltaX}px`);
+            slot1Element.style.setProperty('--swap-y', `${deltaY}px`);
+            slot1Element.style.setProperty('--swap-scale', scale1to2);
+
+            slot2Element.style.setProperty('--swap-x', `${-deltaX}px`);
+            slot2Element.style.setProperty('--swap-y', `${-deltaY}px`);
+            slot2Element.style.setProperty('--swap-scale', scale2to1);
+        } else {
+            // 副槽 -> 主槽
+            slot1Element.style.setProperty('--swap-x', `${deltaX}px`);
+            slot1Element.style.setProperty('--swap-y', `${deltaY}px`);
+            slot1Element.style.setProperty('--swap-scale', scale2to1);
+
+            slot2Element.style.setProperty('--swap-x', `${-deltaX}px`);
+            slot2Element.style.setProperty('--swap-y', `${-deltaY}px`);
+            slot2Element.style.setProperty('--swap-scale', scale1to2);
+        }
+
+        slot1Element.classList.add('swapping');
+        slot2Element.classList.add('swapping');
+
+        if (slot1 < 10) {
+            slot1Element.classList.add('swapping-forward');
+            slot2Element.classList.add('swapping-backward');
+        } else {
+            slot1Element.classList.add('swapping-backward');
+            slot2Element.classList.add('swapping-forward');
+        }
+
+        // 0.3秒后等待动画完成，先渲染再清理
+        setTimeout(() => {
+            // 先渲染新的内容，确保正确的状态显示
+            lockedInventoryRender();
+
+            // 渲染完成后清理动画相关的CSS
+            requestAnimationFrame(() => {
+                slot1Element.style.transform = '';
+                slot2Element.style.transform = '';
+                slot1Element.style.removeProperty('--swap-x');
+                slot1Element.style.removeProperty('--swap-y');
+                slot1Element.style.removeProperty('--swap-scale');
+                slot2Element.style.removeProperty('--swap-x');
+                slot2Element.style.removeProperty('--swap-y');
+                slot2Element.style.removeProperty('--swap-scale');
+
+                slot1Element.classList.remove('swapping', 'swapping-forward', 'swapping-backward');
+                slot2Element.classList.remove('swapping', 'swapping-forward', 'swapping-backward');
+            });
+        }, 300);
+    }
+
+    console.log(`游戏内交换槽位 ${slot1 + 1} 和 ${slot2 + 1} 的花瓣`);
 }
 
 // 自动装备保存的构筑
@@ -4750,7 +5058,7 @@ function autoEquipSavedBuild() {
     const equippedPetals = [];
 
     // 自动装备保存的构筑
-    for (let i = 0; i < Math.min(gameState.savedBuild.length, 10); i++) {
+    for (let i = 0; i < Math.min(gameState.savedBuild.length, 20); i++) {
         const savedPetal = gameState.savedBuild[i];
         if (savedPetal && Array.isArray(savedPetal) && savedPetal.length >= 2) {
             const petalType = savedPetal[0];
@@ -5205,33 +5513,73 @@ function parseServerBuild(buildData) {
 
 function updateInventoryDisplay() {
     const inventory = document.getElementById('inventory');
-    // 强制设置横向排列样式
-    inventory.style.display = 'flex';
-    inventory.style.flexDirection = 'row';
-    inventory.style.flexWrap = 'nowrap';
-    inventory.style.alignItems = 'center';
-    inventory.style.justifyContent = 'center';
     inventory.innerHTML = '';
 
-    // 显示装备的花瓣
-    gameState.equippedPetals.forEach((petal, index) => {
-        const slot = document.createElement('div');
-        slot.className = 'inventorySlot';
+    // 创建第一行容器（主槽，0-9）
+    const firstRow = document.createElement('div');
+    firstRow.style.display = 'flex';
+    firstRow.style.gap = '10px';
+    firstRow.style.marginBottom = '5px';
+    firstRow.style.justifyContent = 'center';
 
-        if (petal) {
-            // 使用canvas绘制花瓣
-            const canvas = document.createElement('canvas');
-            drawPetalItem(petal, canvas, { displaySize: 50 });
-            slot.appendChild(canvas);
-            // 删除悬停显示 - 只保留背包界面
-        } else {
-            // 如果没有装备花瓣，显示空槽位
-            slot.textContent = index + 1;
-            slot.style.color = 'rgba(255, 255, 255, 0.5)';
-        }
+    // 创建第二行容器（副槽，10-19）
+    const secondRow = document.createElement('div');
+    secondRow.style.display = 'flex';
+    secondRow.style.gap = '10px';
+    secondRow.style.justifyContent = 'center';
 
-        inventory.appendChild(slot);
-    });
+    // 显示前10个花瓣（第一行）
+    for (let i = 0; i < 10; i++) {
+        const slot = createInventorySlot(i);
+        firstRow.appendChild(slot);
+    }
+
+    // 显示后10个花瓣（第二行）
+    for (let i = 10; i < 20; i++) {
+        const slot = createInventorySlot(i);
+        secondRow.appendChild(slot);
+    }
+
+    // 将两行添加到inventory容器
+    inventory.appendChild(firstRow);
+    inventory.appendChild(secondRow);
+}
+
+// 创建单个装备槽的辅助函数
+function createInventorySlot(index) {
+    const slot = document.createElement('div');
+    slot.className = 'inventorySlot';
+    slot.dataset.index = index; // 添加索引数据
+
+    const petal = gameState.equippedPetals[index];
+    if (petal) {
+        // 使用canvas绘制花瓣
+        const canvas = document.createElement('canvas');
+        // 第二行（副槽，索引10-19）使用较小的尺寸
+        const displaySize = (index >= 10) ? 38 : 50;
+        drawPetalItem(petal, canvas, { displaySize: displaySize });
+        slot.appendChild(canvas);
+
+        // 添加点击交换功能
+        slot.addEventListener('click', (e) => {
+            e.stopPropagation();
+
+            // 获取对应槽位
+            const correspondingSlot = getCorrespondingSlot(index);
+            if (correspondingSlot === null) {
+                return;
+            }
+
+            // 执行游戏内花瓣交换（带动画）
+            swapInGamePetalsWithAnimation(index, correspondingSlot);
+        });
+    } else {
+        // 如果没有装备花瓣，显示空槽位
+        slot.textContent = index + 1;
+        slot.style.color = 'rgba(255, 255, 255, 0.5)';
+    }
+
+    return slot;
 }
 
 // 装备花瓣
@@ -5357,10 +5705,19 @@ function toggleWindow(type) {
 
 // 关闭所有窗口
 function closeAllWindows() {
-    // 直接关闭窗口，避免重复调用hideWindow的逻辑
-    if (bagWindow) bagWindow.style.display = 'none';
-    if (absorbWindow) absorbWindow.style.display = 'none';
-    if (galleryWindow) galleryWindow.style.display = 'none';
+    // 立即隐藏窗口，不使用动画（用于切换窗口时）
+    if (bagWindow) {
+        bagWindow.style.display = 'none';
+        bagWindow.classList.remove('showing', 'hiding');
+    }
+    if (absorbWindow) {
+        absorbWindow.style.display = 'none';
+        absorbWindow.classList.remove('showing', 'hiding');
+    }
+    if (galleryWindow) {
+        galleryWindow.style.display = 'none';
+        galleryWindow.classList.remove('showing', 'hiding');
+    }
 
     // 执行关闭时的清理逻辑
     // 隐藏tooltip
@@ -5392,12 +5749,24 @@ function showWindow(type) {
 
     if (type === 'bag') {
         bagWindow.style.display = 'block';
+        // 强制重绘以应用初始状态
+        bagWindow.offsetHeight;
+        // 添加showing类触发动画
+        bagWindow.classList.add('showing');
+        bagWindow.classList.remove('hiding');
+
         // 打开背包时才加载内容
         updateBagContent();
         // 恢复动画
         resumePetalAnimation();
     } else if (type === 'absorb') {
         absorbWindow.style.display = 'block';
+        // 强制重绘以应用初始状态
+        absorbWindow.offsetHeight;
+        // 添加showing类触发动画
+        absorbWindow.classList.add('showing');
+        absorbWindow.classList.remove('hiding');
+
         // 打开合成界面时才加载内容
         updateAbsorbPetalSelection();
         // 更新合成槽位显示
@@ -5409,37 +5778,65 @@ function showWindow(type) {
         updateAbsorbButton();
     } else if (type === 'gallery') {
         galleryWindow.style.display = 'block';
+        // 强制重绘以应用初始状态
+        galleryWindow.offsetHeight;
+        // 添加showing类触发动画
+        galleryWindow.classList.add('showing');
+        galleryWindow.classList.remove('hiding');
     }
 }
 
 // 隐藏窗口
 function hideWindow(type) {
     if (type === 'bag') {
-        bagWindow.style.display = 'none';
-        // 隐藏tooltip
-        if (petalTooltip) {
-            petalTooltip.hide();
-        }
-        // 关闭背包时清空内容，删除canvas
-        const bagContent = document.getElementById('bagContent');
-        bagContent.innerHTML = '';
-        // 暂停动画以节省性能
-        pausePetalAnimation();
+        // 添加hiding类触发关闭动画
+        bagWindow.classList.add('hiding');
+        bagWindow.classList.remove('showing');
+
+        // 等待动画完成后隐藏元素
+        setTimeout(() => {
+            bagWindow.style.display = 'none';
+            // 隐藏tooltip
+            if (petalTooltip) {
+                petalTooltip.hide();
+            }
+            // 关闭背包时清空内容，删除canvas
+            const bagContent = document.getElementById('bagContent');
+            if (bagContent) bagContent.innerHTML = '';
+            // 暂停动画以节省性能
+            pausePetalAnimation();
+        }, 200); // 与CSS动画时间一致
     } else if (type === 'absorb') {
-        absorbWindow.style.display = 'none';
-        // 关闭合成界面时清空内容，删除canvas
-        const absorbPetalSelection = document.getElementById('absorbPetalSelection');
-        absorbPetalSelection.innerHTML = '';
-        // 暂停动画以节省性能
-        pausePetalAnimation();
-        // 清空合成槽位显示
-        const absorbSlots = absorbSlotsContainer.querySelectorAll('.absorb-slot');
-        absorbSlots.forEach(slot => {
-            slot.innerHTML = '';
-            slot.classList.remove('filled');
-        });
+        // 添加hiding类触发关闭动画
+        absorbWindow.classList.add('hiding');
+        absorbWindow.classList.remove('showing');
+
+        // 等待动画完成后隐藏元素
+        setTimeout(() => {
+            absorbWindow.style.display = 'none';
+            // 关闭合成界面时清空内容，删除canvas
+            const absorbPetalSelection = document.getElementById('absorbPetalSelection');
+            if (absorbPetalSelection) absorbPetalSelection.innerHTML = '';
+            // 暂停动画以节省性能
+            pausePetalAnimation();
+            // 清空合成槽位显示
+            if (absorbSlotsContainer) {
+                const absorbSlots = absorbSlotsContainer.querySelectorAll('.absorb-slot');
+                absorbSlots.forEach(slot => {
+                    slot.innerHTML = '';
+                    slot.classList.remove('filled');
+                });
+            }
+        }, 200); // 与CSS动画时间一致
     } else if (type === 'gallery') {
-        galleryWindow.style.display = 'none';
+        // 添加hiding类触发关闭动画
+        galleryWindow.classList.add('hiding');
+        galleryWindow.classList.remove('showing');
+
+        // 等待动画完成后隐藏元素
+        setTimeout(() => {
+            galleryWindow.style.display = 'none';
+        }, 200); // 与CSS动画时间一致
     }
 }
 
@@ -7582,14 +7979,14 @@ function drawGameObjects() {
         drawObject(drop);
     });
 
-    // 绘制花瓣
-    gameState.petals.forEach(petal => {
-        drawObject(petal);
-    });
-
     // 绘制怪物
     gameState.mobs.forEach(mob => {
         drawObject(mob);
+    });
+
+    // 绘制花瓣
+    gameState.petals.forEach(petal => {
+        drawObject(petal);
     });
 
     // 绘制其他花朵
@@ -11455,6 +11852,40 @@ document.addEventListener('keydown', (e) => {
         }
     }
 
+    // 花瓣交换快捷键 - 在大厅和游戏内都有效
+    if ((gameState.isLobby || gameState.connected) && !e.target.matches('input, textarea')) {
+        const key = e.key.toLowerCase();
+
+        // 数字键1-9对应槽位0-8，0对应槽位9
+        if (key >= '1' && key <= '9') {
+            const slotIndex = parseInt(key) - 1; // 1->0, 2->1, ..., 9->8
+            handlePetalSwapByHotkey(slotIndex);
+            e.preventDefault();
+        } else if (key === '0') {
+            handlePetalSwapByHotkey(9); // 0->9
+            e.preventDefault();
+        }
+
+        // 界面快捷键 - 只在大厅有效
+        if (gameState.isLobby) {
+            // X键 - 打开/关闭背包
+            if (key === 'x') {
+                toggleWindow('bag');
+                e.preventDefault();
+            }
+            // C键 - 打开/关闭合成
+            else if (key === 'c') {
+                toggleWindow('absorb');
+                e.preventDefault();
+            }
+            // V键 - 打开/关闭图鉴
+            else if (key === 'v') {
+                toggleWindow('gallery');
+                e.preventDefault();
+            }
+        }
+    }
+
     // 移动键需要开启键盘移动设置
     if (!gameState.isLobby && gameState.connected && gameState.keyboardMovement) {
         const key = e.key.toLowerCase();
@@ -12126,27 +12557,33 @@ const petalTooltip = {
         const description = petalItem.dataset.petalDescription;
         const stats = JSON.parse(petalItem.dataset.petalStats || '[]');
 
-        // 稀有度中文翻译
+        // 稀有度中文翻译 - 25级新系统
         const rarityNames = {
-            1: '普通',    // common
-            2: '非凡',    // unusual
-            3: '稀有',    // rare
-            4: '史诗',    // epic
-            5: '传说',    // legendary
-            6: '神话',    // mythic
-            7: '究极',    // ultra
-            8: '超级',    // super
-            9: '欧米伽',  // omega
-            10: '传说',    // fabled
-            11: '神圣',   // divine
-            12: '至高',   // supreme
-            13: '全能',   // omnipotent
-            14: '星空',   // astral
-            15: '天堂',   // celestial
-            16: '炽天使', // seraphic
-            17: '天国',   // paradisiac
-            18: '千变',   // protean
-            19: '无上'    // unsurpassed
+            1: '普通',      // common
+            2: '非凡',      // unusual
+            3: '稀有',      // rare
+            4: '史诗',      // epic
+            5: '传说',      // legendary
+            6: '神话',      // mythic
+            7: '究极',      // ultra
+            8: '超级',      // super
+            9: '欧米伽',    // omega
+            10: '传说',      // fabled
+            11: '神圣',     // divine
+            12: '至高',     // supreme
+            13: '全能',     // omnipotent
+            14: '星空',     // astral
+            15: '天堂',     // celestial
+            16: '炽天使',   // seraphic
+            17: '天国',     // paradisiac
+            18: '千变',     // protean
+            19: '无上',     // unsurpassed
+            20: '永恒',     // eternal
+            21: '混沌',     // chaotic
+            22: '量子',     // quantum
+            23: '虚空',     // void
+            24: '创世',     // genesis
+            25: '绝对'      // absolute
         };
 
         // 构建tooltip内容

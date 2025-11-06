@@ -136,8 +136,8 @@ body {
     left: 50%;
     transform: translateX(-50%);
     display: flex;
-    flex-direction: row; /* 强制横向排列 */
-    flex-wrap: nowrap; /* 强制不换行 */
+    flex-direction: column; /* 改为纵向排列，形成两行 */
+    flex-wrap: wrap; /* 允许换行 */
     gap: 10px;
     pointer-events: auto; /* 允许鼠标交互 */
     z-index: 15; /* 确保在其他元素之上 */
@@ -152,14 +152,28 @@ body {
     display: none !important;
 }
 
-/* 额外的规则确保横向显示 */
+/* 修改规则确保两行显示 */
 body #inventory,
 div#inventory,
 #gameContainer #inventory,
 #ui #inventory {
     flex-direction: row !important;
-    flex-wrap: nowrap !important;
+    flex-wrap: wrap !important;
     writing-mode: horizontal-tb !important;
+    max-height: 120px; /* 限制最大高度以容纳两行 */
+    align-content: center; /* 垂直居中两行 */
+}
+
+/* 游戏内inventory第二行（副槽）的样式 */
+#inventory > div:nth-child(2) .inventorySlot {
+    width: 42px !important;
+    height: 42px !important;
+}
+
+/* 游戏内inventory第二行（副槽）中的canvas也相应缩小 */
+#inventory > div:nth-child(2) .inventorySlot canvas {
+    width: 38px !important;
+    height: 38px !important;
 }
 
 .inventorySlot {
@@ -175,6 +189,54 @@ div#inventory,
     font-size: 12px;
     flex-shrink: 0; /* 防止槽位被压缩 */
     pointer-events: auto; /* 允许鼠标交互 */
+}
+
+/* 强制游戏内第二行副槽缩小 */
+#inventory div:nth-child(2) .inventorySlot {
+    width: 42px !important;
+    height: 42px !important;
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+#inventory div:nth-child(2) .inventorySlot canvas {
+    width: 42px !important;
+    height: 42px !important;
+}
+
+/* 花瓣交换动画样式 */
+.inventorySlot.swapping {
+    transition: transform 0.3s ease-in-out, opacity 0.1s ease;
+    z-index: 100;
+}
+
+.inventorySlot.swapping-forward {
+    animation: swapForward 0.3s ease-in-out forwards;
+}
+
+.inventorySlot.swapping-backward {
+    animation: swapBackward 0.3s ease-in-out forwards;
+}
+
+@keyframes swapForward {
+    0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(var(--swap-x, 0), var(--swap-y, 60px)) scale(var(--swap-scale, 0.84));
+        opacity: 1;
+    }
+}
+
+@keyframes swapBackward {
+    0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(var(--swap-x, 0), var(--swap-y, -60px)) scale(var(--swap-scale, 1.19));
+        opacity: 1;
+    }
 }
 
 #gameOver {
@@ -411,7 +473,19 @@ div#inventory,
 .equipment-row {
     display: flex;
     justify-content: center;
-    margin: 10px 0;
+    margin: 5px 0;
+}
+
+/* 第二行（副槽）的样式 */
+.equipment-row:nth-child(2) .equipment-slot {
+    width: 42px;
+    height: 42px;
+}
+
+/* 第二行（副槽）中的canvas也相应缩小 */
+.equipment-row:nth-child(2) .equipment-slot canvas {
+    width: 38px !important;
+    height: 38px !important;
 }
 
 #lobbyUI {
@@ -439,7 +513,7 @@ div#inventory,
     position: absolute;
     top: 71%;
     left: 20.75%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, 50%);
     width: 31.5%;
     height: 55%;
     background-color: #5a9fdb;
@@ -451,6 +525,18 @@ div#inventory,
     scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
     box-sizing: border-box;
     border: 3px solid #4a8fc8;
+    opacity: 0;
+    transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.2s ease-in-out;
+}
+
+#bagWindow.showing {
+    transform: translate(-50%, -50%);
+    opacity: 1;
+}
+
+#bagWindow.hiding {
+    transform: translate(-50%, 50%);
+    opacity: 0;
 }
 
 #bagWindow::-webkit-scrollbar {
@@ -477,16 +563,28 @@ div#inventory,
     position: absolute;
     top: 71%;
     left: 20.75%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, 50%);
     width: 31.5%;
     height: 55%;
     background-color: #da9b5b;
     border-radius: 10px;
     padding: 20px;
     z-index: 15;
+    opacity: 0;
+    transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.2s ease-in-out;
     overflow: hidden;
     box-sizing: border-box;
     border: 3px solid #ca8b4b;
+}
+
+#absorbWindow.showing, #galleryWindow.showing {
+    transform: translate(-50%, -50%);
+    opacity: 1;
+}
+
+#absorbWindow.hiding, #galleryWindow.hiding {
+    transform: translate(-50%, 50%);
+    opacity: 0;
 }
 
 
@@ -1559,6 +1657,42 @@ div#inventory,
 
 .equipment-slot {
     transition: all 0.2s ease;
+}
+
+/* 大厅装备槽交换动画样式 */
+.equipment-slot.swapping {
+    transition: transform 0.3s ease-in-out, opacity 0.1s ease;
+    z-index: 100;
+}
+
+.equipment-slot.swapping-forward {
+    animation: equipmentSwapForward 0.3s ease-in-out forwards;
+}
+
+.equipment-slot.swapping-backward {
+    animation: equipmentSwapBackward 0.3s ease-in-out forwards;
+}
+
+@keyframes equipmentSwapForward {
+    0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(var(--swap-x, 0), var(--swap-y, 70px)) scale(var(--swap-scale, 0.84));
+        opacity: 1;
+    }
+}
+
+@keyframes equipmentSwapBackward {
+    0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(var(--swap-x, 0), var(--swap-y, -70px)) scale(var(--swap-scale, 1.19));
+        opacity: 1;
+    }
 }
 
 
