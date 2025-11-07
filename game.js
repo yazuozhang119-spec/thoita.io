@@ -3299,20 +3299,23 @@ function updateAbsorbButton() {
         if (chance !== undefined) {
             const percentage = (chance * 100).toFixed(1);
             const newText = `成功概率: ${percentage}%`;
-            // 只在文本改变时更新DOM和打印日志
+            // 强制更新显示，确保在花瓣重新添加时概率能正确显示
+            absorbChanceText.textContent = newText;
+            absorbChanceText.style.color = chance < 0.05 ? '#ff6b6b' : chance < 0.15 ? '#ffa726' : '#66bb6a';
+            // 只在文本真正改变时打印日志
             if (gameState.lastProbabilityText !== newText) {
-                absorbChanceText.textContent = newText;
-                absorbChanceText.style.color = chance < 0.05 ? '#ff6b6b' : chance < 0.15 ? '#ffa726' : '#66bb6a';
                 console.log('Setting probability text:', newText);
                 gameState.lastProbabilityText = newText;
             }
         } else {
             absorbChanceText.textContent = '';
+            gameState.lastProbabilityText = null; // 重置缓存
         }
     } else {
         console.log('Probability display conditions not met');
         if (absorbChanceText) {
             absorbChanceText.textContent = '';
+            gameState.lastProbabilityText = null; // 重置缓存
         }
     }
 
@@ -3477,6 +3480,8 @@ function displayActualResult(result, totalPetalCount) {
         // 立即清空合成槽
         resetAbsorbSlots(false); // 清空槽位，但不更新花瓣选择（避免影响当前显示）
 
+        // 合成成功后，立即请求该花瓣的保底信息
+
         // 隐藏五边形合成槽
         const pentagonSlots = absorbSlotsContainer.querySelector('.pentagon-slots');
         if (pentagonSlots) {
@@ -3625,6 +3630,12 @@ function displayActualResult(result, totalPetalCount) {
             gameState.currentAbsorbLevel = petalLevel;
 
             console.log('合成失败，分配后的槽位状态:', gameState.absorbSlots);
+
+            // 合成失败后，请求该花瓣的保底信息（因为失败次数可能增加）
+            if (petalType !== null && petalLevel !== null && petalLevel < 25) {
+                console.log('合成失败，请求保底信息更新');
+                requestPityInfo(petalType, petalLevel);
+            }
 
             // 重新计算可用花瓣，确保扣除重新分配后的槽位占用
             initializeAvailablePetals(true);
