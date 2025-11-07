@@ -1706,7 +1706,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -1836,6 +1836,11 @@ window.gameState = {
     absorbTotalCount: 0, // 记录总花瓣数量
     currentAbsorbType: null,
     currentAbsorbLevel: null,
+    lastPityKey: null, // 缓存上次请求保底信息的花瓣类型和等级
+    lastLoggedAbsorbLevel: null, // 缓存上次打印日志的花瓣等级
+    lastLoggedAbsorbCount: null, // 缓存上次打印日志的花瓣数量
+    lastLoggedChanceLevel: null, // 缓存上次打印概率日志的等级
+    lastProbabilityText: null, // 缓存上次显示的概率文本
     cachedAbsorbResult: null, // 缓存的合成结果（等待动画结束）
     savedBuild: null, // 保存的构筑数据
     effects: [],
@@ -3042,7 +3047,6 @@ function updateAbsorbSlotDisplay(slotIndex) {
     slot.innerHTML = '';
 
     if (petal) {
-        console.log(`更新槽位 ${slotIndex}:`, petal);
         slot.classList.add('filled');
 
         // 使用canvas绘制花瓣
@@ -3205,6 +3209,36 @@ function returnAllPetalsFromAbsorbSlots() {
     console.log(`成功返还 ${petalsToReturn.length} 种花瓣，共 ${totalCount} 个花瓣到选择界面`);
 }
 
+// 获取保底信息
+function requestPityInfo(petalType, petalLevel) {
+
+    if (!petalLevel || petalLevel >= 25) {
+        return;
+    }
+    console.log(`获取保底信息: ${petalType} Lv.${petalLevel}`)
+    sendToServer({
+        COMMAND: 'GET_PITY_INFO',
+        client_name: gameState.playerName,
+        petal_type: petalType,
+        petal_level: petalLevel,
+        id: gameState.playerId
+    });
+}
+
+// 更新保底信息显示
+function updatePityInfoDisplay(pityInfo) {
+    const pityInfoText = document.getElementById('pityInfoText');
+    if (!pityInfoText) return;
+
+    if (pityInfo.remaining_for_pity > 0) {
+        pityInfoText.textContent = `已损失${pityInfo.current_failures}个，还需${pityInfo.remaining_for_pity}个触发保底`;
+        pityInfoText.style.color = pityInfo.remaining_for_pity <= 10 ? '#ff6b6b' : '#666';
+    } else {
+        pityInfoText.textContent = `保底已触发！下次合成必定成功`;
+        pityInfoText.style.color = '#4caf50';
+    }
+}
+
 // 更新合成按钮状态
 function updateAbsorbButton() {
     const filledSlots = gameState.absorbSlots.filter(slot => slot !== null).length;
@@ -3218,7 +3252,12 @@ function updateAbsorbButton() {
 
     // 更新合成概率显示
     const absorbChanceText = document.getElementById('absorbChanceText');
-    console.log('updateAbsorbButton - currentAbsorbLevel:', gameState.currentAbsorbLevel, 'absorbTotalCount:', gameState.absorbTotalCount);
+    // 只在状态改变时打印日志
+    if (gameState.lastLoggedAbsorbLevel !== gameState.currentAbsorbLevel ||
+        gameState.lastLoggedAbsorbCount !== gameState.absorbTotalCount) {
+        gameState.lastLoggedAbsorbLevel = gameState.currentAbsorbLevel;
+        gameState.lastLoggedAbsorbCount = gameState.absorbTotalCount;
+    }
 
     if (absorbChanceText && gameState.currentAbsorbLevel !== null && gameState.currentAbsorbLevel < 25) {
         // 定义合成概率 - 25级系统
@@ -3251,13 +3290,22 @@ function updateAbsorbButton() {
         };
 
         const chance = absorb_chances[gameState.currentAbsorbLevel];
-        console.log('Chance for level', gameState.currentAbsorbLevel, ':', chance);
+        // 只在等级改变时打印概率日志
+        if (gameState.lastLoggedChanceLevel !== gameState.currentAbsorbLevel) {
+            console.log('Chance for level', gameState.currentAbsorbLevel, ':', chance);
+            gameState.lastLoggedChanceLevel = gameState.currentAbsorbLevel;
+        }
 
         if (chance !== undefined) {
             const percentage = (chance * 100).toFixed(1);
-            absorbChanceText.textContent = `成功概率: ${percentage}%`;
-            absorbChanceText.style.color = chance < 0.05 ? '#ff6b6b' : chance < 0.15 ? '#ffa726' : '#66bb6a';
-            console.log('Setting probability text:', absorbChanceText.textContent);
+            const newText = `成功概率: ${percentage}%`;
+            // 只在文本改变时更新DOM和打印日志
+            if (gameState.lastProbabilityText !== newText) {
+                absorbChanceText.textContent = newText;
+                absorbChanceText.style.color = chance < 0.05 ? '#ff6b6b' : chance < 0.15 ? '#ffa726' : '#66bb6a';
+                console.log('Setting probability text:', newText);
+                gameState.lastProbabilityText = newText;
+            }
         } else {
             absorbChanceText.textContent = '';
         }
@@ -3272,6 +3320,24 @@ function updateAbsorbButton() {
     if (absorbChanceText && gameState.currentAbsorbLevel === null && gameState.absorbTotalCount > 0) {
         absorbChanceText.textContent = '请添加5个相同花瓣';
         absorbChanceText.style.color = '#888';
+    }
+
+    // 如果有有效的花瓣类型和等级，请求保底信息
+    if (gameState.currentAbsorbType !== null && gameState.currentAbsorbLevel !== null && gameState.currentAbsorbLevel < 25) {
+        // 检查是否需要更新保底信息（只有当花瓣类型或等级改变时才请求）
+        const currentPityKey = `${gameState.currentAbsorbType}_${gameState.currentAbsorbLevel}`;
+        if (gameState.lastPityKey !== currentPityKey) {
+            gameState.lastPityKey = currentPityKey;
+            requestPityInfo(gameState.currentAbsorbType, gameState.currentAbsorbLevel);
+        }
+    } else {
+        // 清空保底信息显示
+        const pityInfoText = document.getElementById('pityInfoText');
+        if (pityInfoText) {
+            pityInfoText.textContent = '';
+        }
+        // 重置保底信息缓存
+        gameState.lastPityKey = null;
     }
 }
 
@@ -6658,6 +6724,11 @@ function handleServerMessage(data) {
                 console.log('=== 收到 ABSORB_RESULT 消息 ===');
                 console.log('message:', message);
                 handleAbsorbResult(message);
+                break;
+            case 'PITY_INFO':
+                console.log('=== 收到 PITY_INFO 消息 ===');
+                console.log('message:', message);
+                updatePityInfoDisplay(message);
                 break;
             case 'build': // 新用户，服务端分配了新ID
                 if (message.id !== undefined) {
