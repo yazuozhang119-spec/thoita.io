@@ -77,7 +77,8 @@ const PETALS_DATA = {
         16: 'bud',          // 花蕾
         17: 'antegg',       // 蚂蚁蛋
         18: 'rita',         // Rita
-        19: 'stick'         // 棍子 (新增类型)
+        19: 'stick',         // 棍子 (新增类型)
+        20: 'card'           // 卡牌 (新增类型)
     },
 
     // 花瓣基础属性 (冷却时间秒)
@@ -98,9 +99,11 @@ const PETALS_DATA = {
         egg: 2.0,
         square: 5.0,
         pearl: 2.0,
-        bud: null,             // 特殊机制，检测死亡队友
+        bud: 3.0,             // 特殊机制，检测死亡队友
         antegg: 5.0,           // 蚂蚁蛋冷却时间
-        rita: null             // 特殊机制，随mob死亡触发
+        rita: 2,              // 特殊机制，随mob死亡触发
+        stick: 2.0,
+        card: 2.5
     },
 
     // 等级名称映射 (1-25级)
@@ -182,7 +185,8 @@ const PETALS_DATA = {
         bud: '花蕾',
         antegg: '蚂蚁蛋',
         rita: 'Rita',
-        stick: '棍子'
+        stick: '棍子',
+        card: '卡牌'
     },
 
     // 花瓣描述
@@ -204,9 +208,10 @@ const PETALS_DATA = {
         square: '方形花瓣，基础花瓣的护盾变体',
         pearl: '珍珠花瓣，类似导弹但射程更远，可发射珍珠弹丸',
         bud: '花蕾花瓣，检测死亡队友，防守时可转化为地面形态复活队友',
-        antegg: '蚂蚁蛋花瓣，5个独立单体，5秒孵化时间，孵化出兵蚁协助战斗',
+        antegg: '蚂蚁蛋花瓣，5个独立单体，7秒孵化时间，孵化出兵蚁协助战斗',
         rita: 'Rita花瓣，每有一个怪物死亡就在原地生成一个友方生物协助战斗',
-        stick: '棍子花瓣，基础花瓣的近战变体，提供稳定的血量和伤害输出'
+        stick: '棍子花瓣，5个独立单体，7秒孵化时间，孵化出沙尘暴协助战斗',
+        card: '卡牌花瓣，加快波次速度，等比例降低怪物生成间隔，每级3%加速，25级最多75%加速'
     },
 
     // 花瓣血量数据 (1-25级)
@@ -230,7 +235,8 @@ const PETALS_DATA = {
         bud: generateDoublingHealth(15),
         antegg: generateDoublingHealth(6),
         rita: generateDoublingHealth(10),
-        stick: generateDoublingHealth(15)
+        stick: generateDoublingHealth(15),
+        card: generateDoublingHealth(10)
     },
 
     // 花瓣体伤数据 (1-25级)
@@ -254,7 +260,8 @@ const PETALS_DATA = {
         bud: generateTriplingHealth(5),
         antegg: generateDoublingHealth(8),
         rita: generateDoublingHealth(5),
-        stick: generateDoublingHealth(12)
+        stick: generateDoublingHealth(12),
+        card: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125]
     },
 
     // 花瓣回血数据 (1-25级，大部分为0)
@@ -278,7 +285,8 @@ const PETALS_DATA = {
         bud: Array(26).fill(0),
         antegg: Array(26).fill(0),
         rita: Array(26).fill(0),
-        stick: Array(26).fill(0)
+        stick: Array(26).fill(0),
+        card: Array(26).fill(0)
     },
 
     // 花瓣重量数据 (1-25级)
@@ -302,7 +310,8 @@ const PETALS_DATA = {
         bud: generateTriplingHealth(2),
         antegg: generateTriplingHealth(2),
         rita: generateTriplingHealth(3),
-        stick: generateTriplingHealth(2)
+        stick: generateTriplingHealth(2),
+        card: generateTriplingHealth(3)
     },
 
     // 特殊机制数据
@@ -422,6 +431,11 @@ const PETALS_DATA = {
         },
         stick: {
             type: 'melee'  // 近战类型
+        },
+        card: {
+            wave_speed_bonus_per_level: 0.03,  // 每级3%加速
+            max_wave_speed_bonus: 0.75,         // 最大75%加速
+            type: 'wave_accelerator'            // 波次加速器类型
         }
     },
 
@@ -637,6 +651,12 @@ const PETALS_DATA = {
                     stats.push(`💀 死亡触发机制`);
                     stats.push(`👻 在死亡位置生成友方生物`);
                     stats.push(`🔄 无冷却时间`);
+                    break;
+
+                case 'card':
+                    const speedBonus = Math.min(mechanics.max_wave_speed_bonus, mechanics.wave_speed_bonus_per_level * level);
+                    const speedPercent = Math.round(speedBonus * 100);
+                    stats.push(`⚡ 波次加速: +${speedPercent}%`);
                     break;
             }
         }

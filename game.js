@@ -5335,6 +5335,32 @@ function updateEquipmentSlots() {
 
                 // 使用canvas绘制花瓣
                 const canvas = document.createElement('canvas');
+
+                // 添加tooltip所需的数据属性
+                if (typeof PETALS_DATA !== 'undefined') {
+                    const petalData = PETALS_DATA.getPetalData(petal.type, petal.level);
+                    if (petalData) {
+                        const statsText = PETALS_DATA.getPetalStatsText(petal.type, petal.level);
+                        canvas.dataset.petalType = petal.type;
+                        canvas.dataset.petalLevel = petal.level;
+                        canvas.dataset.petalName = petalData.name;
+                        canvas.dataset.petalDescription = petalData.description;
+                        canvas.dataset.petalStats = JSON.stringify(statsText.stats);
+                    } else {
+                        canvas.dataset.petalType = petal.type;
+                        canvas.dataset.petalLevel = petal.level;
+                        canvas.dataset.petalName = petal.type;
+                        canvas.dataset.petalDescription = '未知花瓣';
+                        canvas.dataset.petalStats = JSON.stringify([`等级: ${petal.level}`]);
+                    }
+                } else {
+                    canvas.dataset.petalType = petal.type;
+                    canvas.dataset.petalLevel = petal.level;
+                    canvas.dataset.petalName = petal.type;
+                    canvas.dataset.petalDescription = '花瓣数据未加载';
+                    canvas.dataset.petalStats = JSON.stringify([`等级: ${petal.level}`]);
+                }
+
                 drawPetalItem(petal, canvas, {displaySize:48});
                 slot.appendChild(canvas);
 
@@ -7515,6 +7541,9 @@ function updateCanvasOffset() {
 
 // 游戏主循环（性能优化：添加帧率限制）
 function gameLoop(timestamp) {
+    // 设置全局ctx供矢量绘制函数使用
+    window.ctx = ctx;
+
     // 帧率限制：如果距离上一帧时间不足，则跳过渲染
     const targetFrameTime = 1000 / config.maxFps;
     if (gameState.lastRenderTime && timestamp - gameState.lastRenderTime < targetFrameTime) {
@@ -9889,6 +9918,7 @@ function drawVectorShield(x, y, size, angle, is_injured = false) {
 
 // 绘制Bomb Beetle实体（基于实际bombbeetle.png）
 function drawVectorBombBeetle(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -10013,6 +10043,7 @@ function drawVectorBombBeetle(x, y, size, angle, is_injured = false) {
 }
 
 function drawVectorBeetle(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -10192,6 +10223,7 @@ function shiftToWhite(color, baseShiftAmount = 0.8, enableFlash = true) {
 
 // 完全按照 enemy.js 的 Hornet 绘制方式
 function drawVectorHornet(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -10303,6 +10335,7 @@ function drawVectorHornet(x, y, size, angle, is_injured = false) {
 
 // 完全按照 enemy.js 的 Ladybug 绘制方式
 function drawVectorLadybug(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -10387,6 +10420,7 @@ function drawVectorLadybug(x, y, size, angle, is_injured = false) {
 
 // 完全按照 enemy.js 中的 Shiny Ladybug 绘制方式 - healbug
 function drawVectorHealbug(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -10471,6 +10505,7 @@ function drawVectorHealbug(x, y, size, angle, is_injured = false) {
 
 // 完全按照 enemy.js 中的 Bee 绘制方式
 function drawVectorBee(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -10586,6 +10621,7 @@ function drawVectorBee(x, y, size, angle, is_injured = false) {
 
 // 完全按照 enemy.js 的 Centipede 绘制方式
 function drawVectorCentipede(x, y, size, angle) {
+    const ctx = window.ctx;
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -10687,6 +10723,7 @@ function drawVectorCentipede(x, y, size, angle) {
 
 // 完全按照 enemy.js 的 Rock 绘制方式（简化版本）
 function drawVectorRock(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -10767,6 +10804,7 @@ function drawVectorRock(x, y, size, angle, is_injured = false) {
 
 // 绘制盾牌守卫（基于enemy.js中的Shell绘制方法）
 function drawVectorShieldGuardian(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
     // 模拟enemy对象结构
     const e = {
         radius: size / 2,
@@ -10858,6 +10896,7 @@ function drawVectorShieldGuardian(x, y, size, angle, is_injured = false) {
 
 // 绘制毒蜘蛛（基于enemy.js中的Spider绘制方法）
 function drawVectorVenomSpider(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
 
     // 模拟enemy对象结构
     const currentTime = Date.now();
@@ -10947,6 +10986,7 @@ function drawVectorVenomSpider(x, y, size, angle, is_injured = false) {
 
 // 绘制雷电元素（完全按照enemy.js中的Jellyfish绘制方法）
 function drawVectorThunderElement(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
     let savedAlpha = ctx.globalAlpha;
 
     // 模拟enemy对象结构
@@ -11028,6 +11068,7 @@ function drawVectorThunderElement(x, y, size, angle, is_injured = false) {
 
 // 绘制兵蚁（完全按照enemy.js中的Soldier Ant绘制方法）
 function drawVectorSoldierAnt(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(.8, .8); // 缩小兵蚁的显示，确保身体完全位于碰撞箱内
@@ -11135,6 +11176,7 @@ function drawVectorSoldierAnt(x, y, size, angle, is_injured = false) {
 
 // 绘制工蚁（完全按照enemy.js中的Worker Ant绘制方法）
 function drawVectorWorkerAnt(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(.8, .8); // 缩小工蚁的显示，确保身体完全位于碰撞箱内
@@ -11220,6 +11262,7 @@ function drawVectorWorkerAnt(x, y, size, angle, is_injured = false) {
 
 // 绘制幼蚁（完全按照enemy.js中的Baby Ant绘制方法）
 function drawVectorBabyAnt(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
     ctx.save();
     ctx.translate(x, y);
 
@@ -11305,6 +11348,7 @@ function drawVectorBabyAnt(x, y, size, angle, is_injured = false) {
 
 // 绘制蚁后（完全按照enemy.js中的Queen Ant绘制方法）
 function drawVectorAntQueen(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
     ctx.save();
     ctx.translate(x, y);
 
@@ -11456,6 +11500,7 @@ function drawVectorAntQueen(x, y, size, angle, is_injured = false) {
 
 // 绘制友好兵蚁（黄色版本的兵蚁）
 function drawVectorFriendlySoldierAnt(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(.8, .8); // 缩小兵蚁的显示，确保身体完全位于碰撞箱内
@@ -11608,6 +11653,7 @@ function drawVectorAntEgg(x, y, size, angle, is_injured = false) {
 
 // 完全按照 enemy.js 中的 Sandstorm 绘制方式
 function drawVectorSandstorm(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -12611,18 +12657,31 @@ const petalTooltip = {
             bagContent.addEventListener('mouseover', this.handleMouseOver.bind(this));
             bagContent.addEventListener('mouseout', this.handleMouseOut.bind(this));
         }
+
+        // 为装备槽添加事件委托
+        const equipmentSlots = document.getElementById('equipmentSlots');
+        if (equipmentSlots) {
+            equipmentSlots.addEventListener('mouseover', this.handleMouseOver.bind(this));
+            equipmentSlots.addEventListener('mouseout', this.handleMouseOut.bind(this));
+        }
     },
 
     handleMouseOver(event) {
         const petalItem = event.target.closest('.petal-item');
+        const canvas = event.target.tagName === 'CANVAS' ? event.target : null;
+
         if (petalItem && petalItem.dataset.petalName) {
             this.show(petalItem);
+        } else if (canvas && canvas.dataset.petalName) {
+            this.show(canvas);
         }
     },
 
     handleMouseOut(event) {
         const petalItem = event.target.closest('.petal-item');
-        if (petalItem) {
+        const canvas = event.target.tagName === 'CANVAS' ? event.target : null;
+
+        if (petalItem || canvas) {
             this.hide();
         }
     },
@@ -12714,10 +12773,279 @@ const petalTooltip = {
     }
 };
 
+// =================== 怪物图鉴功能 ===================
+
+// 怪物图鉴相关变量
+let currentMonsterTab = 'monsters';
+
+// 初始化怪物图鉴
+function initMonsterEncyclopedia() {
+
+    // 添加标签页切换事件
+    const galleryTabs = document.querySelectorAll('.gallery-tab');
+    galleryTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            switchGalleryTab(this.dataset.tab);
+        });
+    });
+}
+
+// 切换图鉴标签页
+function switchGalleryTab(tab) {
+    // 更新标签状态
+    const tabs = document.querySelectorAll('.gallery-tab');
+    const contents = document.querySelectorAll('.tab-content');
+
+    tabs.forEach(t => t.classList.remove('active'));
+    contents.forEach(c => c.classList.remove('active'));
+
+    // 激活选中的标签
+    event.target.classList.add('active');
+    document.getElementById(`${tab}TabContent`).classList.add('active');
+
+    currentMonsterTab = tab;
+
+    if (tab === 'monsters') {
+        updateMonsterEncyclopedia();
+    }
+}
+
+// 更新怪物图鉴显示
+function updateMonsterEncyclopedia() {
+    const monsterSelectionArea = document.querySelector('.monster-selection-area');
+    if (!monsterSelectionArea) return;
+
+    monsterSelectionArea.innerHTML = '';
+
+    const maxLevel = getMaxMonsterLevel();
+
+    // 遍历所有怪物类型
+    for (const [monsterType, monsterData] of Object.entries(MONSTER_DATA)) {
+        // 为每个怪物种类创建一行
+        const row = document.createElement('div');
+        row.className = 'absorb-petal-row';
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.marginBottom = '-3px';
+        row.style.gap = '5px';
+
+        // 显示1-25级，空缺的显示空白占位符
+        for (let level = 1; level <= 25; level++) {
+            const monsterContainer = document.createElement('div');
+            monsterContainer.className = 'monster-container';
+            monsterContainer.style.position = 'relative';
+            monsterContainer.style.width = '36px';
+            monsterContainer.style.height = '36px';
+
+            if (level <= maxLevel && level <= monsterData.maxLevel) {
+                const stats = getMonsterStats(monsterType, level);
+
+                // 创建canvas来绘制怪物图标
+                const monsterCanvas = document.createElement('canvas');
+                // 使用108x108高分辨率，CSS显示为36x36
+                monsterCanvas.width = 108;
+                monsterCanvas.height = 108;
+                monsterCanvas.style.cssText = 'pointer-events: none; width: 36px; height: 36px; image-rendering: crisp-edges; image-rendering: pixelated;';
+
+                // 在canvas上绘制怪物
+                const ctx = monsterCanvas.getContext('2d');
+                const mobDrawFunctions = {
+                    'hornet': drawVectorHornet,
+                    'rock': drawVectorRock,
+                    'ladybug': drawVectorLadybug,
+                    'healbug': drawVectorHealbug,
+                    'bee': drawVectorBee,
+                    'centipede': drawVectorCentipede,
+                    'thunderelement': drawVectorThunderElement,
+                    'venomspider': drawVectorVenomSpider,
+                    'shieldguardian': drawVectorShieldGuardian,
+                    'bombbeetle': drawVectorBombBeetle,
+                    'beetle': drawVectorBeetle,
+                    'soldierant': drawVectorSoldierAnt,
+                    'friendlysoldierant': drawVectorFriendlySoldierAnt,
+                    'workerant': drawVectorWorkerAnt,
+                    'babyant': drawVectorBabyAnt,
+                    'antqueen': drawVectorAntQueen,
+                    'sandstorm': drawVectorSandstorm,
+                };
+
+                // 根据等级设置颜色
+                const levelColors = {
+                    1: { border: '#66c258', bg: '#7eef6d' },
+                    2: { border: '#cfba4b', bg: '#ffe65d' },
+                    3: { border: '#3e42b8', bg: '#4d52e3' },
+                    4: { border: '#6d19b4', bg: '#861fde' },
+                    5: { border: '#b41919', bg: '#de1f1f' },
+                    6: { border: '#19b1b4', bg: '#1fdbde' },
+                    7: { border: '#cf235f', bg: '#ff2b75' },
+                    8: { border: '#23cf84', bg: '#2bffa3' },
+                    9: { border: '#3b3a3b', bg: '#494849' },
+                    10: { border: '#cf4500', bg: '#ff5500' },
+                    11: { border: '#53447e', bg: '#67549c' },
+                    12: { border: '#904bb0', bg: '#b25dd9' },
+                    13: { border: '#000000', bg: '#5e004f' },
+                    14: { border: '#035005', bg: '#046307' },
+                    15: { border: '#4f6bd1', bg: '#608efc' },
+                    16: { border: '#a16649', bg: '#c77e5b' },
+                    17: { border: '#cfcfcf', bg: '#ffffff' },
+                    18: { border: '#d1a3ba', bg: '#f6c5de' },
+                    19: { border: '#974d63', bg: '#7f0226' },
+                    20: { border: '#ff6b35', bg: '#ff8c42' },
+                    21: { border: '#4ecdc4', bg: '#44a3aa' },
+                    22: { border: '#a8e6cf', bg: '#7fcdbb' },
+                    23: { border: '#2c003e', bg: '#512b58' },
+                    24: { border: '#ffd700', bg: '#ffed4e' },
+                    25: { border: '#1e90ff', bg: '#4169e1' }
+                };
+
+                const levelColor = levelColors[level] || levelColors[1];
+
+                // 绘制背景（适配108x108 canvas）
+                ctx.fillStyle = levelColor.bg;
+                ctx.fillRect(0, 0, 108, 108);
+
+                // 绘制边框（3倍缩放，加粗边框）
+                ctx.strokeStyle = levelColor.border;
+                ctx.lineWidth = 9;  // 加粗到9像素
+                ctx.strokeRect(4.5, 4.5, 99, 99);  // 调整位置以适应108x108
+
+                // 绘制怪物图标
+                const drawFunction = mobDrawFunctions[monsterType];
+                if (drawFunction) {
+                    // 保存原来的全局ctx
+                    const originalCtx = window.ctx;
+                    // 临时设置全局ctx为我们的canvas context
+                    window.ctx = ctx;
+
+                    ctx.save();
+                    // 由于canvas是108x108，中心点是54,54，增大绘制尺寸到40
+                    drawFunction(54, 54, 45, 0);
+                    ctx.restore();
+
+                    // 恢复原来的全局ctx
+                    window.ctx = originalCtx;
+                } else {
+                    // 如果没有绘制函数，绘制默认图标
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '36px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(stats.icon || '?', 54, 54);
+                }
+
+                // 创建tooltip
+                const tooltip = document.createElement('div');
+                tooltip.className = 'monster-tooltip';
+                tooltip.innerHTML = `
+                    <h4>${stats.icon} ${stats.name} Lv${level}</h4>
+                    <div class="tooltip-row">
+                        <span class="tooltip-label">血量:</span>
+                        <span class="tooltip-value">${formatNumber(stats.health)}</span>
+                    </div>
+                    <div class="tooltip-row">
+                        <span class="tooltip-label">体伤:</span>
+                        <span class="tooltip-value">${formatNumber(stats.bodyDamage)}</span>
+                    </div>
+                    <div class="tooltip-row">
+                        <span class="tooltip-label">重量:</span>
+                        <span class="tooltip-value">${formatNumber(stats.weight)}</span>
+                    </div>
+                    <div class="tooltip-row">
+                        <span class="tooltip-label">描述:</span>
+                        <span class="tooltip-value">${stats.description}</span>
+                    </div>
+                    <div class="drops-section">
+                        <strong>掉落物:</strong>
+                        ${getDropDisplay(stats.drops)}
+                    </div>
+                `;
+
+                monsterContainer.appendChild(monsterCanvas);
+                document.body.appendChild(tooltip);
+
+                // 直接用JavaScript控制hover效果
+                monsterContainer.addEventListener('mouseenter', function() {
+                    const rect = monsterContainer.getBoundingClientRect();
+                    tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+                    tooltip.style.top = (rect.top - 10) + 'px';
+                    tooltip.style.transform = 'translateX(-50%) translateY(-100%)';
+                    tooltip.style.opacity = '1';
+                    tooltip.style.visibility = 'visible';
+                });
+
+                monsterContainer.addEventListener('mouseleave', function() {
+                    tooltip.style.opacity = '0';
+                    tooltip.style.visibility = 'hidden';
+                });
+            } else {
+                // 空缺位置显示空白占位符
+                const placeholder = document.createElement('div');
+                placeholder.className = 'monster-placeholder';
+                placeholder.style.width = '36px';
+                placeholder.style.height = '36px';
+                placeholder.style.backgroundColor = '#dbd74b';
+                placeholder.style.display = 'flex';
+                placeholder.style.alignItems = 'center';
+                placeholder.style.justifyContent = 'center';
+
+                // 内层小正方形
+                const innerSquare = document.createElement('div');
+                innerSquare.style.width = '32px';
+                innerSquare.style.height = '32px';
+                innerSquare.style.backgroundColor = '#b3b33b';
+                innerSquare.style.borderRadius = '3px';
+
+                placeholder.appendChild(innerSquare);
+                monsterContainer.appendChild(placeholder);
+            }
+
+            row.appendChild(monsterContainer);
+        }
+
+        monsterSelectionArea.appendChild(row);
+    }
+}
+
+// 获取掉落物显示HTML
+function getDropDisplay(drops) {
+    if (!drops || drops.length === 0) {
+        return '<div class="drop-item">无掉落</div>';
+    }
+
+    let html = '';
+    drops.forEach(dropType => {
+        const petalName = PETAL_NAMES[dropType] || `未知${dropType}`;
+        const rarity = getItemRarity(dropType);
+        const rarityClass = `rarity-${rarity}`;
+        html += `
+            <div class="drop-item">
+                <span class="${rarityClass}">${petalName}</span>
+                <span class="${rarityClass}">${RARITY_CONFIG[rarity].name}</span>
+            </div>
+        `;
+    });
+
+    return html;
+}
+
+// 在显示图鉴窗口时更新怪物图鉴
+const originalShowWindow = showWindow;
+showWindow = function(type) {
+    originalShowWindow(type);
+
+    if (type === 'gallery' && currentMonsterTab === 'monsters') {
+        // 延迟更新，确保窗口已经显示
+        setTimeout(() => {
+            updateMonsterEncyclopedia();
+        }, 100);
+    }
+};
+
 // 初始化tooltip
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         petalTooltip.init();
         initCheckinFeatures();
+        initMonsterEncyclopedia();
     }, 100);
 })
