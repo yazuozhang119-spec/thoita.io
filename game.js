@@ -1899,6 +1899,9 @@ const restartButton = document.getElementById('restartButton');
 const exitButton = document.getElementById('exitButton');
 const lobbyUI = document.getElementById('lobbyUI');
 const equipmentSlots = document.getElementById('equipmentSlots');
+// 死亡掉落物相关UI元素
+const deathDrops = document.getElementById('deathDrops');
+const deathDropsContent = document.getElementById('deathDropsContent');
 const bagWindow = document.getElementById('bagWindow');
 const absorbWindow = document.getElementById('absorbWindow');
 const galleryWindow = document.getElementById('galleryWindow');
@@ -6258,9 +6261,93 @@ function startGame() {
     startBackgroundMusic();
 }
 
+// 显示死亡掉落物统计
+function showDeathDrops() {
+    // 请求掉落物统计数据
+    sendToServer({
+        COMMAND: 'GET_DROP_STATS'
+    });
+}
+
+// 显示死亡掉落物内容
+function displayDeathDrops(dropStats) {
+    if (!deathDrops || !deathDropsContent) {
+        console.error('死亡掉落物UI元素未找到');
+        return;
+    }
+
+    // 清空现有内容
+    deathDropsContent.innerHTML = '';
+
+    if (!dropStats || dropStats.length === 0) {
+        // 没有拾取到任何掉落物
+        const noDropsMessage = document.createElement('div');
+        noDropsMessage.style.color = 'rgba(255, 255, 255, 0.6)';
+        noDropsMessage.style.fontSize = '14px';
+        noDropsMessage.style.textAlign = 'center';
+        noDropsMessage.style.gridColumn = '1 / -1';
+        noDropsMessage.textContent = '未拾取到任何掉落物';
+        deathDropsContent.appendChild(noDropsMessage);
+    } else {
+        // 排序方式：先按等级降序，等级相同的按类型升序
+        const sortedDrops = [...dropStats].sort((a, b) => {
+            const levelA = parseInt(a.level);
+            const levelB = parseInt(b.level);
+
+            // 首先按等级降序（等级高的放前面）
+            if (levelA !== levelB) {
+                return levelB - levelA;
+            }
+
+            // 等级相同时按类型升序
+            return parseInt(a.type) - parseInt(b.type);
+        });
+
+        // 使用网格布局显示掉落物，类似背包
+        deathDropsContent.style.display = 'grid';
+        deathDropsContent.style.gridTemplateColumns = 'repeat(auto-fill, 40px)';
+        deathDropsContent.style.gap = '8px';
+        deathDropsContent.style.padding = '0px';
+
+        sortedDrops.forEach(drop => {
+            const dropItem = document.createElement('div');
+            dropItem.className = 'death-drop-item';
+
+            // 创建花瓣数据对象用于绘制
+            const petalData = {
+                type: parseInt(drop.type),
+                level: parseInt(drop.level),
+                count: parseInt(drop.count)
+            };
+
+            // 使用canvas绘制花瓣
+            const canvas = document.createElement('canvas');
+            drawPetalItem(petalData, canvas, { displaySize: 34 });
+            dropItem.appendChild(canvas);
+
+            // 添加数量标签
+            if (drop.count > 1) {
+                const countBadge = document.createElement('div');
+                countBadge.className = 'death-drop-count';
+                countBadge.textContent = `x${drop.count}`;
+                dropItem.appendChild(countBadge);
+            }
+
+            deathDropsContent.appendChild(dropItem);
+        });
+    }
+
+    // 显示死亡掉落物面板
+    deathDrops.style.display = 'block';
+}
+
 // 重新开始游戏
 function restartGame() {
     gameOverScreen.style.display = 'none';
+    // 隐藏死亡掉落物面板
+    if (deathDrops) {
+        deathDrops.style.display = 'none';
+    }
     gameState.playerHealth = gameState.playerMaxHealth;
     gameState.isLobby = true;
     lobbyUI.style.display = 'flex';
@@ -7266,6 +7353,9 @@ function handleServerMessage(data) {
                     console.log('已显示GameOver界面');
                 }
 
+                // 获取并显示死亡掉落物统计
+                showDeathDrops();
+
                 // 停止背景音乐
                 stopBackgroundMusic();
 
@@ -7286,6 +7376,12 @@ function handleServerMessage(data) {
                 showRoomInfo(false);
 
                 console.log('游戏结束，已清除房间信息、怪物summary和游戏实体信息');
+                break;
+
+            case 'DROP_STATS_RESPONSE':
+                console.log('=== 收到掉落物统计数据 ===');
+                console.log('掉落物统计:', message.drop_stats);
+                displayDeathDrops(message.drop_stats);
                 break;
 
             default:
