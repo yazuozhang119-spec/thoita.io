@@ -13091,70 +13091,55 @@ function getDropDisplay(drops, level = 1) {
         html += '<div class="drop-possibilities">';
 
         if (level >= 17) {
-            // 17级以上的掉落逻辑
+            // Level >= 17: 掉落level-2级花瓣
             html += `<div class="drop-group">`;
+            let dropLevel = Math.max(1, level - 2);
 
-            // 计算90%掉-2级的情况
-            let drop17Minus2 = Math.max(1, level - 2);
-            let drop17Minus3 = Math.max(1, level - 3);
+            // 根据generate_drops函数的修正逻辑
+            // 40%几率掉落2个
+            html += `<div class="drop-item"><span class="${rarityClass}">40.0%</span> ${petalName} Lv${dropLevel} x2</div>`;
 
-            // 90% * (1-0.3-0.065) = 59.15% -> 1个Lv-2
-            html += `<div class="drop-item"><span class="${rarityClass}">59.15%</span> ${petalName} Lv${drop17Minus2} x1</div>`;
+            // 条件概率：60%剩余概率中再取20% = 12%几率掉落5个
+            html += `<div class="drop-item"><span class="${rarityClass}">12.0%</span> ${petalName} Lv${dropLevel} x5</div>`;
 
-            // 90% * 30% = 27% -> 2个Lv-2
-            html += `<div class="drop-item"><span class="${rarityClass}">27.00%</span> ${petalName} Lv${drop17Minus2} x2</div>`;
-
-            // 90% * 6.5% = 5.85% -> 5个Lv-2
-            html += `<div class="drop-item"><span class="${rarityClass}">5.85%</span> ${petalName} Lv${drop17Minus2} x5</div>`;
-
-            // 10% * (1-0.3-0.065) = 6.57% -> 1个Lv-3
-            html += `<div class="drop-item"><span class="${rarityClass}">6.57%</span> ${petalName} Lv${drop17Minus3} x1</div>`;
-
-            // 10% * 30% = 3% -> 2个Lv-3
-            html += `<div class="drop-item"><span class="${rarityClass}">3.00%</span> ${petalName} Lv${drop17Minus3} x2</div>`;
-
-            // 10% * 6.5% = 0.65% -> 5个Lv-3
-            html += `<div class="drop-item"><span class="${rarityClass}">0.65%</span> ${petalName} Lv${drop17Minus3} x5</div>`;
+            // 剩余48%几率掉落1个
+            html += `<div class="drop-item"><span class="${rarityClass}">48.0%</span> ${petalName} Lv${dropLevel} x1</div>`;
             html += `</div>`;
 
         } else if (level >= 12) {
-            // 12-16级的掉落逻辑
+            // Level >= 12: 掉落level-2级花瓣（99%）或level-1级花瓣（1%）
             html += `<div class="drop-group">`;
 
-            let drop12Minus1 = Math.max(1, level - 1);
-            let drop12Minus2 = Math.max(1, level - 2);
+            let dropLevelMinus1 = Math.max(1, level - 1);
+            let dropLevelMinus2 = Math.max(1, level - 2);
 
-            // 1% * (1-0.3-0.065) = 0.657% -> 1个Lv-1
-            html += `<div class="drop-item"><span class="${rarityClass}">0.66%</span> ${petalName} Lv${drop12Minus1} x1</div>`;
+            // 1% * 63.5% = 0.635% -> 1个Lv-1
+            html += `<div class="drop-item"><span class="${rarityClass}">0.635%</span> ${petalName} Lv${dropLevelMinus1} x1</div>`;
 
             // 1% * 30% = 0.3% -> 2个Lv-1
-            html += `<div class="drop-item"><span class="${rarityClass}">0.30%</span> ${petalName} Lv${drop12Minus1} x2</div>`;
+            html += `<div class="drop-item"><span class="${rarityClass}">0.300%</span> ${petalName} Lv${dropLevelMinus1} x2</div>`;
 
             // 1% * 6.5% = 0.065% -> 10个Lv-1
-            html += `<div class="drop-item"><span class="${rarityClass}">0.07%</span> ${petalName} Lv${drop12Minus1} x10</div>`;
+            html += `<div class="drop-item"><span class="${rarityClass}">0.065%</span> ${petalName} Lv${dropLevelMinus1} x10</div>`;
 
-            // 99% * (1-0.3-0.065) = 64.635% -> 1个Lv-2
-            html += `<div class="drop-item"><span class="${rarityClass}">64.64%</span> ${petalName} Lv${drop12Minus2} x1</div>`;
+            // 99% * 63.5% = 62.865% -> 1个Lv-2
+            html += `<div class="drop-item"><span class="${rarityClass}">62.865%</span> ${petalName} Lv${dropLevelMinus2} x1</div>`;
 
             // 99% * 30% = 29.7% -> 2个Lv-2
-            html += `<div class="drop-item"><span class="${rarityClass}">29.70%</span> ${petalName} Lv${drop12Minus2} x2</div>`;
+            html += `<div class="drop-item"><span class="${rarityClass}">29.700%</span> ${petalName} Lv${dropLevelMinus2} x2</div>`;
 
             // 99% * 6.5% = 6.435% -> 10个Lv-2
-            html += `<div class="drop-item"><span class="${rarityClass}">6.44%</span> ${petalName} Lv${drop12Minus2} x10</div>`;
+            html += `<div class="drop-item"><span class="${rarityClass}">6.435%</span> ${petalName} Lv${dropLevelMinus2} x10</div>`;
             html += `</div>`;
 
         } else {
-            // 1-11级的掉落逻辑
+            // Level < 12: 掉落level-1级花瓣
             html += `<div class="drop-group">`;
 
-            let dropMinus1 = Math.max(1, level - 1);
-            let dropMinus2 = Math.max(1, level - 2);
+            let dropLevel = Math.max(1, level - 1);
 
-            // 20% -> 1个Lv-1
-            html += `<div class="drop-item"><span class="${rarityClass}">20.00%</span> ${petalName} Lv${dropMinus1} x1</div>`;
-
-            // 80% -> 1个Lv-2
-            html += `<div class="drop-item"><span class="${rarityClass}">80.00%</span> ${petalName} Lv${dropMinus2} x1</div>`;
+            // 100%几率掉落1个level-1级花瓣
+            html += `<div class="drop-item"><span class="${rarityClass}">100%</span> ${petalName} Lv${dropLevel} x1</div>`;
             html += `</div>`;
         }
 

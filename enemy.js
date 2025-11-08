@@ -4789,11 +4789,14 @@ let savedAlpha = ctx.globalAlpha;
 		e.render.lastX = e.render.x;
 		e.render.lastY = e.render.y;
 
-		let bodyColor = blendColor("#4f412d", "#FF0000", Math.max(0, blendAmount(e)));
-		let legColor = blendColor("#403425", "#FF0000", Math.max(0, blendAmount(e)));
-		if (checkForFirstFrame(e)) {
-			bodyColor = "#FFFFFF";
-			legColor = "#FFFFFF";
+		let bodyColor = "#4f412d";
+		let legColor = "#403425";
+		const is_injured = e.ticksSinceLastDamaged < 166.5;
+
+		// 如果受伤，将颜色向白色偏向
+		if (is_injured) {
+			bodyColor = shiftToWhite(bodyColor);
+			legColor = shiftToWhite(legColor);
 		}
 		ctx.rotate(e.render.angle + Math.PI);
 
