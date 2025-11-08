@@ -84,7 +84,7 @@ const PETALS_DATA = {
     // 花瓣基础属性 (冷却时间秒)
     COOLDOWNS: {
         missile: 2.5,
-        basic: 2.5,
+        basic: 1.8,
         hornet_missile: null,  // 特殊机制，无固定冷却
         leaf: 1.0,
         wing: 1.0,
