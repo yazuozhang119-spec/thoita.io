@@ -2776,7 +2776,15 @@ function updateAbsorbPetalSelection() {
                     if (e.shiftKey) {
                         addAllPetalsToAbsorbSlots(petal, petal.originalIndex);
                     } else {
-                        addPetalToFirstEmptySlot(petal, petal.originalIndex);
+                        // 创建5个飞行动画，同时飞向5个合成槽
+                        for (let i = 0; i < 5; i++) {
+                            animatePetalToSlot(item, i, null);
+                        }
+
+                        // 延迟执行原有的添加逻辑，等待动画开始
+                        setTimeout(() => {
+                            addPetalToFirstEmptySlot(petal, petal.originalIndex);
+                        }, 100);
                     }
                 });
 
@@ -2896,6 +2904,76 @@ function handleAbsorbDrop(e) {
     }
 }
 
+// 创建花瓣飞向合成槽的动画
+function animatePetalToSlot(clickedElement, targetSlotIndex, callback) {
+    // 获取点击的花瓣元素的位置
+    const petalRect = clickedElement.getBoundingClientRect();
+    const startX = petalRect.left + petalRect.width / 2;
+    const startY = petalRect.top + petalRect.height / 2;
+
+    // 获取目标合成槽的位置
+    const targetSlot = document.querySelector(`.absorb-slot[data-index="${targetSlotIndex}"]`);
+    if (!targetSlot) {
+        console.error('目标槽位未找到:', targetSlotIndex);
+        return;
+    }
+
+    const slotRect = targetSlot.getBoundingClientRect();
+    const endX = slotRect.left + slotRect.width / 2;
+    const endY = slotRect.top + slotRect.height / 2;
+
+    // 创建飞行花瓣元素
+    const flyingPetal = document.createElement('div');
+    flyingPetal.style.position = 'fixed';
+    flyingPetal.style.zIndex = '10000';
+    flyingPetal.style.pointerEvents = 'none';
+    flyingPetal.style.transition = 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+
+    // 复制花瓣的canvas内容
+    const sourceCanvas = clickedElement.querySelector('canvas');
+    if (sourceCanvas) {
+        const canvas = document.createElement('canvas');
+        canvas.width = sourceCanvas.width;
+        canvas.height = sourceCanvas.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(sourceCanvas, 0, 0);
+        canvas.style.width = '34px';
+        canvas.style.height = '34px';
+        flyingPetal.appendChild(canvas);
+    } else {
+        // 如果没有canvas，创建一个占位符
+        flyingPetal.style.width = '34px';
+        flyingPetal.style.height = '34px';
+        flyingPetal.style.backgroundColor = '#ffcc00';
+        flyingPetal.style.borderRadius = '50%';
+    }
+
+    // 设置初始位置
+    flyingPetal.style.left = startX - 17 + 'px'; // 居中
+    flyingPetal.style.top = startY - 17 + 'px';
+
+    // 添加到页面
+    document.body.appendChild(flyingPetal);
+
+    // 开始动画
+    setTimeout(() => {
+        flyingPetal.style.left = endX - 17 + 'px';
+        flyingPetal.style.top = endY - 17 + 'px';
+        flyingPetal.style.transform = 'scale(0.8)';
+        flyingPetal.style.opacity = '0.8';
+    }, 10);
+
+    // 动画完成后清理
+    setTimeout(() => {
+        if (flyingPetal.parentNode) {
+            flyingPetal.parentNode.removeChild(flyingPetal);
+        }
+        if (callback) {
+            callback();
+        }
+    }, 300);
+}
+
 // 添加花瓣到合成槽位
 function addPetalToAbsorbSlot(petalIndex, slotIndex) {
     // 检查是否正在合成中
@@ -2953,10 +3031,22 @@ function addPetalToAbsorbSlot(petalIndex, slotIndex) {
     }
 }
 
+// 找到第一个空槽位
+function findFirstEmptySlot() {
+    for (let i = 0; i < 5; i++) {
+        const slot = document.querySelector(`.absorb-slot[data-index="${i}"]`);
+        if (slot && !slot.classList.contains('filled')) {
+            return i;
+        }
+    }
+    return 0; // 如果没有空槽位，返回第一个
+}
+
 // 添加花瓣（无论槽位是否为空）
 function addPetalToFirstEmptySlot(petal, originalIndex) {
+    const targetSlotIndex = findFirstEmptySlot();
     // 直接调用添加函数，让它自己处理槽位逻辑
-    addPetalToAbsorbSlot(originalIndex, 0); // 使用槽位0作为目标
+    addPetalToAbsorbSlot(originalIndex, targetSlotIndex);
 }
 
 // Shift+左键点击：添加所有同类花瓣到合成槽位
