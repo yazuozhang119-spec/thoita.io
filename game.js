@@ -10188,7 +10188,7 @@ function rgbToHex(r, g, b) {
 
 // 将颜色向白色偏向（非常明显的变白效果，支持闪烁）
 function shiftToWhite(color, baseShiftAmount = 0.8, enableFlash = true) {
-    if (baseShiftAmount <= 0) return color;
+    if (!color || typeof color !== 'string' || baseShiftAmount <= 0) return color;
 
     // 解析颜色
     const rgb = {
@@ -10620,7 +10620,7 @@ function drawVectorBee(x, y, size, angle, is_injured = false) {
 }
 
 // 完全按照 enemy.js 的 Centipede 绘制方式
-function drawVectorCentipede(x, y, size, angle) {
+function drawVectorCentipede(x, y, size, angle, is_injured = false) {
     const ctx = window.ctx;
     ctx.save();
     ctx.translate(x, y);
@@ -10639,13 +10639,13 @@ function drawVectorCentipede(x, y, size, angle) {
     };
 
     // 完全复制 enemy.js 中的 Centipede 绘制逻辑
-    let bodyColor = blendColor("#8ac255", "#FF0000", Math.max(0, 0)); // blendAmount(e)
-    let sideColor = blendColor("#333333", "#FF0000", Math.max(0, 0));
+    let bodyColor = "#8ac255";
+    let sideColor = "#333333";
 
-    const isFirstFrame = false;
-    if (isFirstFrame) {
-        bodyColor = "#FFFFFF";
-        sideColor = "#FFFFFF";
+    // 如果受伤，将颜色向白色偏向
+    if (is_injured) {
+        bodyColor = shiftToWhite(bodyColor);
+        sideColor = shiftToWhite(sideColor);
     }
 
     ctx.rotate(e.render.angle);
@@ -11092,17 +11092,15 @@ function drawVectorSoldierAnt(x, y, size, angle, is_injured = false) {
     // 更新动画时间
     e.render.time = getCurrentTime() / 1000;
 
-    let body, bodyBorder;
+    // 定义基础颜色
+    let body = e.team === "flower" ? "#fbea6f" : "#555555";
+    let bodyBorder = e.team === "flower" ? "#cfbd53" : "#454545";
 
-    // 如果is_injured为true，直接使用白色
+    // 如果is_injured为true，使用闪烁变白效果
     if (is_injured) {
-        body = "#ffffff";
-        bodyBorder = "#ffffff";
+        body = shiftToWhite(body);
+        bodyBorder = shiftToWhite(bodyBorder);
     } else {
-        // 否则使用正常的颜色（不用红色混合）
-        body = e.team === "flower" ? "#fbea6f" : "#555555";
-        bodyBorder = e.team === "flower" ? "#cfbd53" : "#454545";
-
         // 如果是受伤的第一帧，也显示白色
         if (checkForFirstFrame(e)) {
             body = "#ffffff";
@@ -11200,17 +11198,15 @@ function drawVectorWorkerAnt(x, y, size, angle, is_injured = false) {
     // 更新动画时间
     e.render.time = getCurrentTime() / 1000;
 
-    let body, bodyBorder;
+    // 定义基础颜色
+    let body = e.team === "flower" ? "#fbea6f" : "#555555";
+    let bodyBorder = e.team === "flower" ? "#cfbd53" : "#454545";
 
-    // 如果is_injured为true，直接使用白色
+    // 如果is_injured为true，使用闪烁变白效果
     if (is_injured) {
-        body = "#ffffff";
-        bodyBorder = "#ffffff";
+        body = shiftToWhite(body);
+        bodyBorder = shiftToWhite(bodyBorder);
     } else {
-        // 否则使用正常的颜色（不用红色混合）
-        body = e.team === "flower" ? "#fbea6f" : "#555555";
-        bodyBorder = e.team === "flower" ? "#cfbd53" : "#454545";
-
         // 如果是受伤的第一帧，也显示白色
         if (checkForFirstFrame(e)) {
             body = "#ffffff";
@@ -11285,17 +11281,15 @@ function drawVectorBabyAnt(x, y, size, angle, is_injured = false) {
     // 更新动画时间
     e.render.time = getCurrentTime() / 1000;
 
-    let body, bodyBorder;
+    // 定义基础颜色
+    let body = e.team === "flower" ? "#fbea6f" : "#555555";
+    let bodyBorder = e.team === "flower" ? "#cfbd53" : "#454545";
 
-    // 如果is_injured为true，直接使用白色
+    // 如果is_injured为true，使用闪烁变白效果
     if (is_injured) {
-        body = "#ffffff";
-        bodyBorder = "#ffffff";
+        body = shiftToWhite(body);
+        bodyBorder = shiftToWhite(bodyBorder);
     } else {
-        // 否则使用正常的颜色（不用红色混合）
-        body = e.team === "flower" ? "#fbea6f" : "#555555";
-        bodyBorder = e.team === "flower" ? "#cfbd53" : "#454545";
-
         // 如果是受伤的第一帧，也显示白色
         if (checkForFirstFrame(e)) {
             body = "#ffffff";
@@ -11375,17 +11369,15 @@ function drawVectorAntQueen(x, y, size, angle, is_injured = false) {
     // 更新动画时间
     e.render.time = getCurrentTime() / 1000;
 
-    let body, bodyOutline;
+    // 定义基础颜色
+    let body = '#555555';
+    let bodyOutline = '#454545';
 
-    // 如果is_injured为true，直接使用白色
+    // 如果is_injured为true，使用闪烁变白效果
     if (is_injured) {
-        body = "#ffffff";
-        bodyOutline = "#ffffff";
+        body = shiftToWhite(body);
+        bodyOutline = shiftToWhite(bodyOutline);
     } else {
-        // 否则使用正常的颜色（不用红色混合）
-        body = '#555555';
-        bodyOutline = '#454545';
-
         // 如果是受伤的第一帧，也显示白色
         if (checkForFirstFrame(e)) {
             body = "#ffffff";
@@ -11524,17 +11516,15 @@ function drawVectorFriendlySoldierAnt(x, y, size, angle, is_injured = false) {
     // 更新动画时间
     e.render.time = getCurrentTime() / 1000;
 
-    let body, bodyBorder;
+    // 友好兵蚁使用黄色身体（与普通兵蚁不同）
+    let body = "#ffeb3b"; // 黄色身体
+    let bodyBorder = "#fbc02d"; // 黄色边框
 
-    // 如果is_injured为true，直接使用白色
+    // 如果is_injured为true，使用闪烁变白效果
     if (is_injured) {
-        body = "#ffffff";
-        bodyBorder = "#ffffff";
+        body = shiftToWhite(body);
+        bodyBorder = shiftToWhite(bodyBorder);
     } else {
-        // 友好兵蚁使用黄色身体（与普通兵蚁不同）
-        body = "#ffeb3b"; // 黄色身体
-        bodyBorder = "#fbc02d"; // 黄色边框
-
         // 如果是受伤的第一帧，也显示白色
         if (checkForFirstFrame(e)) {
             body = "#ffffff";
@@ -11756,24 +11746,15 @@ function drawVectorFriendlySandstorm(x, y, size, angle, is_injured = false) {
     };
 
     // 友方沙尘暴颜色逻辑（仿照 friendlysoldierant）
-    let inner, middle, outer;
+    let inner = "#ffb347";   // 深橙色黄 (内层)
+    let middle = "#ffd700";  // 金黄色 (中层)
+    let outer = "#ffed4e";   // 浅金黄色 (外层)
 
+    // 如果受伤，将颜色向白色偏向（启用闪烁）
     if (is_injured) {
-        inner = "#ffffff";
-        middle = "#ffffff";
-        outer = "#ffffff";
-    } else {
-        // 友方单位使用指定的黄色
-        inner = "#ffb347";   // 深橙色黄 (内层)
-        middle = "#ffd700";  // 金黄色 (中层)
-        outer = "#ffed4e";   // 浅金黄色 (外层)
-
-        // 如果是受伤的第一帧，也显示白色
-        if (checkForFirstFrame(e)) {
-            inner = "#ffffff";
-            middle = "#ffffff";
-            outer = "#ffffff";
-        }
+        inner = shiftToWhite(inner, 0.8, true);
+        middle = shiftToWhite(middle, 0.8, true);
+        outer = shiftToWhite(outer, 0.8, true);
     }
 
   
