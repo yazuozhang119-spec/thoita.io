@@ -5859,8 +5859,7 @@ function equipPetal(petalIndex, slotIndex) {
         drawPetalItem(petal, canvas, {displaySize: 48});
         slot.appendChild(canvas);
 
-        // 减少可用花瓣数量
-        petal.count--;
+        gameState.availablePetals[petalIndex].count--;
 
         // 更新背包UI（只在背包窗口打开时）
         if (bagWindow.style.display === 'block') {
