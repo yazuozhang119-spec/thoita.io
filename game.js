@@ -1193,35 +1193,50 @@ function drawStaticPetalItem(petal, canvas, options) {
         ctx.closePath();
     },
         stick: (p) => {
-            ctx.beginPath();
             let innerColor = blendColor("#7d5b1f", '#FF0000', blendAmount(p));
-            ctx.strokeStyle = blendColor("#654a19", '#FF0000', blendAmount(p));
+            let outerColor = blendColor("#654a19", '#FF0000', blendAmount(p));
             if(checkForFirstFrame(p)){
                 innerColor = "#FFFFFF";
-                ctx.strokeStyle = "#FFFFFF"
+                outerColor = "#FFFFFF"
             }
 
-            ctx.lineWidth = p.radius*0.75
+            // Draw outer stick with rounded line caps
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = p.radius * 0.75;
+            ctx.strokeStyle = outerColor;
 
             ctx.beginPath();
             ctx.moveTo(p.radius * -0.90, p.radius * 0.58);
             ctx.lineTo(p.radius * 0.01, p.radius * 0);
             ctx.lineTo(p.radius * 0.56, p.radius * -1.14);
+            ctx.stroke();
+
+            // Draw second branch
+            ctx.beginPath();
             ctx.moveTo(p.radius * 0.01, p.radius * 0);
             ctx.lineTo(p.radius * 0.88, p.radius * -0.06);
             ctx.stroke();
-            ctx.closePath();
 
-            ctx.lineWidth = p.radius*0.35
+            // Draw inner stick with rounded line caps
+            ctx.lineWidth = p.radius * 0.35;
             ctx.strokeStyle = innerColor;
+
             ctx.beginPath();
             ctx.moveTo(p.radius * -0.90, p.radius * 0.58);
             ctx.lineTo(p.radius * 0.01, p.radius * 0);
             ctx.lineTo(p.radius * 0.56, p.radius * -1.14);
+            ctx.stroke();
+
+            // Draw second inner branch
+            ctx.beginPath();
             ctx.moveTo(p.radius * 0.01, p.radius * 0);
             ctx.lineTo(p.radius * 0.88, p.radius * -0.06);
             ctx.stroke();
-            ctx.closePath();
+
+            // Reset line cap and join to default
+            ctx.lineCap = 'butt';
+            ctx.lineJoin = 'miter';
         },
 
         card: (p) => {
@@ -4476,35 +4491,50 @@ function drawPetalInContext(petal, ctx, displaySize) {
         ctx.closePath();
     },
         stick: (p) => {
-            ctx.beginPath();
             let innerColor = blendColor("#7d5b1f", '#FF0000', blendAmount(p));
-            ctx.strokeStyle = blendColor("#654a19", '#FF0000', blendAmount(p));
+            let outerColor = blendColor("#654a19", '#FF0000', blendAmount(p));
             if(checkForFirstFrame(p)){
                 innerColor = "#FFFFFF";
-                ctx.strokeStyle = "#FFFFFF"
+                outerColor = "#FFFFFF"
             }
 
-            ctx.lineWidth = p.radius*0.75
+            // Draw outer stick with rounded line caps
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = p.radius * 0.75;
+            ctx.strokeStyle = outerColor;
 
             ctx.beginPath();
             ctx.moveTo(p.radius * -0.90, p.radius * 0.58);
             ctx.lineTo(p.radius * 0.01, p.radius * 0);
             ctx.lineTo(p.radius * 0.56, p.radius * -1.14);
+            ctx.stroke();
+
+            // Draw second branch
+            ctx.beginPath();
             ctx.moveTo(p.radius * 0.01, p.radius * 0);
             ctx.lineTo(p.radius * 0.88, p.radius * -0.06);
             ctx.stroke();
-            ctx.closePath();
 
-            ctx.lineWidth = p.radius*0.35
+            // Draw inner stick with rounded line caps
+            ctx.lineWidth = p.radius * 0.35;
             ctx.strokeStyle = innerColor;
+
             ctx.beginPath();
             ctx.moveTo(p.radius * -0.90, p.radius * 0.58);
             ctx.lineTo(p.radius * 0.01, p.radius * 0);
             ctx.lineTo(p.radius * 0.56, p.radius * -1.14);
+            ctx.stroke();
+
+            // Draw second inner branch
+            ctx.beginPath();
             ctx.moveTo(p.radius * 0.01, p.radius * 0);
             ctx.lineTo(p.radius * 0.88, p.radius * -0.06);
             ctx.stroke();
-            ctx.closePath();
+
+            // Reset line cap and join to default
+            ctx.lineCap = 'butt';
+            ctx.lineJoin = 'miter';
         },
 
         card: (p) => {
@@ -5217,15 +5247,8 @@ function autoEquipSavedBuild() {
         return;
     }
 
-    // 清空当前装备槽
-    gameState.equippedPetals = new Array(10).fill(null);
-
-    // 基于服务器完整数据计算可用花瓣数量
-    const totalAvailablePetals = calculateTotalAvailablePetals();
-    console.log('基于服务器数据计算的可用花瓣:', totalAvailablePetals);
-
-    // 装备的花瓣列表，用于后续扣除
-    const equippedPetals = [];
+    // 先初始化可用花瓣（基于当前装备槽为空的状态）
+    initializeAvailablePetals(true);
 
     // 自动装备保存的构筑
     for (let i = 0; i < Math.min(gameState.savedBuild.length, 20); i++) {
@@ -5236,8 +5259,8 @@ function autoEquipSavedBuild() {
 
             // 检查是否为有效花瓣（非空槽位）
             if (petalType !== -1 && petalLevel > 0) {
-                // 检查基于完整数据的可用数量
-                if (hasEnoughPetals(totalAvailablePetals, petalType, petalLevel)) {
+                // 检查基于当前availablePetals的可用数量（避免重复扣除）
+                if (hasEnoughPetals(gameState.availablePetals, petalType, petalLevel)) {
                     // 设置装备数据
                     gameState.equippedPetals[i] = {
                         type: petalType,
@@ -5245,8 +5268,12 @@ function autoEquipSavedBuild() {
                         count: 1
                     };
 
-                    // 记录装备的花瓣，用于后续扣除
-                    equippedPetals.push({ type: petalType, level: petalLevel });
+                    // 直接从availablePetals中扣除装备的花瓣
+                    const availablePetal = gameState.availablePetals.find(p => p.type === petalType && p.level === petalLevel);
+                    if (availablePetal && availablePetal.count > 0) {
+                        availablePetal.count--;
+                        console.log(`装备槽位 ${i}: ${petalType}-${petalLevel}，剩余可用: ${availablePetal.count}`);
+                    }
 
                     console.log(`自动装备槽位 ${i}: ${petalType}-${petalLevel}`);
                 } else {
@@ -5255,9 +5282,6 @@ function autoEquipSavedBuild() {
             }
         }
     }
-
-    // 更新可用花瓣（会自动扣除装备的花瓣）
-    initializeAvailablePetals(true);
 
     // 更新UI
     updateEquipmentSlots();
@@ -5778,6 +5802,29 @@ function createInventorySlot(index) {
     return slot;
 }
 
+// 找到最靠前的空槽位
+function findFirstEmptyEquipmentSlot() {
+    for (let i = 0; i < gameState.equippedPetals.length; i++) {
+        if (!gameState.equippedPetals[i] || gameState.equippedPetals[i].type === undefined) {
+            return i; // 返回第一个空槽位的索引
+        }
+    }
+    return -1; // 没有空槽位
+}
+
+// 自动装备花瓣到最靠前的空槽位
+function autoEquipPetal(petalIndex) {
+    const emptySlotIndex = findFirstEmptyEquipmentSlot();
+
+    if (emptySlotIndex === -1) {
+        alert('装备槽已满，请先卸下一些花瓣！');
+        return false;
+    }
+
+    equipPetal(petalIndex, emptySlotIndex);
+    return true;
+}
+
 // 装备花瓣
 function equipPetal(petalIndex, slotIndex) {
     if (petalIndex >= 0 && petalIndex < gameState.availablePetals.length &&
@@ -6166,6 +6213,25 @@ function updateBagContent() {
         // 添加拖拽事件
         item.addEventListener('dragstart', handleDragStart);
         item.addEventListener('dragend', handleDragEnd);
+
+        // 添加点击事件 - 自动装备到最靠前的空槽位
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // 获取花瓣的原始索引
+            const petalIndex = parseInt(item.dataset.index);
+            if (!isNaN(petalIndex)) {
+                console.log(`点击背包花瓣: ${petal.type}-${petal.level} (索引: ${petalIndex})`);
+
+                // 自动装备到最靠前的空槽位
+                autoEquipPetal(petalIndex);
+            }
+        });
+
+        // 添加鼠标悬停效果，提示可点击
+        item.style.cursor = 'pointer';
+        item.title = '点击自动装备到第一个空槽位\n或拖拽到指定槽位';
 
         bagContent.appendChild(item);
     });
@@ -6927,6 +6993,54 @@ function stopHeartbeat() {
         console.log('停止心跳包');
     }
 }
+
+// 测试心跳超时（仅用于开发测试）
+function testHeartbeatTimeout() {
+    if (gameState.connected) {
+        console.log('🧪 开始测试心跳超时机制（暂停35秒心跳）');
+
+        // 暂停心跳35秒（超过30秒超时限制）
+        stopHeartbeat();
+
+        // 显示测试提示
+        if (!document.getElementById('timeout-test-notice')) {
+            const notice = document.createElement('div');
+            notice.id = 'timeout-test-notice';
+            notice.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #ff9800;
+                color: white;
+                padding: 10px 15px;
+                border-radius: 5px;
+                font-size: 14px;
+                z-index: 10000;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            `;
+            notice.textContent = '正在测试心跳超时机制...';
+            document.body.appendChild(notice);
+
+            // 35秒后恢复心跳
+            setTimeout(() => {
+                startHeartbeat();
+                notice.style.background = '#4caf50';
+                notice.textContent = '心跳超时测试完成';
+                setTimeout(() => {
+                    if (notice.parentNode) {
+                        notice.parentNode.removeChild(notice);
+                    }
+                }, 3000);
+            }, 35000);
+        }
+    } else {
+        console.log('需要先连接服务器才能测试心跳超时');
+    }
+}
+
+// 在控制台提供测试函数
+window.testHeartbeatTimeout = testHeartbeatTimeout;
+console.log('💡 心跳超时测试函数已加载：在控制台输入 testHeartbeatTimeout() 进行测试');
 
 // 处理服务器消息
 function handleServerMessage(data) {
