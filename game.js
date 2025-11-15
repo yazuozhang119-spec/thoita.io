@@ -1729,7 +1729,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'sh-cynosdbmysql-grp-o56ofx2q.sql.tencentcdb.com/ws', // 服务器地址
+    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
