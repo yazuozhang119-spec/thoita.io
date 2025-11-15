@@ -1729,7 +1729,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -13193,6 +13193,7 @@ function updateMonsterEncyclopedia() {
                     'darkladybug': drawVectorDarkLadybug,
                     'dandeline': drawVectorDandeline,
                     'dandelinemissile': drawVectorDandelineMissile,
+                    'hornetmissile': drawVectorHornetMissile,
                 };
 
                 // 根据等级设置颜色
@@ -13790,6 +13791,64 @@ function drawVectorDandelineMissile(x, y, size, angle, is_injured = false) {
     ctx.lineWidth = e.render.radius / 5;
     ctx.beginPath();
     ctx.arc(0, 0, e.render.radius * 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+function drawVectorHornetMissile(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    // 创建模拟的petal对象，适配petalRenderMap的格式
+    const p = {
+        radius: size / 2, // size是直径，转换为半径
+        ticksSinceLastDamaged: 1000,
+        lastTicksSinceLastDamaged: 1000
+    };
+
+    // 适配blendAmount函数，简化版本
+    function simpleBlendAmount(p) {
+        return 0; // 在图鉴中不显示受伤效果，保持正常颜色
+    }
+
+    function simpleCheckForFirstFrame(p) {
+        return false; // 在图鉴中不显示第一帧效果
+    }
+
+    function simpleBlendColor(color1, color2, t) {
+        const r1 = parseInt(color1.slice(1, 3), 16);
+        const g1 = parseInt(color1.slice(3, 5), 16);
+        const b1 = parseInt(color1.slice(5, 7), 16);
+        const r2 = parseInt(color2.slice(1, 3), 16);
+        const g2 = parseInt(color2.slice(3, 5), 16);
+        const b2 = parseInt(color2.slice(5, 7), 16);
+
+        const r = Math.round(r1 + (r2 - r1) * t);
+        const g = Math.round(g1 + (g2 - g1) * t);
+        const b = Math.round(b1 + (b2 - b1) * t);
+
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    // 使用与petalRenderMap.missile相同的绘制逻辑
+    let bodyColor = simpleBlendColor("#333333", "#FF0000", simpleBlendAmount(p));
+    if (simpleCheckForFirstFrame(p)) {
+        bodyColor = "#FFFFFF";
+    }
+    ctx.lineJoin = 'round';
+    ctx.rotate(Math.PI * 2 / 4);
+    ctx.beginPath();
+    ctx.fillStyle = bodyColor;
+    ctx.strokeStyle = bodyColor;
+    ctx.lineWidth = p.radius / 1.5;
+    ctx.moveTo(0, -p.radius * Math.sqrt(3));
+    ctx.lineTo(p.radius * Math.sqrt(3) * .48, p.radius / 2 * Math.sqrt(3));
+    ctx.lineTo(-p.radius * Math.sqrt(3) * .48, p.radius / 2 * Math.sqrt(3));
+    ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
