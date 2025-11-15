@@ -1288,6 +1288,63 @@ function drawStaticPetalItem(petal, canvas, options) {
             ctx.fill();
             ctx.closePath();
         },
+        peas: (p) => {
+            const divCoef = 1;
+            ctx.lineWidth = p.radius/divCoef/2.5;
+            ctx.fillStyle = blendColor('#8ac255', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#709d45', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+        },
+        grapes: (p) => {
+            const divCoef = 1;
+            ctx.lineWidth = p.radius/divCoef/2.5;
+            ctx.fillStyle = blendColor('#ce76db', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#a760b1', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+        },
+        dandelion: (p) => {
+            ctx.strokeStyle = "black";
+            ctx.lineWidth = p.radius / 1.39;
+
+            ctx.beginPath();
+            ctx.moveTo(-p.radius * 1.59, 0);
+            ctx.lineTo(0, 0);
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.lineWidth = p.radius / 4;
+
+            ctx.fillStyle = blendColor('#ffffff', "#FF0000", blendAmount(p));
+            ctx.strokeStyle = blendColor('#cfcfcf', "#FF0000", blendAmount(p));
+            if (checkForFirstFrame(p)) {
+                ctx.fillStyle = "#ffffff";
+                ctx.strokeStyle = "#ffffff";
+            }
+
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius * 9 / 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+        }
     };
 
     // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
@@ -1724,12 +1781,15 @@ const objectTypeMap = {
     46: 'darkladybug',
     47: 'dandeline',
     48: 'dandelinemissile',
-    20: 'card'
+    20: 'card',
+    21: 'peas',
+    22: 'grapes',
+    23: 'dandelion',
 };
 
 // 游戏配置
 const config = {
-    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
+    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -4594,6 +4654,63 @@ function drawPetalInContext(petal, ctx, displaySize) {
             ctx.fill();
             ctx.closePath();
         },
+        peas: (p) => {
+            const divCoef = 1;
+            ctx.lineWidth = p.radius/divCoef/2.5;
+            ctx.fillStyle = blendColor('#8ac255', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#709d45', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+        },
+        grapes: (p) => {
+            const divCoef = 1;
+            ctx.lineWidth = p.radius/divCoef/2.5;
+            ctx.fillStyle = blendColor('#ce76db', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#a760b1', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+        },
+        dandelion: (p) => {
+            ctx.strokeStyle = "black";
+            ctx.lineWidth = p.radius / 1.39;
+
+            ctx.beginPath();
+            ctx.moveTo(-p.radius * 1.59, 0);
+            ctx.lineTo(0, 0);
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.lineWidth = p.radius / 4;
+
+            ctx.fillStyle = blendColor('#ffffff', "#FF0000", blendAmount(p));
+            ctx.strokeStyle = blendColor('#cfcfcf', "#FF0000", blendAmount(p));
+            if (checkForFirstFrame(p)) {
+                ctx.fillStyle = "#ffffff";
+                ctx.strokeStyle = "#ffffff";
+            }
+
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius * 9 / 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+        }
     };
 
     // 根据等级设置边框和背景颜色 - 使用新的颜色表，包含fancy效果
@@ -10076,6 +10193,63 @@ const petalRenderMap = {
         ctx.fill();
         ctx.closePath();
     },
+    peas: (p) => {
+        const divCoef = 1;
+        ctx.lineWidth = p.radius/divCoef/2.5;
+        ctx.fillStyle = blendColor('#8ac255', '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor('#709d45', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF";
+        }
+
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+    },
+    grapes: (p) => {
+        const divCoef = 1;
+        ctx.lineWidth = p.radius/divCoef/2.5;
+        ctx.fillStyle = blendColor('#ce76db', '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor('#a760b1', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF";
+        }
+
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+    },
+    dandelion: (p) => {
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = p.radius / 1.39;
+
+        ctx.beginPath();
+        ctx.moveTo(-p.radius * 1.59, 0);
+        ctx.lineTo(0, 0);
+        ctx.stroke();
+        ctx.closePath();
+
+        ctx.lineWidth = p.radius / 4;
+
+        ctx.fillStyle = blendColor('#ffffff', "#FF0000", blendAmount(p));
+        ctx.strokeStyle = blendColor('#cfcfcf', "#FF0000", blendAmount(p));
+        if (checkForFirstFrame(p)) {
+            ctx.fillStyle = "#ffffff";
+            ctx.strokeStyle = "#ffffff";
+        }
+
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius * 9 / 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+    }
 };
 
 // 绘制花瓣形状（完全按照petal.js标准）
