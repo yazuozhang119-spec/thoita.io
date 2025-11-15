@@ -1716,12 +1716,20 @@ const objectTypeMap = {
     // 掉落物类型
     21: 'drop',
     40: 'centipede1',  // 蜈蚣身体
+    // 新增怪物类型
+    42: 'cactus',
+    43: 'soil',
+    44: 'evilcentipede0',  // 邪恶蜈蚣头部
+    45: 'evilcentipede1',  // 邪恶蜈蚣身体
+    46: 'darkladybug',
+    47: 'dandeline',
+    48: 'dandelinemissile',
     20: 'card'
 };
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'sh-cynosdbmysql-grp-o56ofx2q.sql.tencentcdb.com/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -8467,17 +8475,17 @@ function drawObject(obj) {
                    obj.name.includes('venomspider') || obj.name.includes('thunderelement') ||
                    obj.name.includes('beetle') || obj.name.includes('soldierant') ||
                    obj.name.includes('workerant') || obj.name.includes('babyant') ||
-                   obj.name.includes('antqueen')|| obj.name.includes('workerant') || 
+                   obj.name.includes('antqueen')|| obj.name.includes('workerant') ||
                    obj.name.includes('healbug') ||obj.name.includes('bee') ||
-                   obj.name.includes('sandstorm') || obj.name.includes('friendlysandstorm'))) {
+                   obj.name.includes('sandstorm') || obj.name.includes('friendlysandstorm') ||
+                   obj.name.includes('cactus') || obj.name.includes('soil') ||
+                   obj.name.includes('evilcentipede') || obj.name.includes('darkladybug') ||
+                   obj.name.includes('dandeline') || obj.name.includes('dandelinemissile'))) {
 
 
             // 使用服务器传输的原始大小，不应用最小尺寸限制
             const mobSize = Math.max(width, height);
 
-            // 调试信息：检查友方沙尘暴
-            if (obj.name && obj.name.includes('sandstorm')) {
-                            }
 
             // 现在所有怪物都使用矢量绘制，包括蚂蚁
             if (obj.name.includes('soldierant') || obj.name.includes('workerant') ||
@@ -12106,6 +12114,17 @@ function drawVectorFriendlySandstorm(x, y, size, angle, is_injured = false) {
 
 // 绘制通用怪物形状（矢量版本）- 兼容旧版
 function drawVectorMonster(x, y, size, type, angle, is_injured = false) {
+    // 强制重置canvas状态以防止污染
+    // const ctx = window.ctx;
+    // ctx.save();
+    // ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // ctx.fillStyle = '#000000';
+    // ctx.strokeStyle = '#000000';
+    // ctx.lineWidth = 1;
+    // ctx.lineCap = 'round';
+    // ctx.lineJoin = 'round';
+    // ctx.restore();
+
     // 根据类型调用具体的绘制函数
     switch (type) {
         case 'hornet':
@@ -12168,6 +12187,27 @@ function drawVectorMonster(x, y, size, type, angle, is_injured = false) {
             break;
         case 'antqueen':
             drawVectorAntQueen(x, y, size, angle, is_injured);
+            break;
+        case 'cactus':
+            drawVectorCactus(x, y, size, angle, is_injured);
+            break;
+        case 'soil':
+            drawVectorSoil(x, y, size, angle, is_injured);
+            break;
+        case 'evilcentipede0':  // 邪恶蜈蚣头部（有触角）
+            drawVectorEvilCentipede(x, y, size, angle, true, is_injured);
+            break;
+        case 'evilcentipede1':  // 邪恶蜈蚣身体（无触角）
+            drawVectorEvilCentipede(x, y, size, angle, false, is_injured);
+            break;
+        case 'darkladybug':
+            drawVectorDarkLadybug(x, y, size, angle, is_injured);
+            break;
+        case 'dandeline':
+            drawVectorDandeline(x, y, size, angle, is_injured);
+            break;
+        case 'dandelinemissile':
+            drawVectorDandelineMissile(x, y, size, angle, is_injured);
             break;
         default:
             // 默认绘制简单圆形
@@ -13147,6 +13187,12 @@ function updateMonsterEncyclopedia() {
                     'babyant': drawVectorBabyAnt,
                     'antqueen': drawVectorAntQueen,
                     'sandstorm': drawVectorSandstorm,
+                    'cactus': drawVectorCactus,
+                    'soil': drawVectorSoil,
+                    'evilcentipede': drawVectorEvilCentipede,
+                    'darkladybug': drawVectorDarkLadybug,
+                    'dandeline': drawVectorDandeline,
+                    'dandelinemissile': drawVectorDandelineMissile,
                 };
 
                 // 根据等级设置颜色
@@ -13370,6 +13416,385 @@ showWindow = function(type) {
         }, 100);
     }
 };
+
+// 新增生物绘制函数 - 按照现有mob的受伤处理方式
+function drawVectorCactus(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
+    ctx.save();
+    ctx.translate(x, y);
+
+    // 按照现有mob的方式创建对象结构
+    const e = {
+        render: { radius: size / 2, angle: 0 },
+        ticksSinceLastDamaged: 1000,
+        lastTicksSinceLastDamaged: 1000
+    };
+
+    // 完全复制enemy.js中Cactus的绘制逻辑，但使用现有mob的受伤处理
+    let spikeColor = blendColor('#292929', "#FF0000", Math.max(0, 0));
+    let bodyColor = blendColor('#32a953', "#FF0000", Math.max(0, 0));
+
+    // 如果受伤，将颜色向白色偏向
+    if (is_injured) {
+        spikeColor = shiftToWhite(spikeColor);
+        bodyColor = shiftToWhite(bodyColor);
+    }
+
+    // 简化的checkForFirstFrame
+    const isFirstFrame = false;
+    if (isFirstFrame) {
+        spikeColor = "#FFFFFF";
+        bodyColor = "#FFFFFF";
+    }
+
+    ctx.rotate(angle);
+
+    // spikes (简化版本，去掉复杂的旋转逻辑)
+    ctx.lineJoin = 'bevel';
+    ctx.fillStyle = spikeColor;
+    ctx.strokeStyle = spikeColor;
+    ctx.lineWidth = e.render.radius / 15;
+
+    for (let i = 0; i < Math.PI * 2; i += 0.2) {
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(i) * (e.render.radius + e.render.radius * 0.2), Math.sin(i) * (e.render.radius + e.render.radius * 0.2));
+        ctx.lineTo(Math.cos(i - 0.05) * (e.render.radius * 0.8), Math.sin(i - 0.05) * (e.render.radius * 0.8))
+        ctx.lineTo(Math.cos(i + 0.05) * (e.render.radius * 0.8), Math.sin(i + 0.05) * (e.render.radius * 0.8))
+        ctx.lineTo(Math.cos(i) * (e.render.radius + e.render.radius * 0.2), Math.sin(i) * (e.render.radius + e.render.radius * 0.2));
+        ctx.fill();
+        ctx.closePath();
+    }
+    ctx.lineJoin = 'round';
+
+    // main body
+    ctx.fillStyle = bodyColor;
+    ctx.strokeStyle = bodyColor;
+    ctx.beginPath();
+    ctx.arc(0, 0, e.render.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.restore();
+}
+
+function drawVectorSoil(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    // 按照现有mob的方式创建对象结构
+    const e = {
+        render: { radius: size / 2, angle: 0 },
+        ticksSinceLastDamaged: 1000,
+        lastTicksSinceLastDamaged: 1000
+    };
+
+    // 按照enemy.js中Soil的颜色，但使用现有mob的受伤处理
+    let fillColor = blendColor("#695118", "#FF0000", Math.max(0, 0));
+    let strokeColor = blendColor("#554213", "#FF0000", Math.max(0, 0));
+
+    // 如果受伤，将颜色向白色偏向
+    if (is_injured) {
+        fillColor = shiftToWhite(fillColor);
+        strokeColor = shiftToWhite(strokeColor);
+    }
+
+    // 简化的checkForFirstFrame
+    const isFirstFrame = false;
+    if (isFirstFrame) {
+        fillColor = "#FFFFFF";
+        strokeColor = "#FFFFFF";
+    }
+
+    ctx.fillStyle = fillColor;
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = e.render.radius / 3;
+
+    // 按照enemy.js中Soil的形状绘制六边形
+    //1.28, -0.25then 0.88, 0.7 then -0.04, 1.15 then -0.97, 0.71 then -1.23, -0.35 then -0.56, -1.23 then 0.6, -1.12
+    ctx.beginPath();
+    ctx.moveTo(e.render.radius * 1.28, e.render.radius * -0.25);
+    ctx.lineTo(e.render.radius * 0.88, e.render.radius * 0.7);
+    ctx.lineTo(e.render.radius * -0.04, e.render.radius * 1.15);
+    ctx.lineTo(e.render.radius * -0.97, e.render.radius * 0.71);
+    ctx.lineTo(e.render.radius * -1.23, e.render.radius * -0.35);
+    ctx.lineTo(e.render.radius * -0.56, e.render.radius * -1.23);
+    ctx.lineTo(e.render.radius * 0.6, e.render.radius * -1.12);
+    ctx.closePath();
+
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+function drawVectorEvilCentipede(x, y, size, angle, isHead, is_injured = false) {
+    const ctx = window.ctx;
+    ctx.save();
+    ctx.translate(x, y);
+
+    // 按照现有mob的方式创建对象结构
+    const e = {
+        render: { radius: size / 2, angle: 0 },
+        isHead: isHead,
+        ticksSinceLastDamaged: 1000,
+        lastTicksSinceLastDamaged: 1000
+    };
+
+    // 按照enemy.js中Evil Centipede的颜色，但使用现有mob的受伤处理
+    let bodyColor = blendColor("#8f5db0", "#FF0000", Math.max(0, 0));
+    let sideColor = blendColor("#333333", "#FF0000", Math.max(0, 0));
+
+    // 如果受伤，将颜色向白色偏向
+    if (is_injured) {
+        bodyColor = shiftToWhite(bodyColor);
+        sideColor = shiftToWhite(sideColor);
+    }
+
+    // 简化的checkForFirstFrame
+    const isFirstFrame = false;
+    if (isFirstFrame) {
+        bodyColor = "#FFFFFF";
+        sideColor = "#FFFFFF";
+    }
+
+    ctx.rotate(angle);
+
+    // 两侧的腿（简化版）
+    ctx.fillStyle = sideColor;
+    ctx.beginPath();
+    ctx.arc(0, e.render.radius * 0.85, e.render.radius * 0.44, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.closePath();
+    ctx.beginPath();
+    ctx.arc(0, -e.render.radius * 0.85, e.render.radius * 0.44, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.closePath();
+
+    // 主体
+    ctx.lineWidth = e.render.radius * .2;
+    ctx.strokeStyle = blendColor(bodyColor, "#000000", 0.19);
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.arc(0, 0, e.render.radius, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    // 如果是头部，添加触角
+    if (e.isHead === true) {
+        ctx.strokeStyle = sideColor;
+        ctx.lineWidth = e.render.radius * .075;
+
+        // 左触角
+        ctx.beginPath();
+        ctx.moveTo(e.render.radius * .71, -e.render.radius * .29);
+        ctx.quadraticCurveTo(e.render.radius * 1.35, -e.render.radius * .33, e.render.radius * 1.57, -e.render.radius * .87);
+        ctx.stroke();
+        ctx.closePath();
+
+        // 右触角
+        ctx.beginPath();
+        ctx.moveTo(e.render.radius * .71, e.render.radius * .29);
+        ctx.quadraticCurveTo(e.render.radius * 1.35, e.render.radius * .33, e.render.radius * 1.57, e.render.radius * .87);
+        ctx.stroke();
+        ctx.closePath();
+
+        // 触角末端的小球
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.beginPath();
+        ctx.arc(e.render.radius * 1.57, -e.render.radius * .87, e.render.radius * .132, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+
+        ctx.beginPath();
+        ctx.arc(e.render.radius * 1.57, e.render.radius * .87, e.render.radius * .132, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    ctx.restore();
+}
+
+function drawVectorDarkLadybug(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle + Math.PI);
+
+    // 创建模拟的mob对象，完全按照enemy.js的方式
+    const mob = {
+        render: { radius: size / 2, angle: 0 },
+        ticksSinceLastDamaged: is_injured ? 0 : 1000,
+        rarity: 1,
+        // 使用固定的静态数据点，参考ladybug的处理方式
+        data: [0.7, 0.4, 0.3, 0.2, 0.6, 0.8, 0.5, -0.3, 0.4, 0.8, 0.2, 0.6, 0.3, 0.7, 0.5, 0.4, -0.2, 0.8, 0.6, 0.3, 0.5, 0.7, 0.4, 0.6, 0.2, 0.8, 0.3]
+    };
+
+    // 完全按照enemy.js中Dark Ladybug的颜色处理
+    let bodyColor = blendColor("#962921", "#FF0000", Math.max(0, blendAmount(mob)));
+    let dotColor = blendColor("#be342a", "#FF0000", Math.max(0, blendAmount(mob)));
+    let headColor = blendColor("#111111", "#FF0000", Math.max(0, blendAmount(mob)));
+
+    if (checkForFirstFrame(mob)) {
+        bodyColor = "#FFFFFF";
+        headColor = "#FFFFFF";
+        dotColor = "#FFFFFF";
+    }
+
+    ctx.strokeStyle = blendColor(headColor, "#000000", 0.19);
+    ctx.fillStyle = headColor;
+    ctx.lineWidth = mob.render.radius / 5;
+
+    // head (little black thing sticking out)
+    ctx.beginPath();
+    ctx.arc(-mob.render.radius / 2, 0, mob.render.radius / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    // main body
+    ctx.strokeStyle = blendColor(bodyColor, "#000000", 0.19);
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.arc(0, 0, mob.render.radius, (5.9375 / 5) * Math.PI, (4.0625 / 5) * Math.PI);
+    ctx.quadraticCurveTo(-10, 0, Math.cos((5.9375 / 5) * Math.PI) * mob.render.radius, Math.sin((5.9375 / 5) * Math.PI) * mob.render.radius);
+    ctx.closePath();
+    ctx.fill();
+    ctx.save();
+    ctx.clip();
+
+    // ladybug spots
+    ctx.fillStyle = dotColor;
+    for (let i = 0; i < (Math.ceil(Math.min(mob.rarity, 5) ** 1.5) * 3) + 9; i += 3) {
+        ctx.beginPath();
+        ctx.arc((-0.5 + mob.data[i]) * mob.render.radius / 30 * 35,
+                (-0.5 + mob.data[i + 1] * mob.render.radius / 30 * 35),
+                mob.render.radius / 30 * (5 + mob.data[i + 2] * 5),
+                0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+    }
+    ctx.restore();
+
+    ctx.beginPath();
+    ctx.arc(0, 0, mob.render.radius, (5.9375 / 5) * Math.PI, (4.0625 / 5) * Math.PI);
+    ctx.quadraticCurveTo(-10, 0, Math.cos((5.9375 / 5) * Math.PI) * mob.render.radius, Math.sin((5.9375 / 5) * Math.PI) * mob.render.radius);
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.restore();
+}
+
+function drawVectorDandeline(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    // 按照现有mob的方式创建对象结构
+    const e = {
+        render: { radius: size / 2, angle: 0 },
+        ticksSinceLastDamaged: 1000,
+        lastTicksSinceLastDamaged: 1000
+    };
+
+    // 按照enemy.js中Dandelion的颜色，但使用现有mob的受伤处理
+    let centerColor = blendColor('#ffffff', "#FF0000", Math.max(0, 0));
+    let stemColor = '#000000'; // 黑色茎保持不变
+    let petalColor = blendColor('#cfcfcf', "#FF0000", Math.max(0, 0));
+
+    // 如果受伤，将颜色向白色偏向（茎保持黑色）
+    if (is_injured) {
+        centerColor = shiftToWhite(centerColor);
+        petalColor = shiftToWhite(petalColor);
+    }
+
+    // 简化的checkForFirstFrame
+    const isFirstFrame = false;
+    if (isFirstFrame) {
+        centerColor = "#FFFFFF";
+        petalColor = "#FFFFFF";
+    }
+
+    // 绘制茎（简化版，只画几条）
+    ctx.strokeStyle = stemColor;
+    ctx.lineWidth = e.render.radius / 10;
+    for (let i = 0; i < 6; i++) {
+        const rotateAmount = i * Math.PI / 3;
+        ctx.save();
+        ctx.rotate(rotateAmount);
+        ctx.beginPath();
+        ctx.moveTo(-e.render.radius * 2, 0);
+        ctx.lineTo(e.render.radius * 2, 0);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // 中心圆
+    ctx.fillStyle = centerColor;
+    ctx.strokeStyle = petalColor;
+    ctx.lineWidth = e.render.radius / 10;
+    ctx.beginPath();
+    ctx.arc(0, 0, e.render.radius * 0.9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+function drawVectorDandelineMissile(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    // 按照现有mob的方式创建对象结构
+    const e = {
+        render: { radius: size / 2, angle: 0 },
+        ticksSinceLastDamaged: 1000,
+        lastTicksSinceLastDamaged: 1000
+    };
+
+    // 按照enemy.js中DandelionMissile的颜色，但使用现有mob的受伤处理
+    let stemColor = '#000000'; // 黑色茎保持不变
+    let centerColor = blendColor('#ffffff', "#FF0000", Math.max(0, 0));
+    let outlineColor = blendColor('#cccccc', "#FF0000", Math.max(0, 0));
+
+    // 如果受伤，将颜色向白色偏向（茎保持黑色）
+    if (is_injured) {
+        centerColor = shiftToWhite(centerColor);
+        outlineColor = shiftToWhite(outlineColor);
+    }
+
+    // 简化的checkForFirstFrame
+    const isFirstFrame = false;
+    if (isFirstFrame) {
+        centerColor = "#FFFFFF";
+        outlineColor = "#FFFFFF";
+    }
+
+    // 绘制茎
+    ctx.strokeStyle = stemColor;
+    ctx.lineWidth = e.render.radius;
+    ctx.beginPath();
+    ctx.moveTo(-e.render.radius * 2, 0);
+    ctx.lineTo(0, 0);
+    ctx.stroke();
+
+    // 中心小圆
+    ctx.fillStyle = centerColor;
+    ctx.strokeStyle = outlineColor;
+    ctx.lineWidth = e.render.radius / 5;
+    ctx.beginPath();
+    ctx.arc(0, 0, e.render.radius * 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.restore();
+}
 
 // 初始化tooltip
 document.addEventListener('DOMContentLoaded', function() {
