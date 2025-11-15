@@ -78,7 +78,10 @@ const PETALS_DATA = {
         17: 'antegg',       // 蚂蚁蛋
         18: 'rita',         // Rita
         19: 'stick',         // 棍子 (新增类型)
-        20: 'card'           // 卡牌 (新增类型)
+        20: 'card',         // 卡牌 (新增类型)
+        21: 'peas',         // 豌豆 (新增类型)
+        22: 'grapes',       // 葡萄 (新增类型)
+        23: 'dandelion'     // 蒲公英 (新增类型)
     },
 
     // 花瓣基础属性 (冷却时间秒)
@@ -103,7 +106,10 @@ const PETALS_DATA = {
         antegg: 5.0,           // 蚂蚁蛋冷却时间
         rita: 2,              // 特殊机制，随mob死亡触发
         stick: 2.0,
-        card: 2.5
+        card: 2.5,
+        peas: 3.0,            // 豌豆冷却时间
+        grapes: 3.5,          // 葡萄冷却时间，比peas稍长
+        dandelion: 2.5        // 蒲公英冷却时间，和missile一样
     },
 
     // 等级名称映射 (1-25级)
@@ -186,7 +192,10 @@ const PETALS_DATA = {
         antegg: '蚂蚁蛋',
         rita: 'Rita',
         stick: '棍子',
-        card: '卡牌'
+        card: '卡牌',
+        peas: '豌豆',
+        grapes: '葡萄',
+        dandelion: '蒲公英'
     },
 
     // 花瓣描述
@@ -211,7 +220,10 @@ const PETALS_DATA = {
         antegg: '蚂蚁蛋花瓣，5个独立单体，7秒孵化时间，孵化出兵蚁协助战斗',
         rita: 'Rita花瓣，友谊的力量',
         stick: '棍子花瓣，5个独立单体，7秒孵化时间，孵化出沙尘暴协助战斗',
-        card: '卡牌花瓣，加快波次速度，等比例降低怪物生成间隔，每级3%加速，25级最多75%加速'
+        card: '卡牌花瓣，加快波次速度，等比例降低怪物生成间隔，每级3%加速，25级最多75%加速',
+        peas: '豌豆花瓣，4个独立单体，每个豌豆独立攻击，高伤害输出',
+        grapes: '葡萄花瓣，4个独立单体，每个葡萄造成伤害并添加毒伤效果',
+        dandelion: '蒲公英花瓣，类似导弹的花瓣，具有飘逸的外观和稳定的伤害'
     },
 
     // 花瓣血量数据 (1-25级)
@@ -236,7 +248,10 @@ const PETALS_DATA = {
         antegg: generateDoublingHealth(6),
         rita: generateDoublingHealth(10),
         stick: generateDoublingHealth(15),
-        card: generateDoublingHealth(10)
+        card: generateDoublingHealth(10),
+        peas: generateDoublingHealth(12),
+        grapes: generateDoublingHealth(10),
+        dandelion: generateDoublingHealth(10)
     },
 
     // 花瓣体伤数据 (1-25级)
@@ -261,7 +276,10 @@ const PETALS_DATA = {
         antegg: generateDoublingHealth(8),
         rita: generateDoublingHealth(5),
         stick: generateDoublingHealth(12),
-        card: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125]
+        card: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125],
+        peas: [0, 7, 20, 60, 180, 540, 1620, 4860, 14580, 43740, 131220, 393660, 1180980, 3542940, 10628820, 31886460, 95659380, 286978140, 860934420, 2582803260, 7748409780, 23245229340, 69735688020, 209207064060, 627621192180, 1882863576540],
+        grapes: [0, 5, 16, 48, 144, 432, 1296, 3888, 11664, 34992, 104976, 314928, 944784, 2834352, 8503056, 25509168, 76527504, 229582512, 688747536, 2066242608, 6198727824, 18596183472, 55788550416, 167365651248, 502096953744, 1506290861232],
+        dandelion: [0, 30, 90, 270, 810, 2430, 7290, 21870, 65610, 196830, 590490, 1771470, 5314410, 15943230, 47829690, 143489070, 430467210, 1291401630, 3874204890, 11622614670, 34867844010, 104603532030, 313810596090, 941431788270, 2824295364810, 8472886094430]
     },
 
     // 花瓣回血数据 (1-25级，大部分为0)
@@ -286,7 +304,10 @@ const PETALS_DATA = {
         antegg: Array(26).fill(0),
         rita: Array(26).fill(0),
         stick: Array(26).fill(0),
-        card: Array(26).fill(0)
+        card: Array(26).fill(0),
+        peas: Array(26).fill(0),
+        grapes: Array(26).fill(0),
+        dandelion: Array(26).fill(0)
     },
 
     // 花瓣重量数据 (1-25级)
@@ -311,7 +332,10 @@ const PETALS_DATA = {
         antegg: generateTriplingHealth(2),
         rita: generateTriplingHealth(3),
         stick: generateTriplingHealth(2),
-        card: generateTriplingHealth(3)
+        card: generateTriplingHealth(3),
+        peas: generateTriplingHealth(4),
+        grapes: generateTriplingHealth(3),
+        dandelion: generateTriplingHealth(1)
     },
 
     // 特殊机制数据
@@ -436,6 +460,26 @@ const PETALS_DATA = {
             wave_speed_bonus_per_level: 0.03,  // 每级3%加速
             max_wave_speed_bonus: 0.75,         // 最大75%加速
             type: 'wave_accelerator'            // 波次加速器类型
+        },
+        peas: {
+            multi_entity: true,              // 多单体
+            entity_count: 4,                 // 单体数量
+            independent_cooldown: true,      // 独立冷却
+            type: 'multi_projectile'         // 多投射物
+        },
+        grapes: {
+            multi_entity: true,              // 多单体
+            entity_count: 4,                 // 单体数量
+            independent_cooldown: true,      // 独立冷却
+            poison_damage: true,             // 造成毒伤
+            poison_duration: 3.0,            // 中毒持续时间(秒)
+            poison_damage_factor: 0.5,       // 中毒伤害系数：体伤的50%
+            type: 'multi_projectile'         // 多投射物
+        },
+        dandelion: {
+            range: 200,                      // 发射距离
+            speed: 8,                        // 飞行速度
+            type: 'projectile'               // 投射物类型
         }
     },
 

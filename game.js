@@ -1526,7 +1526,10 @@ function drawStaticPetalItem(petal, canvas, options) {
             17: 'antegg',
             18: 'rita',
             19: 'stick',
-            20: 'card'
+            20: 'card',
+            21: 'peas',
+            22: 'grapes',
+            23: 'dandelion',
         };
 
         const renderType = typeMap[type] || 'basic';
@@ -1571,7 +1574,10 @@ function drawStaticPetalItem(petal, canvas, options) {
         17: '蚂蚁蛋',
         18: 'Rita',
         19: '棍',
-        20: '卡牌'
+        20: '卡牌',
+        21: '豌豆',
+        22: '葡萄',
+        23: '蒲公英',
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -1749,7 +1755,7 @@ const objectTypeMap = {
     18: 'rita',
     19: 'stick',
     // 怪物类型
-    22: 'rock',
+    50: 'rock',
     24: 'ladybug',
     26: 'centipede0',
     28: 'thunderelement',
@@ -1759,7 +1765,7 @@ const objectTypeMap = {
     37: 'bombbeetle',
     38: 'sandstorm',
     39: 'friendlysandstorm',
-    23: 'hornet',  // 移动到23避免冲突
+    49: 'hornet',  // 移动到23避免冲突
     25: 'beetle',
     27: 'bee',
     34: 'healbug',
@@ -1771,7 +1777,7 @@ const objectTypeMap = {
     // 花朵类型
     41: 'flower',
     // 掉落物类型
-    21: 'drop',
+    51: 'drop',
     40: 'centipede1',  // 蜈蚣身体
     // 新增怪物类型
     42: 'cactus',
@@ -4795,7 +4801,10 @@ function drawPetalInContext(petal, ctx, displaySize) {
             17: 'antegg',
             18: 'rita',
             19: 'stick',
-            20: 'card'
+            20: 'card',
+            21: 'peas',
+            22: 'grapes',
+            23: 'dandelion',
         };
 
         if(typeof type === 'integer' || typeof type === 'number'){
@@ -4841,7 +4850,10 @@ function drawPetalInContext(petal, ctx, displaySize) {
         17: '蚂蚁蛋',
         18: 'Rita',
         19: '棍',
-        20: '卡牌'
+        20: '卡牌',
+        21: '豌豆',
+        22: '葡萄',
+        23: '蒲公英',
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -5431,7 +5443,7 @@ function calculateTotalAvailablePetals() {
     const totalPetals = [];
 
     // 解析服务器完整数据
-    for (let i = 0; i <= 20; i++) {  // 扩展到14以包含square花瓣
+    for (let i = 0; i <= 23; i++) {  // 扩展到14以包含square花瓣
         const petalKey = `petal${i}`;
         const petalString = gameState.serverBuild[petalKey];
 
@@ -5826,7 +5838,7 @@ function parseServerBuild(buildData) {
     const availablePetals = [];
 
     // 遍历petal0到petal15（共16种花瓣类型，包含pearl）
-    for (let i = 0; i <= 20; i++) {
+    for (let i = 0; i <= 23; i++) {
         const petalKey = `petal${i}`;
         const petalString = buildData[petalKey];
 
@@ -7413,7 +7425,7 @@ function handleServerMessage(data) {
 
                         
                         // 根据类型分类到不同数组
-                        if (typeIdx >= 0 && typeIdx <= 20) {
+                        if (typeIdx >= 0 && typeIdx <= 23) {
                             // 花瓣类型 (0-14)
                             baseObject.type = typeIdx;
                             gameState.petals.push(baseObject);
@@ -7421,7 +7433,7 @@ function handleServerMessage(data) {
                         else if (typeIdx === 41) {
                             // 花朵类型 (20)
                             gameState.flowers.push(baseObject);
-                        } else if (typeIdx === 21) {
+                        } else if (typeIdx === 51) {
                             // 掉落物类型 (21)
                             gameState.collectDrops.push(baseObject);
                         } else{
