@@ -4923,5 +4923,114 @@ const petalRenderMap = {
         ctx.arc(p.radius * 0.3, 0, p.radius * 0.08, 0, Math.PI * 2);
         ctx.fill();
         ctx.closePath();
+    },
+
+    "Cactus": (p) => {
+        const divCoef = 1;
+
+        ctx.lineWidth = p.radius/divCoef/5.5;
+        ctx.fillStyle = blendColor('#38c75f', '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor('#2da14d', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF";
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(p.radius, 0);
+        for(let i = 0; i <= Math.PI * 2; i += Math.PI / 4){
+            ctx.quadraticCurveTo(Math.cos(i - Math.PI / 8) * (p.radius * .7), Math.sin(i - Math.PI / 8) * (p.radius * .7), Math.cos(i) * p.radius, Math.sin(i) * p.radius);
+        }
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+
+        ctx.fillStyle = blendColor('#74d68f', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+        }
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius/2, 0, Math.PI*2);
+        ctx.fill();
+        ctx.closePath();
+    },
+
+    "Soil": (p) => {
+        ctx.lineWidth = .3;
+        ctx.beginPath();
+        ctx.fillStyle = blendColor("#695118", '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor("#554213", '#FF0000', blendAmount(p));
+        if (checkForFirstFrame(p)) {
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF"
+        }
+
+        ctx.beginPath();
+        ctx.scale(p.radius, p.radius)
+        ctx.moveTo(0.13552, -1.10878)
+        ctx.lineTo(0.83390, -0.69709)
+        ctx.lineTo(0.93935, 0.37472)
+        ctx.lineTo(-0.03939, 0.96486)
+        ctx.lineTo(-0.74308, 0.77310)
+        ctx.lineTo(-0.92256, 0.06419)
+        ctx.lineTo(-0.61437, -0.60283)
+        ctx.lineTo(-0.16402, -1.02305)
+        ctx.lineTo(0.13552, -1.10878)
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+        ctx.scale(1/p.radius, 1/p.radius);
+
+        ctx.fillStyle = blendColor("#777777", '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+        }
+        ctx.beginPath();
+        for(let i = 0; i < 5; i++){
+            ctx.lineTo(Math.cos(i * 1.256) * p.radius* 0.65, Math.sin(i * 1.256) * p.radius * 0.65);
+        }
+        ctx.fill();
+        ctx.closePath();
+    },
+
+    "Starfish": (p) => {
+        ctx.lineWidth = p.radius * 0.14;
+
+        ctx.strokeStyle = blendColor('#a9403e', '#FF0000', blendAmount(p));
+        ctx.fillStyle = blendColor('#d14f4d', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF";
+        }
+
+        ctx.beginPath();
+        ctx.lineTo(p.radius * -0.84, p.radius * 0.65);
+        ctx.quadraticCurveTo(p.radius * -0.99, p.radius * 0.52, p.radius * -0.87, p.radius * 0.37)
+        ctx.quadraticCurveTo(p.radius * 0.23, p.radius * -1.25, p.radius * 0.57, p.radius * -0.99)
+        ctx.quadraticCurveTo(p.radius * 0.98, p.radius * -0.78, p.radius * -0.07, p.radius * 0.93)
+        ctx.quadraticCurveTo(p.radius * -0.18, p.radius * 1.03, p.radius * -0.31, p.radius * 0.98)
+
+        ctx.lineTo(p.radius * -0.84, p.radius * 0.65);
+
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+        ctx.fillStyle = blendColor('#d4766c', '#FF0000', blendAmount(p))
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+        }
+
+        ctx.beginPath();
+        ctx.arc(p.radius * -0.18, p.radius * 0.21, p.radius * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+        ctx.beginPath();
+        ctx.arc(p.radius * 0.09, p.radius * -0.23, p.radius * 0.165, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+        ctx.beginPath();
+        ctx.arc(p.radius * 0.31, p.radius * -0.57, p.radius * 0.11, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
     }
 }

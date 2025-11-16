@@ -1344,6 +1344,114 @@ function drawStaticPetalItem(petal, canvas, options) {
             ctx.fill();
             ctx.stroke();
             ctx.closePath();
+        },
+        cactus_petal: (p) => {
+            const divCoef = 1;
+
+            ctx.lineWidth = p.radius/divCoef/5.5;
+            ctx.fillStyle = blendColor('#38c75f', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#2da14d', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(p.radius, 0);
+            for(let i = 0; i <= Math.PI * 2; i += Math.PI / 4){
+                ctx.quadraticCurveTo(Math.cos(i - Math.PI / 8) * (p.radius * .7), Math.sin(i - Math.PI / 8) * (p.radius * .7), Math.cos(i) * p.radius, Math.sin(i) * p.radius);
+            }
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.fillStyle = blendColor('#74d68f', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+            }
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius/2, 0, Math.PI*2);
+            ctx.fill();
+            ctx.closePath();
+        },
+
+        soil_petal: (p) => {
+            ctx.lineWidth = .3;
+            ctx.beginPath();
+            ctx.fillStyle = blendColor("#695118", '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor("#554213", '#FF0000', blendAmount(p));
+            if (checkForFirstFrame(p)) {
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF"
+            }
+
+            ctx.beginPath();
+            ctx.scale(p.radius, p.radius)
+            ctx.moveTo(0.13552, -1.10878)
+            ctx.lineTo(0.83390, -0.69709)
+            ctx.lineTo(0.93935, 0.37472)
+            ctx.lineTo(-0.03939, 0.96486)
+            ctx.lineTo(-0.74308, 0.77310)
+            ctx.lineTo(-0.92256, 0.06419)
+            ctx.lineTo(-0.61437, -0.60283)
+            ctx.lineTo(-0.16402, -1.02305)
+            ctx.lineTo(0.13552, -1.10878)
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+            ctx.scale(1/p.radius, 1/p.radius);
+
+            ctx.fillStyle = blendColor("#777777", '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+            }
+            ctx.beginPath();
+            for(let i = 0; i < 5; i++){
+                ctx.lineTo(Math.cos(i * 1.256) * p.radius* 0.65, Math.sin(i * 1.256) * p.radius * 0.65);
+            }
+            ctx.fill();
+            ctx.closePath();
+        },
+
+        starfish_petal: (p) => {
+            ctx.lineWidth = p.radius * 0.14;
+
+            ctx.strokeStyle = blendColor('#a9403e', '#FF0000', blendAmount(p));
+            ctx.fillStyle = blendColor('#d14f4d', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+
+            ctx.beginPath();
+            ctx.lineTo(p.radius * -0.84, p.radius * 0.65);
+            ctx.quadraticCurveTo(p.radius * -0.99, p.radius * 0.52, p.radius * -0.87, p.radius * 0.37)
+            ctx.quadraticCurveTo(p.radius * 0.23, p.radius * -1.25, p.radius * 0.57, p.radius * -0.99)
+            ctx.quadraticCurveTo(p.radius * 0.98, p.radius * -0.78, p.radius * -0.07, p.radius * 0.93)
+            ctx.quadraticCurveTo(p.radius * -0.18, p.radius * 1.03, p.radius * -0.31, p.radius * 0.98)
+
+            ctx.lineTo(p.radius * -0.84, p.radius * 0.65);
+
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+            ctx.fillStyle = blendColor('#d4766c', '#FF0000', blendAmount(p))
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+            }
+
+            ctx.beginPath();
+            ctx.arc(p.radius * -0.18, p.radius * 0.21, p.radius * 0.22, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+            ctx.beginPath();
+            ctx.arc(p.radius * 0.09, p.radius * -0.23, p.radius * 0.165, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+            ctx.beginPath();
+            ctx.arc(p.radius * 0.31, p.radius * -0.57, p.radius * 0.11, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
         }
     };
 
@@ -1530,6 +1638,9 @@ function drawStaticPetalItem(petal, canvas, options) {
             21: 'peas',
             22: 'grapes',
             23: 'dandelion',
+            24: 'cactus_petal',
+            25: 'soil_petal',
+            26: 'starfish_petal',
         };
 
         const renderType = typeMap[type] || 'basic';
@@ -1578,6 +1689,9 @@ function drawStaticPetalItem(petal, canvas, options) {
         21: '豌豆',
         22: '葡萄',
         23: '蒲公英',
+        24: '仙人掌',
+        25: '土壤',
+        26: '海星',
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -1756,8 +1870,8 @@ const objectTypeMap = {
     19: 'stick',
     // 怪物类型
     50: 'rock',
-    24: 'ladybug',
-    26: 'centipede0',
+    52: 'ladybug',
+    54: 'centipede0',
     28: 'thunderelement',
     33: 'venomspider',
     35: 'friendlysoldierant',
@@ -1766,7 +1880,7 @@ const objectTypeMap = {
     38: 'sandstorm',
     39: 'friendlysandstorm',
     49: 'hornet',  // 移动到23避免冲突
-    25: 'beetle',
+    53: 'beetle',
     27: 'bee',
     34: 'healbug',
     // 蚂蚁类型
@@ -1791,11 +1905,14 @@ const objectTypeMap = {
     21: 'peas',
     22: 'grapes',
     23: 'dandelion',
+    24: 'cactus_petal',
+    25: 'soil_petal',
+    26: 'starfish_petal',
 };
 
 // 游戏配置
 const config = {
-    serverAddress: 'ws://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -4716,6 +4833,114 @@ function drawPetalInContext(petal, ctx, displaySize) {
             ctx.fill();
             ctx.stroke();
             ctx.closePath();
+        },
+        cactus_petal: (p) => {
+            const divCoef = 1;
+
+            ctx.lineWidth = p.radius/divCoef/5.5;
+            ctx.fillStyle = blendColor('#38c75f', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#2da14d', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(p.radius, 0);
+            for(let i = 0; i <= Math.PI * 2; i += Math.PI / 4){
+                ctx.quadraticCurveTo(Math.cos(i - Math.PI / 8) * (p.radius * .7), Math.sin(i - Math.PI / 8) * (p.radius * .7), Math.cos(i) * p.radius, Math.sin(i) * p.radius);
+            }
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.fillStyle = blendColor('#74d68f', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+            }
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius/2, 0, Math.PI*2);
+            ctx.fill();
+            ctx.closePath();
+        },
+
+        soil_petal: (p) => {
+            ctx.lineWidth = .3;
+            ctx.beginPath();
+            ctx.fillStyle = blendColor("#695118", '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor("#554213", '#FF0000', blendAmount(p));
+            if (checkForFirstFrame(p)) {
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF"
+            }
+
+            ctx.beginPath();
+            ctx.scale(p.radius, p.radius)
+            ctx.moveTo(0.13552, -1.10878)
+            ctx.lineTo(0.83390, -0.69709)
+            ctx.lineTo(0.93935, 0.37472)
+            ctx.lineTo(-0.03939, 0.96486)
+            ctx.lineTo(-0.74308, 0.77310)
+            ctx.lineTo(-0.92256, 0.06419)
+            ctx.lineTo(-0.61437, -0.60283)
+            ctx.lineTo(-0.16402, -1.02305)
+            ctx.lineTo(0.13552, -1.10878)
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+            ctx.scale(1/p.radius, 1/p.radius);
+
+            ctx.fillStyle = blendColor("#777777", '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+            }
+            ctx.beginPath();
+            for(let i = 0; i < 5; i++){
+                ctx.lineTo(Math.cos(i * 1.256) * p.radius* 0.65, Math.sin(i * 1.256) * p.radius * 0.65);
+            }
+            ctx.fill();
+            ctx.closePath();
+        },
+
+        starfish_petal: (p) => {
+            ctx.lineWidth = p.radius * 0.14;
+
+            ctx.strokeStyle = blendColor('#a9403e', '#FF0000', blendAmount(p));
+            ctx.fillStyle = blendColor('#d14f4d', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+
+            ctx.beginPath();
+            ctx.lineTo(p.radius * -0.84, p.radius * 0.65);
+            ctx.quadraticCurveTo(p.radius * -0.99, p.radius * 0.52, p.radius * -0.87, p.radius * 0.37)
+            ctx.quadraticCurveTo(p.radius * 0.23, p.radius * -1.25, p.radius * 0.57, p.radius * -0.99)
+            ctx.quadraticCurveTo(p.radius * 0.98, p.radius * -0.78, p.radius * -0.07, p.radius * 0.93)
+            ctx.quadraticCurveTo(p.radius * -0.18, p.radius * 1.03, p.radius * -0.31, p.radius * 0.98)
+
+            ctx.lineTo(p.radius * -0.84, p.radius * 0.65);
+
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+            ctx.fillStyle = blendColor('#d4766c', '#FF0000', blendAmount(p))
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+            }
+
+            ctx.beginPath();
+            ctx.arc(p.radius * -0.18, p.radius * 0.21, p.radius * 0.22, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+            ctx.beginPath();
+            ctx.arc(p.radius * 0.09, p.radius * -0.23, p.radius * 0.165, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+            ctx.beginPath();
+            ctx.arc(p.radius * 0.31, p.radius * -0.57, p.radius * 0.11, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
         }
     };
 
@@ -4805,6 +5030,9 @@ function drawPetalInContext(petal, ctx, displaySize) {
             21: 'peas',
             22: 'grapes',
             23: 'dandelion',
+            24: 'cactus_petal',
+            25: 'soil_petal',
+            26: 'starfish_petal',
         };
 
         if(typeof type === 'integer' || typeof type === 'number'){
@@ -5443,7 +5671,7 @@ function calculateTotalAvailablePetals() {
     const totalPetals = [];
 
     // 解析服务器完整数据
-    for (let i = 0; i <= 23; i++) {  // 扩展到14以包含square花瓣
+    for (let i = 0; i <= 26; i++) {  // 扩展到14以包含square花瓣
         const petalKey = `petal${i}`;
         const petalString = gameState.serverBuild[petalKey];
 
@@ -5838,7 +6066,7 @@ function parseServerBuild(buildData) {
     const availablePetals = [];
 
     // 遍历petal0到petal15（共16种花瓣类型，包含pearl）
-    for (let i = 0; i <= 23; i++) {
+    for (let i = 0; i <= 26; i++) {
         const petalKey = `petal${i}`;
         const petalString = buildData[petalKey];
 
@@ -7425,7 +7653,7 @@ function handleServerMessage(data) {
 
                         
                         // 根据类型分类到不同数组
-                        if (typeIdx >= 0 && typeIdx <= 23) {
+                        if (typeIdx >= 0 && typeIdx <= 26) {
                             // 花瓣类型 (0-14)
                             baseObject.type = typeIdx;
                             gameState.petals.push(baseObject);
@@ -10260,6 +10488,115 @@ const petalRenderMap = {
         ctx.arc(0, 0, p.radius * 9 / 10, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
+        ctx.closePath();
+    },
+
+    cactus_petal: (p) => {
+        const divCoef = 1;
+
+        ctx.lineWidth = p.radius/divCoef/5.5;
+        ctx.fillStyle = blendColor('#38c75f', '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor('#2da14d', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF";
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(p.radius, 0);
+        for(let i = 0; i <= Math.PI * 2; i += Math.PI / 4){
+            ctx.quadraticCurveTo(Math.cos(i - Math.PI / 8) * (p.radius * .7), Math.sin(i - Math.PI / 8) * (p.radius * .7), Math.cos(i) * p.radius, Math.sin(i) * p.radius);
+        }
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+
+        ctx.fillStyle = blendColor('#74d68f', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+        }
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius/2, 0, Math.PI*2);
+        ctx.fill();
+        ctx.closePath();
+    },
+
+    soil_petal: (p) => {
+        ctx.lineWidth = .3;
+        ctx.beginPath();
+        ctx.fillStyle = blendColor("#695118", '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor("#554213", '#FF0000', blendAmount(p));
+        if (checkForFirstFrame(p)) {
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF"
+        }
+
+        ctx.beginPath();
+        ctx.scale(p.radius, p.radius)
+        ctx.moveTo(0.13552, -1.10878)
+        ctx.lineTo(0.83390, -0.69709)
+        ctx.lineTo(0.93935, 0.37472)
+        ctx.lineTo(-0.03939, 0.96486)
+        ctx.lineTo(-0.74308, 0.77310)
+        ctx.lineTo(-0.92256, 0.06419)
+        ctx.lineTo(-0.61437, -0.60283)
+        ctx.lineTo(-0.16402, -1.02305)
+        ctx.lineTo(0.13552, -1.10878)
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+        ctx.scale(1/p.radius, 1/p.radius);
+
+        ctx.fillStyle = blendColor("#777777", '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+        }
+        ctx.beginPath();
+        for(let i = 0; i < 5; i++){
+            ctx.lineTo(Math.cos(i * 1.256) * p.radius* 0.65, Math.sin(i * 1.256) * p.radius * 0.65);
+        }
+        ctx.fill();
+        ctx.closePath();
+    },
+
+    starfish_petal: (p) => {
+        ctx.lineWidth = p.radius * 0.14;
+
+        ctx.strokeStyle = blendColor('#a9403e', '#FF0000', blendAmount(p));
+        ctx.fillStyle = blendColor('#d14f4d', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF";
+        }
+
+        ctx.beginPath();
+        ctx.lineTo(p.radius * -0.84, p.radius * 0.65);
+        ctx.quadraticCurveTo(p.radius * -0.99, p.radius * 0.52, p.radius * -0.87, p.radius * 0.37)
+        ctx.quadraticCurveTo(p.radius * 0.23, p.radius * -1.25, p.radius * 0.57, p.radius * -0.99)
+        ctx.quadraticCurveTo(p.radius * 0.98, p.radius * -0.78, p.radius * -0.07, p.radius * 0.93)
+        ctx.quadraticCurveTo(p.radius * -0.18, p.radius * 1.03, p.radius * -0.31, p.radius * 0.98)
+
+        ctx.lineTo(p.radius * -0.84, p.radius * 0.65);
+
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+        ctx.fillStyle = blendColor('#d4766c', '#FF0000', blendAmount(p))
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+        }
+
+        ctx.beginPath();
+        ctx.arc(p.radius * -0.18, p.radius * 0.21, p.radius * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+        ctx.beginPath();
+        ctx.arc(p.radius * 0.09, p.radius * -0.23, p.radius * 0.165, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+        ctx.beginPath();
+        ctx.arc(p.radius * 0.31, p.radius * -0.57, p.radius * 0.11, 0, Math.PI * 2);
+        ctx.fill();
         ctx.closePath();
     }
 };
