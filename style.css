@@ -2457,7 +2457,7 @@ button {
     top: 15px;  /* 向下移动20px */
     right: 20px;
     width: 240px;
-    height: 220px;  /* 增加高度到220px */
+    height: 280px;  /* 增加高度到280px，为积分奖励留出空间 */
     background: #895adb;
     border: 6px solid #6f49b1;
     border-radius: 3px;

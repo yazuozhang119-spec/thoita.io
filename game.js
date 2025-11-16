@@ -1901,6 +1901,8 @@ const objectTypeMap = {
     46: 'darkladybug',
     47: 'dandeline',
     48: 'dandelinemissile',
+    53: 'starfish',
+    54: 'crab',
     20: 'card',
     21: 'peas',
     22: 'grapes',
@@ -1912,7 +1914,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -2069,6 +2071,8 @@ window.gameState = {
         private: []
     },
     isChatClosed: true, // 聊天窗口默认关闭
+    hasSelectedRoom: false, // 是否已选择房间
+    currentRoom: null, // 当前房间ID
     // 性能监控相关状态
     isPerformancePanelVisible: false,
     fpsHistory: [],
@@ -2736,6 +2740,9 @@ function initGame() {
 
     // 初始化音频系统
     initAudioSystem();
+
+    // 初始化积分显示
+    initCreditsDisplay();
 
     // 连接到WebSocket（等待认证）
     connectToServer()
@@ -6813,6 +6820,7 @@ function restartGame() {
     gameState.roomInfo = {};
     gameState.mobsSummary = {};
     gameState.currentRoom = null;
+    gameState.hasSelectedRoom = false;
     gameState.previousRoom = null;
     gameState.wave = { current: 1, start_time: null, duration: 120, spawn_phase_duration: 60, is_spawn_phase: false };
     gameState.effects = [];
@@ -6889,6 +6897,7 @@ function exitGame() {
     gameState.roomInfo = {};
     gameState.mobsSummary = {};
     gameState.currentRoom = null;
+    gameState.hasSelectedRoom = false;
     gameState.previousRoom = null;
     gameState.wave = { current: 1, start_time: null, duration: 120, spawn_phase_duration: 60, is_spawn_phase: false };
     gameState.effects = [];
@@ -7523,6 +7532,11 @@ function handleServerMessage(data) {
             case 'ROOM_INFO':
                 // 处理房间信息
                 gameState.roomInfo = message.room_info || message.data || message.players || {};
+
+                // 更新房间状态 - 收到ROOM_INFO就说明已加入房间
+                gameState.hasSelectedRoom = true;
+                console.log(`收到ROOM_INFO，设置 hasSelectedRoom = true`);
+
                 console.log('收到房间信息更新:', gameState.roomInfo);
                 updateRoomPlayers();
                 break;
@@ -7532,6 +7546,12 @@ function handleServerMessage(data) {
                 console.log('房间创建成功:', message.room_info);
                 alert(`房间创建成功！\n房间名称: ${message.room_info.name}\n房间类型: ${message.room_info.type}\n房间key: ${message.room_key}`);
 
+
+                if (message.room_key !== undefined) {
+                    gameState.currentRoom = message.room_key;
+                    gameState.hasSelectedRoom = true;
+                    console.log(`加入房间后更新状态: currentRoom = ${gameState.currentRoom}, hasSelectedRoom = true`);
+                }
                 // 自动获取并发送当前起始波次设置
                 const startWaveSliderCreated = document.getElementById('startWaveSlider');
                 if (startWaveSliderCreated) {
@@ -7544,6 +7564,13 @@ function handleServerMessage(data) {
             case 'ROOM_JOINED':
                 // 处理成功加入房间
                 console.log('成功加入房间:', message.room_key);
+
+                // 更新房间状态
+                if (message.room_key !== undefined) {
+                    gameState.currentRoom = message.room_key;
+                    gameState.hasSelectedRoom = true;
+                    console.log(`加入房间后更新状态: currentRoom = ${gameState.currentRoom}, hasSelectedRoom = true`);
+                }
 
                 // 自动获取并发送当前起始波次设置
                 const startWaveSliderJoined = document.getElementById('startWaveSlider');
@@ -8837,7 +8864,8 @@ function drawObject(obj) {
                    obj.name.includes('sandstorm') || obj.name.includes('friendlysandstorm') ||
                    obj.name.includes('cactus') || obj.name.includes('soil') ||
                    obj.name.includes('evilcentipede') || obj.name.includes('darkladybug') ||
-                   obj.name.includes('dandeline') || obj.name.includes('dandelinemissile'))) {
+                   obj.name.includes('dandeline') || obj.name.includes('dandelinemissile') ||
+                   obj.name.includes('starfish') || obj.name.includes('crab'))) {
 
 
             // 使用服务器传输的原始大小，不应用最小尺寸限制
@@ -9397,7 +9425,10 @@ function drawMobsSummary() {
         'friendlysoldierant': drawVectorFriendlySoldierAnt,
         'workerant': drawVectorWorkerAnt,
         'babyant': drawVectorBabyAnt,
-        'antqueen': drawVectorAntQueen
+        'antqueen': drawVectorAntQueen,
+        // 新增怪物
+        'starfish': drawVectorStarfish,
+        'crab': drawVectorCrab
     };
 
     // 根据等级设置边框和背景颜色 - 使用和花瓣相同的颜色表
@@ -9578,7 +9609,7 @@ function updateChatTitle() {
     let title = '聊天';
     if (gameState.chatType === 'room') {
         if (gameState.hasSelectedRoom && gameState.currentRoom !== null) {
-            title = `房间 ${gameState.currentRoom + 1}`;
+            title = `房间 ${gameState.currentRoom}`;
         } else {
             title = '房间';
         }
@@ -12732,6 +12763,12 @@ function drawVectorMonster(x, y, size, type, angle, is_injured = false) {
         case 'dandelinemissile':
             drawVectorDandelineMissile(x, y, size, angle, is_injured);
             break;
+        case 'starfish':
+            drawVectorStarfish(x, y, size, angle, is_injured);
+            break;
+        case 'crab':
+            drawVectorCrab(x, y, size, angle, is_injured);
+            break;
         default:
             // 默认绘制简单圆形
             ctx.save();
@@ -13338,6 +13375,31 @@ function handleCheckinResult(message) {
                 });
             }
 
+            // 显示积分奖励
+            if (message.rewards.credits && checkinCreditsReward) {
+                const creditsData = message.rewards.credits;
+                checkinCreditsReward.style.display = 'block';
+
+                if (checkinCreditsAmount) {
+                    checkinCreditsAmount.textContent = creditsData.total_reward || 0;
+                }
+
+                // 显示积分明细
+                if (creditsRewardBreakdown && creditsData) {
+                    let breakdown = '';
+                    if (creditsData.base_reward) {
+                        breakdown += `基础: +${creditsData.base_reward} `;
+                    }
+                    if (creditsData.streak_bonus) {
+                        breakdown += `连续: +${creditsData.streak_bonus} `;
+                    }
+                    if (creditsData.special_bonus) {
+                        breakdown += `特殊: +${creditsData.special_bonus}`;
+                    }
+                    creditsRewardBreakdown.textContent = breakdown;
+                }
+            }
+
             // 显示经验奖励
             if (message.rewards.xp && checkinXpDisplay) {
                 checkinXpDisplay.textContent = `+${message.rewards.xp} xp`;
@@ -13380,6 +13442,14 @@ function handleCheckinResult(message) {
             setTimeout(() => {
                 sendToServer({ COMMAND: 'REFRESH_BUILD' });
             }, 1000);
+        }
+
+        // 如果有积分奖励，更新积分显示
+        if (message.rewards && message.rewards.credits) {
+            // 由于积分信息存储在服务器端，我们需要通过其他方式获取最新积分
+            // 这里可以暂时使用签到获得的积分数量来更新显示
+            // 实际应用中可能需要添加一个获取当前积分的命令
+            console.log('签到获得积分:', message.rewards.credits.total_reward);
         }
     } else {
         // 签到失败或已经签到过
@@ -13717,6 +13787,9 @@ function updateMonsterEncyclopedia() {
                     'dandeline': drawVectorDandeline,
                     'dandelinemissile': drawVectorDandelineMissile,
                     'hornetmissile': drawVectorHornetMissile,
+                    // 新增怪物
+                    'starfish': drawVectorStarfish,
+                    'crab': drawVectorCrab,
                 };
 
                 // 根据等级设置颜色
@@ -14376,6 +14449,311 @@ function drawVectorHornetMissile(x, y, size, angle, is_injured = false) {
     ctx.stroke();
 
     ctx.restore();
+}
+
+// 完全按照 enemy.js 中的 Starfish 绘制方式
+function drawVectorStarfish(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    // 图片渲染使用 size 作为直径，所以矢量也需要用 size/2
+    const actualSize = size / 2;
+    const e = {
+        render: {
+            radius: actualSize,
+            angle: 0,
+            time: 0,
+            lastX: 0,
+            lastY: 0
+        },
+        hp: 100,
+        maxHp: 100,
+        ticksSinceLastDamaged: 1000,
+        lastTicksSinceLastDamaged: 1000,
+        data: [[1, 1, 1, 1, 1]]
+    };
+
+    ctx.lineWidth = e.render.radius / 6;
+
+    ctx.strokeStyle = blendColor('#aa403f', "#FF0000", Math.max(0, blendAmount(e)));
+    ctx.fillStyle = blendColor('#d14f4d', "#FF0000", Math.max(0, blendAmount(e)));
+    if (checkForFirstFrame(e)) {
+        ctx.strokeStyle = "#ffffff";
+        ctx.fillStyle = "#ffffff";
+    }
+    if (is_injured) {
+        ctx.strokeStyle = shiftToWhite(ctx.strokeStyle);
+        ctx.fillStyle = shiftToWhite(ctx.fillStyle);
+    }
+    ctx.lineJoin = 'round';
+
+    let legs = [0, 1, 2, 3, 4];
+    let legNumber = 0;
+
+    if (e.hp < e.maxHp * 0.8) {
+        legs = [1, 2, 3, 4];
+    }
+    if (e.hp < e.maxHp * 0.6) {
+        legs = [1, 3, 4];
+    }
+    if (e.hp < e.maxHp * 0.4) {
+        legs = [1, 4];
+    }
+    if (e.hp < e.maxHp * 0.2) {
+        legs = [4];
+    }
+
+    let angleDist = Math.PI / 5;
+
+    ctx.beginPath();
+    for (let i = 0; i < Math.PI * 2; i += angleDist * 2) {
+        let dist = 1 + e.data[0][legNumber] * 0.6;
+        if (i == 0) {
+            ctx.moveTo(Math.cos(i - angleDist * 1.8) * (e.render.radius * 1.6), Math.sin(i - angleDist * 1.8) * (e.render.radius * 1.6));
+        }
+        ctx.quadraticCurveTo(Math.cos(i - angleDist) * (e.render.radius * 0.4), Math.sin(i - angleDist) * (e.render.radius * 0.4), Math.cos(i) * (e.render.radius * dist) + Math.cos(i - Math.PI / 2) * (e.render.radius * 0.2), Math.sin(i) * (e.render.radius * dist) + Math.sin(i - Math.PI / 2) * (e.render.radius * 0.2));
+        ctx.arc(Math.cos(i) * (e.render.radius * (dist)), Math.sin(i) * (e.render.radius * (dist)), e.render.radius * 0.2, i - Math.PI / 2, i + Math.PI / 2);
+        legNumber++;
+    }
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.fillStyle = blendColor('#d6766b', "#FF0000", Math.max(0, blendAmount(e)));
+    if (checkForFirstFrame(e)) {
+        ctx.fillStyle = "#ffffff";
+    }
+    if (is_injured) {
+        ctx.fillStyle = shiftToWhite(ctx.fillStyle);
+    }
+    legNumber = 0;
+    for (let i = 0; i < Math.PI * 2; i += angleDist * 2) {
+        ctx.beginPath();
+        ctx.arc(Math.cos(i) * (e.render.radius * 0.5), Math.sin(i) * (e.render.radius * 0.5), e.render.radius * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+        if (e.data[0][legNumber] > 0.4) {
+            let amountPast = e.data[0][legNumber] - 0.4;
+            let oldAlpha;
+            if (amountPast < 0.2) {
+                oldAlpha = ctx.globalAlpha;
+                ctx.globalAlpha *= amountPast * 1 / 0.2;
+            }
+            ctx.beginPath();
+            ctx.arc(Math.cos(i) * (e.render.radius * 0.94), Math.sin(i) * (e.render.radius * 0.94), e.render.radius * 0.16, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+            if (amountPast < 0.2) {
+                ctx.globalAlpha = oldAlpha;
+            }
+        }
+        if (e.data[0][legNumber] > 0.7) {
+            let amountPast = e.data[0][legNumber] - 0.7;
+            let oldAlpha;
+            if (amountPast < 0.2) {
+                oldAlpha = ctx.globalAlpha;
+                ctx.globalAlpha *= amountPast * 1 / 0.2;
+            }
+            ctx.beginPath();
+            ctx.arc(Math.cos(i) * (e.render.radius * 1.3), Math.sin(i) * (e.render.radius * 1.3), e.render.radius * 0.12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+            if (amountPast < 0.2) {
+                ctx.globalAlpha = oldAlpha;
+            }
+        }
+        legNumber++;
+    }
+
+    ctx.restore();
+}
+
+// 完全按照 enemy.js 中的 Crab 绘制方式
+function drawVectorCrab(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    // 图片渲染使用 size 作为直径，所以矢量也需要用 size/2
+    const actualSize = size / 2;
+    const currentTime = Date.now() / 1000; // 转换为秒
+    const e = {
+        radius: actualSize,
+        render: {
+            radius: actualSize,
+            angle: 0,
+            time: currentTime * 100, // 时间动画加速
+            lastX: 0,
+            lastY: 0
+        },
+        hp: 100,
+        maxHp: 100,
+        ticksSinceLastDamaged: 1000,
+        lastTicksSinceLastDamaged: 1000
+    };
+
+    let outline = blendColor('#b15a3f', "#FF0000", Math.max(0, blendAmount(e)));
+    let fill = blendColor('#dc704b', "#FF0000", Math.max(0, blendAmount(e)));
+    let legColor = blendColor('#4e2521', '#FF0000', Math.max(0, blendAmount(e)));
+    if (checkForFirstFrame(e)) {
+        outline = "#ffffff";
+        fill = "#ffffff";
+        legColor = '#ffffff';
+    }
+    if (is_injured) {
+        outline = shiftToWhite(outline);
+        fill = shiftToWhite(fill);
+        legColor = shiftToWhite(legColor);
+    }
+
+    ctx.rotate(e.render.angle);
+
+    //Claws
+    ctx.fillStyle = legColor;
+    ctx.strokeStyle = legColor;
+    ctx.lineWidth = e.radius * 0.09565217391304348;
+
+    let xTranslate = 0.69;
+    let yTranslate = -0.39;
+    ctx.translate(e.render.radius * xTranslate, e.render.radius * yTranslate);
+    let rotateAngle = Math.cos(e.render.time / 9) / 6;
+    ctx.rotate(rotateAngle);
+
+    ctx.beginPath();
+    ctx.lineTo(e.render.radius * (0.45 - xTranslate), e.render.radius * (-0.88 - yTranslate));
+    ctx.quadraticCurveTo(e.render.radius * (1.03 - xTranslate), e.render.radius * (-1.15 - yTranslate), e.render.radius * (1.25 - xTranslate), e.render.radius * (-0.62 - yTranslate));
+    ctx.lineTo(e.render.radius * (1.01 - xTranslate), e.render.radius * (-0.77 - yTranslate));
+    ctx.lineTo(e.render.radius * (1.11 - xTranslate), e.render.radius * (-0.52 - yTranslate));
+    ctx.quadraticCurveTo(e.render.radius * (0.85 - xTranslate), e.render.radius * (-0.72 - yTranslate), e.render.radius * (0.7 - xTranslate), e.render.radius * (-0.73 - yTranslate));
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.rotate(-rotateAngle);
+    ctx.translate(-e.render.radius * xTranslate, -e.render.radius * yTranslate);
+
+    xTranslate = 0.69;
+    yTranslate = 0.39;
+    ctx.translate(e.render.radius * xTranslate, e.render.radius * yTranslate);
+    rotateAngle = -Math.cos(e.render.time / 9) / 6;
+    ctx.rotate(rotateAngle);
+
+    ctx.beginPath();
+    ctx.lineTo(e.render.radius * (0.45 - xTranslate), e.render.radius * (0.88 - yTranslate));
+    ctx.quadraticCurveTo(e.render.radius * (1.03 - xTranslate), e.render.radius * (1.15 - yTranslate), e.render.radius * (1.25 - xTranslate), e.render.radius * (0.62 - yTranslate));
+    ctx.lineTo(e.render.radius * (1.01 - xTranslate), e.render.radius * (0.77 - yTranslate));
+    ctx.lineTo(e.render.radius * (1.11 - xTranslate), e.render.radius * (0.52 - yTranslate));
+    ctx.quadraticCurveTo(e.render.radius * (0.85 - xTranslate), e.render.radius * (0.72 - yTranslate), e.render.radius * (0.7 - xTranslate), e.render.radius * (0.73 - yTranslate));
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+    ctx.rotate(-rotateAngle);
+    ctx.translate(-e.render.radius * xTranslate, -e.render.radius * yTranslate);
+
+    //Legs - 螃蟹的腿在身体两侧（按照enemy.js的方式）
+    ctx.lineWidth = e.render.radius / 4;
+
+    ctx.rotate(Math.PI / 2); // 按照enemy.js的方式旋转
+
+    for (let i = 4; i--; i > 0) {
+        // 增加摆动幅度和速度：幅度从0.1增加到0.25，频率从/12增加到/8
+        let rotateAmount = i * 0.34906 - 0.34906 - 0.17453292 + Math.cos(e.render.time / 8 + i * 1.57) * 0.25;
+        ctx.rotate(rotateAmount);
+
+        // 右侧腿
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(e.render.radius * 1.5, 0);
+        ctx.lineTo(e.render.radius * 1.7, e.render.radius * (rotateAmount) / 3);
+        ctx.stroke();
+        ctx.closePath();
+
+        // 左侧腿
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-e.render.radius * 1.5, 0);
+        ctx.lineTo(-e.render.radius * 1.7, -e.render.radius * (rotateAmount) / 3);
+        ctx.stroke();
+        ctx.closePath();
+
+        ctx.rotate(-rotateAmount);
+    }
+
+    ctx.rotate(-Math.PI / 2);
+
+    //Main body
+    ctx.lineJoin = 'round';
+    ctx.lineCap = "round";
+
+    ctx.strokeStyle = outline;
+    ctx.fillStyle = fill;
+    ctx.lineWidth = e.radius * 0.1826086956521739;
+
+    //Body structure
+    ctx.beginPath();
+    ctx.ellipse(0, 0, e.radius * 0.8695652173913043, e.radius * 1.1130434782608696, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+    //Patterns on body
+    ctx.beginPath();
+    ctx.lineTo(e.render.radius * -0.49, e.render.radius * -0.39);
+    ctx.quadraticCurveTo(e.render.radius * 0, e.render.radius * -0.16, e.render.radius * 0.49, e.render.radius * -0.39);
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.beginPath();
+    ctx.lineTo(e.render.radius * -0.49, e.render.radius * 0.39);
+    ctx.quadraticCurveTo(e.render.radius * 0, e.render.radius * 0.16, e.render.radius * 0.49, e.render.radius * 0.39);
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.rotate(-e.render.angle);
+
+    ctx.restore();
+}
+
+// ========== 积分系统相关函数 ==========
+
+// 初始化积分显示
+function initCreditsDisplay() {
+    // 初始化玩家积分状态
+    gameState.playerCredits = 0;
+
+    // 如果存在积分显示元素，先隐藏它
+    const creditsDisplay = document.getElementById('creditsDisplay');
+    if (creditsDisplay) {
+        creditsDisplay.style.display = 'none';
+    }
+
+    console.log('积分显示系统已初始化');
+}
+
+// 更新积分显示
+function updateCreditsDisplay(credits) {
+    const creditsDisplay = document.getElementById('creditsDisplay');
+    const creditsAmountElement = document.getElementById('creditsAmount');
+
+    if (creditsDisplay && creditsAmountElement) {
+        gameState.playerCredits = credits;
+        creditsAmountElement.textContent = credits.toLocaleString();
+
+        // 只在有积分时显示
+        if (credits > 0) {
+            creditsDisplay.style.display = 'block';
+        } else {
+            creditsDisplay.style.display = 'none';
+        }
+    }
+}
+
+// 显示积分给玩家（用于聊天命令等）
+function showCreditsToPlayer(message) {
+    // 这个函数用于处理聊天命令中的积分信息显示
+    console.log('积分信息:', message);
 }
 
 // 初始化tooltip
