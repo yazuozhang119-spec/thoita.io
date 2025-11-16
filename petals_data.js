@@ -304,7 +304,7 @@ const PETALS_DATA = {
     HEAL: {
         missile: Array(26).fill(0),
         basic: Array(26).fill(0),
-        leaf: generateDoublingHealth(25).map((v, i) => i === 0 ? 0 : v / 2),
+        leaf: [0, 25, 50, 100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600, 51200, 102400, 204800, 409600, 819200, 1638400, 3276800, 6553600, 13107200, 26214400, 52428800, 104857600, 209715200, 419430400],
         wing: Array(26).fill(0),
         thunder: Array(26).fill(0),
         venom: Array(26).fill(0),
