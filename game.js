@@ -5090,6 +5090,9 @@ function drawPetalInContext(petal, ctx, displaySize) {
         21: '豌豆',
         22: '葡萄',
         23: '蒲公英',
+        24: '仙人掌',
+        25: '土壤',
+        26: '海星',
     };
 
     // 获取花瓣名称，处理各种异常情况
