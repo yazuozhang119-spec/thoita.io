@@ -102,6 +102,8 @@
     <script>
         let ws = null;
         let wsUrl = 'ws://localhost:8888/ws';
+        let testPlayerId = null;
+        let testPlayerName = 'TestPlayer_' + Math.floor(Math.random() * 1000);
 
         function log(message) {
             const logElement = document.getElementById('log');
@@ -131,10 +133,35 @@
                 ws.onopen = () => {
                     log('✅ WebSocket连接成功');
                     updateStatus('已连接', 'connected');
+
+                    // 发送连接消息
+                    const connectMessage = {
+                        COMMAND: 'CONNECT',
+                        client_name: testPlayerName,
+                        id: testPlayerId
+                    };
+                    ws.send(JSON.stringify(connectMessage));
+                    log('📤 发送连接消息: ' + JSON.stringify(connectMessage));
                 };
 
                 ws.onmessage = (event) => {
                     log('📨 收到消息: ' + event.data);
+
+                    try {
+                        const data = JSON.parse(event.data);
+
+                        // 处理重连相关消息
+                        if (data.cmd === 'RECONNECT_SUCCESS') {
+                            log('🔄 重连成功！房间: ' + (data.room_key || '无'));
+                        } else if (data.cmd === 'GAME_RESUMED') {
+                            log('🎮 游戏状态已恢复');
+                        } else if (data.cmd === 'BUILD' || data.cmd === 'build') {
+                            testPlayerId = data.id;
+                            log('👤 获得玩家ID: ' + testPlayerId);
+                        }
+                    } catch (e) {
+                        // 忽略JSON解析错误
+                    }
                 };
 
                 ws.onerror = (error) => {

@@ -1901,8 +1901,8 @@ const objectTypeMap = {
     46: 'darkladybug',
     47: 'dandeline',
     48: 'dandelinemissile',
-    55: 'starfish',
-    56: 'crab',
+    53: 'starfish',
+    54: 'crab',
     20: 'card',
     21: 'peas',
     22: 'grapes',
@@ -1914,7 +1914,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'ws://localhost:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -1999,6 +1999,7 @@ window.gameState = {
     loadedResources: 0,
     totalResources: 0,
     isLobby: true,
+    wasInGame: false,  // 断线前是否在游戏中（用于重连恢复）
     equipmentSlots: 20,
     equippedPetals: Array(20).fill(null),
     availablePetals: [],
@@ -5172,6 +5173,7 @@ function showLobby() {
 
     lobbyUI.style.display = 'flex';
     gameState.isLobby = true;
+    gameState.wasInGame = false;  // 重置游戏状态标志
 
     // 隐藏 wave 条（大厅界面不需要显示）
     const waveBar = document.getElementById('waveBar');
@@ -6651,6 +6653,7 @@ function startGame() {
     lobbyUI.style.display = 'none';
     startScreen.style.display = 'none';
     gameState.isLobby = false;
+    gameState.wasInGame = true;  // 标记玩家已在游戏中
 
     // 显示游戏中的inventory装备槽，隐藏大厅的equipmentSlots
     const inventory = document.getElementById('inventory');
@@ -6787,6 +6790,7 @@ function restartGame() {
     }
     gameState.playerHealth = gameState.playerMaxHealth;
     gameState.isLobby = true;
+    gameState.wasInGame = false;  // 重置游戏状态标志
     lobbyUI.style.display = 'flex';
     // startScreen.style.display = 'flex'; // 注释掉这行，不显示登录界面
     readyButton.disabled = false;
@@ -6867,6 +6871,7 @@ function hideExitButton() {
 function exitGame() {
     // 设置为大厅状态
     gameState.isLobby = true;
+    gameState.wasInGame = false;  // 重置游戏状态标志
     gameState.playerHealth = gameState.playerMaxHealth;
 
     // 隐藏退出按钮
@@ -6944,9 +6949,20 @@ function connectToServer() {
             console.log('连接到服务器成功');
             gameState.connected = true;
 
-            // WebSocket连接建立后，显示认证界面
-            if (window.authManager) {
-                console.log('WebSocket连接已建立，可以开始认证');
+            // 如果是重连，自动发送连接消息
+            if (gameState.isReconnecting && gameState.playerId) {
+                console.log('重连中，自动发送连接消息，玩家ID:', gameState.playerId);
+                sendToServer({
+                    COMMAND: 'CONNECT',
+                    client_name: gameState.playerName || 'Player',
+                    id: gameState.playerId,
+                    isReconnect: true  // 明确标识这是重连请求
+                });
+            } else {
+                // WebSocket连接建立后，显示认证界面
+                if (window.authManager) {
+                    console.log('WebSocket连接已建立，可以开始认证');
+                }
             }
 
             // 启动心跳机制 - 每10秒发送一次心跳包
@@ -6987,6 +7003,10 @@ function showDisconnected() {
     if (document.getElementById('disconnected-modal')) {
         return;
     }
+
+    // 保存断线前的游戏状态
+    gameState.wasInGame = !gameState.isLobby;
+    console.log('断线前游戏状态:', gameState.wasInGame ? '游戏中' : '大厅');
 
     const modal = document.createElement('div');
     modal.id = 'disconnected-modal';
@@ -7144,30 +7164,83 @@ function performReconnect() {
             gameState.socket.close();
         }
 
+        // 设置重连标志，让 connectToServer 知道这是重连
+        gameState.isReconnecting = true;
+
         // 重新建立连接
         connectToServer();
 
         // 检查连接是否成功
         setTimeout(() => {
             if (gameState.connected && gameState.socket.readyState === WebSocket.OPEN) {
-                // 连接成功
-                statusElement.textContent = '✅ 连接成功！';
+                // 连接成功，但不要立即关闭弹窗，等待服务器确认重连
+                statusElement.textContent = '✅ 连接成功，正在恢复状态...';
                 statusElement.style.color = '#1ea761';
 
-                // 关闭弹窗
-                setTimeout(() => {
-                    const modal = document.getElementById('disconnected-modal');
-                    if (modal) {
-                        modal.remove();
-                    }
-                }, 1000);
+                // 监听重连成功消息
+                const originalOnMessage = gameState.socket.onmessage;
+                gameState.socket.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
 
-                // 重置重连状态
-                reconnectAttempts = 0;
-                if (reconnectInterval) {
-                    clearInterval(reconnectInterval);
-                    reconnectInterval = null;
-                }
+                        // 检查是否为重连成功消息
+                        if (data.cmd === 'RECONNECT_SUCCESS') {
+                            statusElement.textContent = '✅ 重连成功！';
+                            statusElement.style.color = '#1ea761';
+
+                            // 关闭弹窗
+                            setTimeout(() => {
+                                const modal = document.getElementById('disconnected-modal');
+                                if (modal) {
+                                    modal.remove();
+                                }
+                            }, 1000);
+
+                            // 重置重连状态
+                            reconnectAttempts = 0;
+                            gameState.isReconnecting = false;
+                            if (reconnectInterval) {
+                                clearInterval(reconnectInterval);
+                                reconnectInterval = null;
+                            }
+
+                            // 恢复原来的消息处理
+                            gameState.socket.onmessage = originalOnMessage;
+                            return;
+                        }
+
+                        // 其他消息正常处理
+                        originalOnMessage(event);
+                    } catch (e) {
+                        console.error('重连过程中处理消息错误:', e);
+                        originalOnMessage(event);
+                    }
+                };
+
+                // 5秒后如果没收到重连成功消息，当作普通连接成功处理
+                setTimeout(() => {
+                    if (gameState.isReconnecting) {
+                        statusElement.textContent = '✅ 连接成功！';
+                        statusElement.style.color = '#1ea761';
+
+                        // 关闭弹窗
+                        setTimeout(() => {
+                            const modal = document.getElementById('disconnected-modal');
+                            if (modal) {
+                                modal.remove();
+                            }
+                        }, 1000);
+
+                        // 重置重连状态
+                        reconnectAttempts = 0;
+                        gameState.isReconnecting = false;
+                        if (reconnectInterval) {
+                            clearInterval(reconnectInterval);
+                            reconnectInterval = null;
+                        }
+                    }
+                }, 5000);
+
             } else if (reconnectAttempts < maxReconnectAttempts) {
                 // 连接失败，继续尝试
                 statusElement.textContent = `❌ 重连失败，3秒后重试... (${reconnectAttempts}/${maxReconnectAttempts})`;
@@ -7208,6 +7281,104 @@ function performReconnect() {
             reconnectInterval = null;
         }
     }
+}
+
+// 测试断线重连功能
+function testDisconnectReconnect() {
+    if (!gameState.connected || !gameState.socket) {
+        console.log('未连接到服务器，无法测试断线重连');
+        return;
+    }
+
+    console.log('🧪 开始测试断线重连功能...');
+
+    // 显示测试提示
+    showTestNotification('测试断线重连：3秒后自动断开连接，然后可以测试重连功能');
+
+    // 3秒后断开连接
+    setTimeout(() => {
+        if (gameState.socket && gameState.socket.readyState === WebSocket.OPEN) {
+            console.log('🔌 模拟网络断开...');
+
+            // 手动触发关闭事件
+            try {
+                gameState.socket.close(1000, '测试断线重连');
+            } catch (e) {
+                console.log('关闭连接时出错:', e);
+            }
+
+            // 强制触发 onclose 处理
+            gameState.connected = false;
+            stopHeartbeat();
+            showDisconnected();
+
+            console.log('✅ 连接已断开，现在可以测试重连功能');
+            showTestNotification('连接已断开！点击弹窗中的"重新连接"测试重连功能（10秒内重连成功）');
+        }
+    }, 3000);
+}
+
+// 显示测试通知
+function showTestNotification(message) {
+    // 创建测试通知元素
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: bold;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        z-index: 10001;
+        max-width: 300px;
+        animation: slideIn 0.3s ease-out;
+    `;
+    notification.textContent = message;
+
+    // 添加CSS动画
+    if (!document.getElementById('test-notification-style')) {
+        const style = document.createElement('style');
+        style.id = 'test-notification-style';
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes slideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    document.body.appendChild(notification);
+
+    // 5秒后自动移除
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 5000);
 }
 
 // 显示连接错误提示
@@ -7430,6 +7601,24 @@ function handleServerMessage(data) {
                 console.log('=== 收到 PITY_INFO 消息 ===');
                 console.log('message:', message);
                 updatePityInfoDisplay(message);
+                break;
+            case 'RECONNECT_SUCCESS':
+                console.log('=== 重连成功 ===');
+                console.log('房间:', message.room_key);
+                gameState.isReconnecting = false;
+
+                // 重连成功后，等待服务器发送游戏状态消息
+                // 不在这里直接调用 startGame()，而是等待 START_GAME 或 GAME_RESUMED 消息
+                break;
+            case 'GAME_RESUMED':
+                console.log('=== 游戏恢复 ===');
+                console.log('游戏继续');
+
+                // 游戏恢复消息，说明需要恢复到游戏界面
+                console.log('收到游戏恢复消息，恢复到游戏界面');
+                gameState.isLobby = false;
+                gameState.wasInGame = true;
+                startGame();
                 break;
             case 'build': // 新用户，服务端分配了新ID
                 if (message.id !== undefined) {
@@ -7887,6 +8076,40 @@ function handleServerMessage(data) {
                 console.log('=== 收到掉落物统计数据 ===');
                 console.log('掉落物统计:', message.drop_stats);
                 displayDeathDrops(message.drop_stats);
+                break;
+
+            case 'GET_DAILY_SHOP_RESPONSE':
+                console.log('=== 收到每日商店数据 ===');
+                if (message.success && message.shop) {
+                    shopSystem.handleShopData({
+                        success: true,
+                        items: shopSystem.convertServerShopToItems(message.shop),
+                        credits: message.shop.credits || 0
+                    });
+                } else {
+                    shopSystem.handleShopData({ success: false });
+                }
+                break;
+
+            case 'PURCHASE_PETAL_RESPONSE':
+                console.log('=== 收到购买花瓣响应 ===');
+                console.log('购买花瓣结果:', message);
+                shopSystem.handlePurchaseResult({
+                    success: message.success,
+                    itemIndex: message.petal_index,
+                    remainingCredits: message.remaining_credits,
+                    error: message.success ? null : message.message,
+                    rewards: message.success ? {
+                        petals: [{
+                            type: message.petal_type,
+                            level: message.level,
+                            count: 1
+                        }]
+                    } : null,
+                    message: message.message,
+                    petal_type: message.petal_type,
+                    level: message.level
+                });
                 break;
 
             default:
@@ -12891,6 +13114,17 @@ document.addEventListener('keydown', (e) => {
                 toggleWindow('gallery');
                 e.preventDefault();
             }
+            // Ctrl+D - 测试断线重连（仅开发模式）
+            else if (key === 'd' && e.ctrlKey) {
+                testDisconnectReconnect();
+                e.preventDefault();
+            }
+        }
+
+        // Ctrl+D - 游戏中也支持测试断线重连
+        if (key === 'd' && e.ctrlKey && gameState.connected && !e.target.matches('input, textarea')) {
+            testDisconnectReconnect();
+            e.preventDefault();
         }
     }
 
@@ -14756,11 +14990,505 @@ function showCreditsToPlayer(message) {
     console.log('积分信息:', message);
 }
 
-// 初始化tooltip
+// ========== 商店系统 ==========
+
+// 商店数据管理
+const shopSystem = {
+    isOpen: false,
+    items: [],
+    playerCredits: 0,
+    currentPurchaseItem: null,
+
+    // 初始化商店
+    init() {
+        this.bindEvents();
+        console.log('商店系统已初始化');
+    },
+
+    // 绑定事件
+    bindEvents() {
+        // 商店按钮点击
+        const shopToggle = document.getElementById('shopToggle');
+        if (shopToggle) {
+            shopToggle.addEventListener('click', () => this.toggle());
+        }
+
+        // 关闭按钮
+        const shopClose = document.getElementById('shopClose');
+        if (shopClose) {
+            shopClose.addEventListener('click', () => this.close());
+        }
+
+        // 点击背景关闭
+        const shopPanel = document.getElementById('shopPanel');
+        if (shopPanel) {
+            shopPanel.addEventListener('click', (e) => {
+                if (e.target === shopPanel) {
+                    this.close();
+                }
+            });
+        }
+    },
+
+    // 切换商店显示
+    toggle() {
+        if (this.isOpen) {
+            this.close();
+        } else {
+            this.open();
+        }
+    },
+
+    // 打开商店
+    open() {
+        const shopPanel = document.getElementById('shopPanel');
+        if (shopPanel) {
+            shopPanel.style.display = 'flex';
+            this.isOpen = true;
+            this.loadShopData();
+            this.updateCreditsDisplay();
+        }
+    },
+
+    // 关闭商店
+    close() {
+        const shopPanel = document.getElementById('shopPanel');
+        if (shopPanel) {
+            shopPanel.style.display = 'none';
+            this.isOpen = false;
+        }
+
+        // 关闭购买确认弹窗
+        this.closePurchaseModal();
+    },
+
+    // 加载商店数据（从服务器获取）
+    loadShopData() {
+        this.showLoading(true);
+
+        // 向服务器请求商店数据
+        if (gameState.socket && gameState.socket.readyState === WebSocket.OPEN) {
+            sendToServer({
+                COMMAND: 'GET_DAILY_SHOP'
+            });
+        } else {
+            // 如果WebSocket未连接，显示空状态
+            this.showEmpty(true);
+        }
+    },
+
+    // 转换服务器商店数据为前端格式
+    convertServerShopToItems(shopData) {
+        const items = [];
+
+        // 处理花瓣商品
+        if (shopData.petals && Array.isArray(shopData.petals)) {
+            shopData.petals.forEach((petal, index) => {
+                const item = {
+                    id: index,
+                    type: 'petal',
+                    name: `花瓣 Lv.${petal.level}`,
+                    description: `价格 ${petal.price} 积分`,
+                    icon: `petal${petal.petal_type}`,
+                    price: petal.price,
+                    data: {
+                        petal_type: petal.petal_type,
+                        petal_level: petal.level,
+                        count: 1
+                    },
+                    purchased: false
+                };
+                items.push(item);
+            });
+        }
+
+        return items;
+    },
+
+    // 处理服务器返回的商店数据
+    handleShopData(data) {
+        this.showLoading(false);
+
+        if (data.success && data.items) {
+            this.items = data.items;
+            this.playerCredits = data.credits || 0;
+            this.renderShopItems();
+            this.updateCreditsDisplay();
+        } else {
+            this.showEmpty(true);
+        }
+    },
+
+    // 渲染商店商品
+    renderShopItems() {
+        const itemsList = document.getElementById('shopItemsList');
+        if (!itemsList) return;
+
+        itemsList.innerHTML = '';
+
+        this.items.forEach((item, index) => {
+            const shopItem = this.createShopItemElement(item, index);
+            itemsList.appendChild(shopItem);
+        });
+    },
+
+    // 创建商品元素
+    createShopItemElement(item, index) {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'shop-item';
+
+        // 如果已购买，添加已购买样式
+        if (item.purchased) {
+            itemDiv.classList.add('purchased');
+        }
+
+        // 创建商品图标容器
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'shop-item-icon';
+
+        if (item.type === 'petal') {
+            // 花瓣类型：按照签到窗口的方式显示花瓣
+            const petalContainer = document.createElement('div');
+            petalContainer.className = 'petal-item';
+            petalContainer.style.cssText = 'display: inline-block; position: relative; width: 60px; height: 60px;';
+
+            // 创建canvas元素
+            const canvas = document.createElement('canvas');
+            canvas.width = 60;
+            canvas.height = 60;
+            petalContainer.appendChild(canvas);
+
+            // 按照签到窗口的方式调用drawStaticPetalItem绘制花瓣
+            const petalData = {
+                type: item.data.petal_type,
+                level: item.data.petal_level,
+                count: 1
+            };
+            drawStaticPetalItem(petalData, canvas, {displaySize: 55});
+
+            iconDiv.appendChild(petalContainer);
+        } else if (item.type === 'credits') {
+            // 积分包：使用金币emoji
+            const coinDiv = document.createElement('div');
+            coinDiv.style.cssText = `
+                width: 60px;
+                height: 60px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 36px;
+                background: linear-gradient(135deg, #FFD700, #FFA500);
+                border-radius: 50%;
+                box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+            `;
+            coinDiv.textContent = '💰';
+            iconDiv.appendChild(coinDiv);
+        } else {
+            // 其他类型：使用对应图标
+            const iconElement = document.createElement('div');
+            iconElement.style.cssText = `
+                width: 60px;
+                height: 60px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 36px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 8px;
+            `;
+            iconElement.textContent = item.icon || '📦';
+            iconDiv.appendChild(iconElement);
+        }
+
+        // 创建价格显示
+        const priceDiv = document.createElement('div');
+        priceDiv.className = 'shop-item-price';
+        priceDiv.textContent = `${item.price}积分`;
+
+        // 如果已购买，添加已购买标记
+        if (item.purchased) {
+            const purchasedBadge = document.createElement('div');
+            purchasedBadge.className = 'shop-purchased-badge';
+            purchasedBadge.textContent = '已购买';
+            itemDiv.appendChild(purchasedBadge);
+        }
+
+        // 组装元素 - 花瓣图标在上方，价格在下方
+        itemDiv.appendChild(iconDiv);
+        itemDiv.appendChild(priceDiv);
+
+        // 添加点击事件
+        if (!item.purchased) {
+            itemDiv.style.cursor = 'pointer';
+            itemDiv.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showPurchaseModal(item, index);
+            });
+        }
+
+        return itemDiv;
+    },
+
+  
+    // 显示购买确认弹窗
+    showPurchaseModal(item, index) {
+        this.currentPurchaseItem = { item, index };
+
+        // 更新弹窗内容
+        const itemName = document.getElementById('purchaseItemName');
+        const itemPrice = document.getElementById('purchaseItemPrice');
+
+        if (itemName) {
+            itemName.textContent = item.name;
+        }
+        if (itemPrice) {
+            itemPrice.textContent = item.price.toLocaleString();
+        }
+
+        // 显示弹窗
+        const modal = document.getElementById('shopPurchaseModal');
+        if (modal) {
+            modal.classList.add('show');
+        }
+
+        // 绑定按钮事件
+        const confirmBtn = document.getElementById('purchaseConfirm');
+        const cancelBtn = document.getElementById('purchaseCancel');
+
+        if (confirmBtn) {
+            confirmBtn.onclick = () => this.purchaseItem(index);
+        }
+        if (cancelBtn) {
+            cancelBtn.onclick = () => this.closePurchaseModal();
+        }
+    },
+
+    // 关闭购买确认弹窗
+    closePurchaseModal() {
+        const modal = document.getElementById('shopPurchaseModal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
+        this.currentPurchaseItem = null;
+    },
+
+    // 购买商品
+    purchaseItem(index) {
+        if (!gameState.socket || gameState.socket.readyState !== WebSocket.OPEN) {
+            this.showMessage('连接已断开，无法购买', 'error');
+            return;
+        }
+
+        const item = this.items[index];
+        if (!item || item.purchased) {
+            return;
+        }
+
+        // 检查积分是否足够
+        if (this.playerCredits < item.price) {
+            this.showMessage('积分不足', 'error');
+            return;
+        }
+
+        // 发送购买请求到服务器
+        if (item.type === 'petal') {
+            sendToServer({
+                COMMAND: 'PURCHASE_PETAL',
+                petal_type: item.data.petal_type,
+                level: item.data.petal_level
+            });
+        }
+
+        this.closePurchaseModal();
+    },
+
+    // 处理购买结果
+    handlePurchaseResult(data) {
+        if (data.success) {
+            // 更新商品状态
+            if (data.itemIndex !== undefined && this.items[data.itemIndex]) {
+                this.items[data.itemIndex].purchased = true;
+                this.renderShopItems();
+            }
+
+            // 更新背包数据
+            if (data.petal_type !== undefined && data.level !== undefined) {
+                console.log('开始更新背包数据...');
+                console.log('购买的花瓣类型:', data.petal_type, '等级:', data.level);
+
+                // 查找对应的花瓣
+                const existingPetal = gameState.allPetals.find(
+                    p => p.type === data.petal_type && p.level === data.level
+                );
+
+                if (existingPetal) {
+                    // 如果花瓣已存在，增加数量
+                    existingPetal.count += 1;
+                    console.log(`更新背包: 现有花瓣 ${data.petal_type}-${data.level} 数量 +1, 总数: ${existingPetal.count}`);
+                } else {
+                    // 如果花瓣不存在，创建新的
+                    gameState.allPetals.push({
+                        type: data.petal_type,
+                        level: data.level,
+                        count: 1
+                    });
+                    console.log(`更新背包: 新增花瓣 ${data.petal_type}-${data.level} x1`);
+                }
+
+                // 重新计算可用花瓣，但不重复扣除装备槽
+                if (typeof initializeAvailablePetals === 'function') {
+                    initializeAvailablePetals(false); // false 表示不扣除合成槽，避免重复扣除
+                    console.log('重新计算可用花瓣完成');
+                }
+
+                // 如果合成界面打开，更新合成界面的花瓣选择
+                const absorbWindow = document.getElementById('absorbWindow');
+                if (absorbWindow && absorbWindow.style.display === 'block') {
+                    // 更新合成界面的花瓣选择
+                    if (typeof updateAbsorbPetalSelection === 'function') {
+                        updateAbsorbPetalSelection();
+                        console.log('更新合成界面花瓣选择完成');
+                    }
+                }
+
+                // 更新背包界面
+                if (bagWindow.style.display === 'block') {
+                    updateBagContent();
+                    console.log('更新背包界面完成');
+                }
+            }
+
+            // 更新积分
+            this.playerCredits = data.remainingCredits || 0;
+            this.updateCreditsDisplay();
+
+            // 显示成功消息
+            this.showPurchaseSuccess(data);
+        } else {
+            // 显示错误消息
+            this.showMessage(data.error || '购买失败', 'error');
+        }
+    },
+
+    // 显示购买成功消息
+    showPurchaseSuccess(data) {
+        let message = '购买成功！';
+
+        if (data.rewards) {
+            if (data.rewards.petals && data.rewards.petals.length > 0) {
+                const petals = data.rewards.petals.map(p =>
+                    `Lv.${p.level} ${this.getPetalName(p.type)} x${p.count}`
+                ).join(', ');
+                message += `\n获得: ${petals}`;
+            }
+
+            if (data.rewards.credits) {
+                message += `\n获得 ${data.rewards.credits} 积分`;
+            }
+
+            if (data.rewards.special) {
+                message += `\n${data.rewards.special}`;
+            }
+        }
+
+        this.showMessage(message, 'success');
+    },
+
+    // 显示消息
+    showMessage(text, type = 'info') {
+        // 创建消息元素
+        const messageDiv = document.createElement('div');
+        messageDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: ${type === 'success' ? 'rgba(76, 175, 80, 0.9)' :
+                       type === 'error' ? 'rgba(244, 67, 54, 0.9)' :
+                       'rgba(33, 150, 243, 0.9)'};
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            z-index: 3000;
+            white-space: pre-line;
+            text-align: center;
+            max-width: 80%;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        `;
+        messageDiv.textContent = text;
+        document.body.appendChild(messageDiv);
+
+        // 3秒后移除
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.parentNode.removeChild(messageDiv);
+            }
+        }, 3000);
+    },
+
+    // 获取花瓣名称
+    getPetalName(petalType) {
+        const petalNames = {
+            0: "导弹",
+            1: "基础",
+            3: "叶子",
+            4: "翅膀",
+            5: "雷电",
+            6: "毒液",
+            7: "盾牌",
+            8: "炸弹",
+            9: "磁铁",
+            10: "第三眼",
+            11: "刺针",
+            12: "回旋镖",
+            13: "冰冻",
+            16: "珍珠"
+        };
+        return petalNames[petalType] || `花瓣${petalType}`;
+    },
+
+    // 更新积分显示
+    updateCreditsDisplay() {
+        const creditsAmount = document.getElementById('shopCreditsAmount');
+        if (creditsAmount) {
+            creditsAmount.textContent = this.playerCredits.toLocaleString();
+        }
+    },
+
+    // 显示加载状态
+    showLoading(show) {
+        const loading = document.getElementById('shopLoading');
+        const itemsList = document.getElementById('shopItemsList');
+        const empty = document.getElementById('shopEmpty');
+
+        if (loading) loading.style.display = show ? 'flex' : 'none';
+        if (itemsList) itemsList.style.display = show ? 'none' : 'grid';
+        if (empty) empty.style.display = 'none';
+    },
+
+    // 显示空状态
+    showEmpty(show) {
+        const loading = document.getElementById('shopLoading');
+        const itemsList = document.getElementById('shopItemsList');
+        const empty = document.getElementById('shopEmpty');
+
+        if (loading) loading.style.display = 'none';
+        if (itemsList) itemsList.style.display = 'none';
+        if (empty) empty.style.display = show ? 'flex' : 'none';
+    }
+};
+
+// 在WebSocket消息处理中添加商店相关处理
+// 在现有的 case 'CHAT_MESSAGE' 附近添加：
+
+// 初始化商店系统
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         petalTooltip.init();
         initCheckinFeatures();
         initMonsterEncyclopedia();
+        shopSystem.init(); // 初始化商店系统
     }, 100);
 })
