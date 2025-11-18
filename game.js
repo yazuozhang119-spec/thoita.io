@@ -2033,6 +2033,9 @@ window.gameState = {
     // 键盘状态
     keyboardAttack: false,
     keyboardDefend: false,
+    // 自动攻击和自动防守状态
+    autoAttack: false,
+    autoDefend: false,
     // 鼠标状态标志
     isMouseActive: false,
     // 鼠标活动定时器
@@ -2113,6 +2116,9 @@ const startButton = document.getElementById('startButton');
 const gameOverScreen = document.getElementById('gameOver');
 const restartButton = document.getElementById('restartButton');
 const exitButton = document.getElementById('exitButton');
+const settingsToggle = document.getElementById('settingsToggle');
+const shopToggle = document.getElementById('shopToggle');
+const topButtonsContainer = document.getElementById('topButtonsContainer');
 const lobbyUI = document.getElementById('lobbyUI');
 const equipmentSlots = document.getElementById('equipmentSlots');
 // 死亡掉落物相关UI元素
@@ -2488,6 +2494,104 @@ function initSettingsPanel() {
                 // 触发change事件
                 const event = new Event('change', { bubbles: true });
                 ritaMobPinkToggle.dispatchEvent(event);
+            });
+        }
+    }
+
+    // 自动攻击功能
+    const autoAttackToggle = document.getElementById('autoAttackToggle');
+    if (autoAttackToggle) {
+        // 从localStorage读取保存的状态
+        const savedState = localStorage.getItem('autoAttack');
+        gameState.autoAttack = savedState === 'true';
+        autoAttackToggle.checked = gameState.autoAttack;
+
+        // 初始化视觉状态
+        const autoAttackContainer = autoAttackToggle.closest('.setting-toggle');
+        if (autoAttackContainer) {
+            if (gameState.autoAttack) {
+                autoAttackContainer.classList.add('active');
+            } else {
+                autoAttackContainer.classList.remove('active');
+            }
+        }
+
+        // 监听checkbox变化
+        autoAttackToggle.addEventListener('change', function() {
+            const container = this.closest('.setting-toggle');
+            if (container) {
+                if (this.checked) {
+                    container.classList.add('active');
+                } else {
+                    container.classList.remove('active');
+                }
+            }
+
+            gameState.autoAttack = this.checked;
+            localStorage.setItem('autoAttack', this.checked);
+            console.log('自动攻击:', this.checked ? '开启' : '关闭');
+        });
+
+        // 为toggle-switch添加点击事件
+        const toggleSwitch = autoAttackToggle.parentElement.nextElementSibling;
+        if (toggleSwitch) {
+            toggleSwitch.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                autoAttackToggle.checked = !autoAttackToggle.checked;
+
+                // 触发change事件
+                const event = new Event('change', { bubbles: true });
+                autoAttackToggle.dispatchEvent(event);
+            });
+        }
+    }
+
+    // 自动防守功能
+    const autoDefendToggle = document.getElementById('autoDefendToggle');
+    if (autoDefendToggle) {
+        // 从localStorage读取保存的状态
+        const savedState = localStorage.getItem('autoDefend');
+        gameState.autoDefend = savedState === 'true';
+        autoDefendToggle.checked = gameState.autoDefend;
+
+        // 初始化视觉状态
+        const autoDefendContainer = autoDefendToggle.closest('.setting-toggle');
+        if (autoDefendContainer) {
+            if (gameState.autoDefend) {
+                autoDefendContainer.classList.add('active');
+            } else {
+                autoDefendContainer.classList.remove('active');
+            }
+        }
+
+        // 监听checkbox变化
+        autoDefendToggle.addEventListener('change', function() {
+            const container = this.closest('.setting-toggle');
+            if (container) {
+                if (this.checked) {
+                    container.classList.add('active');
+                } else {
+                    container.classList.remove('active');
+                }
+            }
+
+            gameState.autoDefend = this.checked;
+            localStorage.setItem('autoDefend', this.checked);
+            console.log('自动防守:', this.checked ? '开启' : '关闭');
+        });
+
+        // 为toggle-switch添加点击事件
+        const toggleSwitch = autoDefendToggle.parentElement.nextElementSibling;
+        if (toggleSwitch) {
+            toggleSwitch.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                autoDefendToggle.checked = !autoDefendToggle.checked;
+
+                // 触发change事件
+                const event = new Event('change', { bubbles: true });
+                autoDefendToggle.dispatchEvent(event);
             });
         }
     }
@@ -6985,7 +7089,7 @@ function restartGame() {
 // 显示退出按钮
 function showExitButton() {
     if (exitButton) {
-        exitButton.style.display = 'block';
+        exitButton.style.display = 'block'; // 使用block显示
     }
 }
 
@@ -6993,6 +7097,20 @@ function showExitButton() {
 function hideExitButton() {
     if (exitButton) {
         exitButton.style.display = 'none';
+    }
+}
+
+// 显示设置和商店按钮
+function showTopButtons() {
+    if (topButtonsContainer) {
+        topButtonsContainer.style.display = 'flex';
+    }
+}
+
+// 隐藏设置和商店按钮
+function hideTopButtons() {
+    if (topButtonsContainer) {
+        topButtonsContainer.style.display = 'none';
     }
 }
 
@@ -8333,12 +8451,28 @@ function sendMousePosition() {
     // 如果开启键盘移动，禁用鼠标移动控制，只保留左右键和滚轮
     if (gameState.keyboardMovement) return;
 
+    // 计算实际的鼠标按键状态，自动攻击/防守模拟持续按下
+    let effectiveLeftMouseDown = gameState.leftMouseDown || gameState.autoAttack;
+    let effectiveRightMouseDown = gameState.rightMouseDown || gameState.autoDefend;
+
+    // 更新playerState以支持纯自动攻击/防守
+    // 手动按键优先，同时开启时优先攻击
+    if (gameState.leftMouseDown || (gameState.autoAttack && !gameState.rightMouseDown)) {
+        gameState.playerState = 1; // 攻击
+    } else if (gameState.rightMouseDown || gameState.autoDefend) {
+        gameState.playerState = -1; // 防御
+    } else if (gameState.autoAttack) {
+        gameState.playerState = 1; // 自动攻击
+    } else {
+        gameState.playerState = 0; // 正常
+    }
+
     // 时刻发送当前鼠标位置和按键状态
     sendToServer({
         COMMAND: 'SEND_DATA',
         client_name: gameState.playerName,
         data: [gameState.currentMouseX, gameState.currentMouseY, gameState.playerState,
-               gameState.leftMouseDown, gameState.rightMouseDown],
+               effectiveLeftMouseDown, effectiveRightMouseDown],
         id: gameState.playerId
     });
 }
@@ -8354,6 +8488,7 @@ function handleMouseDown(event) {
 
     if (event.button === 0) { // 左键
         gameState.leftMouseDown = true;
+        // 手动攻击优先，如果同时开启自动攻击和自动防守，攻击优先
         gameState.playerState = 1; // 攻击
     } else if (event.button === 2) { // 右键
         gameState.rightMouseDown = true;
@@ -8690,11 +8825,13 @@ function gameLoop(timestamp) {
         // 绘制所有玩家的血条和小花朵（包括自己和其他玩家）
         drawAllPlayersHealthBars();
 
-        // 显示退出按钮
+        // 显示退出按钮，隐藏设置和商店按钮
         showExitButton();
+        hideTopButtons();
     } else {
-        // 隐藏退出按钮
+        // 隐藏退出按钮，显示设置和商店按钮
         hideExitButton();
+        showTopButtons();
     }
 
 
@@ -8707,9 +8844,9 @@ function drawHealthBarWithFlower() {
     // 血条参数 - 增加长度
     const barWidth = 160;
     const barHeight = 14;
-    // 血条位置：进一步向右调整确保不超出左边界
+    // 血条位置：与其他玩家血条对齐
     const barX = 40;
-    const barY = 15;
+    const barY = 60; // 与其他玩家的血条对齐
     const borderWidth = 3; // 增加边框宽度
     const borderRadius = 7;
 
@@ -8751,13 +8888,19 @@ function drawHealthBarWithFlower() {
     // 使用当前玩家的数据绘制花朵
     drawMiniFlower(flowerX, flowerY, flowerSize);
 
-    // drawMiniFlowerForOtherPlayer(flowerX, flowerY, flowerSize, flowerSize, gameState.playerHealth, gameState.playerMaxHealth);
+    // 显示玩家名字（与其他玩家血条一样）
+    if (gameState.playerName || gameState.playerId) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.font = '12px Arial';
+        const playerName = gameState.playerName || `Player ${gameState.playerId}`;
+        ctx.fillText(playerName, barX + 5, barY - 5); // 往右移动5px
+    }
 }
 
 // 绘制所有玩家的血条和小花朵（包括自己和其他玩家）
 function drawAllPlayersHealthBars() {
     // 起始位置（左上角）- 当前玩家使用原有位置
-    let startY = 130; // 从130开始，给当前玩家的血条留出空间
+    let startY = 110; // 从130开始，给当前玩家的血条留出空间
     const startX = 40;
     const verticalSpacing = 45; // 每个玩家之间的垂直间距
 
@@ -8783,7 +8926,7 @@ function drawAllPlayersHealthBars() {
                     Math.pow(screenY - playerCenterY, 2)
                 );
 
-                if (distance < maxDistance) {
+                if (maxDistance && distance) {
                     // 计算该玩家在左上角显示的位置
                     const displayY = startY + (playerCount * verticalSpacing);
 
@@ -8858,15 +9001,15 @@ function drawOtherPlayerHealthBarAndFlower(barX, barY, flower) {
         maxHealth: maxHealth
     };
 
-    // 绘制其他玩家的迷你花朵
-    drawOtherPlayerMiniFlower(miniFlowerX, miniFlowerY, flowerSize, playerData);
+    // 绘制其他玩家的迷你花朵，传递完整的花朵信息
+    drawOtherPlayerMiniFlower(miniFlowerX, miniFlowerY, flowerSize, flower);
 
     // 显示玩家名称（如果有）
     if (flower.player_name || flower.id) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
         ctx.font = '12px Arial';
         const playerName = flower.player_name || `Player ${flower.id}`;
-        ctx.fillText(playerName, barX, barY - 5);
+        ctx.fillText(playerName, barX + 5, barY - 5); // 往右移动5px
     }
 }
 
@@ -8875,23 +9018,40 @@ function drawOtherPlayerHealthBarAndFlower(barX, barY, flower) {
 
 
 // 绘制其他玩家的迷你花朵
-function drawOtherPlayerMiniFlower(x, y, size, player) {
+function drawOtherPlayerMiniFlower(x, y, size, flower) {
+    // 使用 flower.js 的 Flower 类来绘制其他玩家小花朵
     if (typeof Flower !== 'undefined') {
         const miniFlower = new Flower('mini');
+
+        // 设置花朵属性 - 使用指定的位置
         miniFlower.x = x;
         miniFlower.y = y;
-        miniFlower.radius = size / 2;
-        miniFlower.angle = 0;
-        miniFlower.hp = player.hp || player.health || 100;
-        miniFlower.maxHp = player.maxHp || player.maxHealth || 100;
+        miniFlower.radius = size / 2; // 传入的是直径，转换为半径
+        miniFlower.angle = flower.angle || 0; // 使用原始花朵的角度
+        miniFlower.hp = flower.hp || flower.health || 100;
+        miniFlower.maxHp = flower.max_hp || flower.maxHealth || 100;
         miniFlower.character = 'flower';
         miniFlower.ticksSinceLastDamaged = 1000;
 
-        // 使用中立的表情和花瓣距离
-        const fastPetalDistance = 25;
-        miniFlower.state = 0;
+        // 根据攻击状态设置表情和花瓣距离（完全复制其他玩家花朵的逻辑）
+        let fastPetalDistance = 70; // 中立距离（与其他玩家花朵相同）
+        let flowerState = 0; // 默认状态
 
-        // 设置渲染状态
+        // 处理Is_Attack的值：2=攻击，-2=防御，0=中立（完全复制其他玩家花朵的逻辑）
+        if (flower.is_attack === 2) {
+            // 攻击状态
+            fastPetalDistance = 70 * 1.91;
+            flowerState = 1; // 攻击状态
+        } else if (flower.is_attack === -2) {
+            // 防御状态
+            fastPetalDistance = 70 * 0.6;
+            flowerState = -1; // 防御状态
+        }
+
+        // 设置花朵状态（完全复制其他玩家花朵的逻辑）
+        miniFlower.state = flowerState;
+
+        // 设置渲染状态（完全复制其他玩家花朵的逻辑）
         miniFlower.render = {
             headX: miniFlower.x,
             headY: miniFlower.y,
@@ -8906,10 +9066,10 @@ function drawOtherPlayerMiniFlower(x, y, size, player) {
             petalDistance: fastPetalDistance
         };
 
-        // 绘制迷你花朵
+        // 绘制花朵主体（完全复制其他玩家花朵的逻辑）
         miniFlower.drawFlower(miniFlower.x, miniFlower.y, miniFlower.radius, miniFlower.character);
     } else {
-        // 简单的圆形作为备选
+        // 如果 flower.js 未加载，使用备用绘制
         ctx.fillStyle = '#1ea761';
         ctx.beginPath();
         ctx.arc(x, y, size / 2, 0, Math.PI * 2);
@@ -8933,9 +9093,9 @@ function drawOtherPlayerHealthBar(flowerX, flowerY, flowerRadius, currentHealth,
     const borderWidth = 3; // 增加边框宽度使其更明显
     const borderRadius = 7;
 
-    // 血条位置：在花朵上方，居中对齐
+    // 血条位置：在花朵上方，居中对齐，往下挪一点到其他玩家的上方
     const barX = flowerX - barWidth / 2;
-    const barY = flowerY - flowerRadius - 25;  // 在花朵上方留出空间
+    const barY = flowerY - flowerRadius - 15;  // 减少上方距离，往下挪10px
 
     // 获取血量百分比
     const healthPercent = Math.max(0, Math.min(1, currentHealth / maxHealth));
@@ -9021,30 +9181,33 @@ function drawMiniFlowerForOtherPlayer(posX, posY, size, originalRadius, currentH
     ctx.restore();
 }
 
-// 绘制小花朵（类似drawPlayer的简化版）
+// 绘制小花朵（完全按照drawPlayer的方法，除了位置）
 function drawMiniFlower(x, y, size) {
+    // 使用 flower.js 的 Flower 类来绘制小花朵
     if (typeof Flower !== 'undefined') {
         const miniFlower = new Flower('mini');
+
+        // 设置花朵属性 - 使用指定的位置
         miniFlower.x = x;
         miniFlower.y = y;
-        miniFlower.radius = size / 2;
-        miniFlower.angle = gameState.playerAngle || 0;
+        miniFlower.radius = size / 2; // 传入的是直径，转换为半径
+        miniFlower.angle = gameState.playerAngle; // 使用玩家角度
         miniFlower.hp = gameState.playerHp || 100;
         miniFlower.maxHp = gameState.playerMaxHp || 100;
         miniFlower.character = 'flower';
         miniFlower.ticksSinceLastDamaged = gameState.ticksSinceLastDamaged || 1000;
 
-        // 根据玩家状态设置表情和花瓣距离
-        let fastPetalDistance = 30; // 中立距离（比正常小）
+        // 根据玩家状态设置表情和花瓣距离（完全复制drawPlayer的逻辑）
+        let fastPetalDistance = 70; // 中立距离（与drawPlayer相同）
         if (gameState.playerState === 1) {
             // 攻击状态
-            fastPetalDistance = 30 * 1.91;
+            fastPetalDistance = 70 * 1.91;
         } else if (gameState.playerState === -1) {
             // 防御状态
-            fastPetalDistance = 30 * 0.6;
+            fastPetalDistance = 70 * 0.6;
         }
 
-        // 设置渲染状态
+        // 设置渲染状态（完全复制drawPlayer的逻辑）
         miniFlower.render = {
             headX: miniFlower.x,
             headY: miniFlower.y,
@@ -9059,42 +9222,26 @@ function drawMiniFlower(x, y, size) {
             petalDistance: fastPetalDistance
         };
 
-        // 绘制小花朵主体
+        // 绘制花朵主体（完全复制drawPlayer的逻辑）
         miniFlower.drawFlower(miniFlower.x, miniFlower.y, miniFlower.radius, miniFlower.character);
+
+        // 注释掉花瓣绘制，因为小花朵不需要花瓣
+        // if (gameState.petals && gameState.petals.length > 0) {
+        //     gameState.petals.forEach(petal => {
+        //         if (petal && petal.draw) {
+        //             petal.draw();
+        //         }
+        //     });
+        // }
     } else {
-        // 备用绘制：简单的圆形花朵
-        ctx.save();
-        ctx.translate(x, y);
-
-        // 花朵中心
-        ctx.fillStyle = '#FFB6C1';
+        // 如果 flower.js 未加载，使用备用绘制
+        ctx.fillStyle = '#1ea761';
         ctx.beginPath();
-        ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+        ctx.arc(x, y, size / 2, 0, Math.PI * 2);
         ctx.fill();
-
-        // 花朵边框
-        ctx.strokeStyle = '#FF69B4';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
         ctx.lineWidth = 1;
         ctx.stroke();
-
-        // 简单的花瓣
-        const petalCount = 6;
-        const petalSize = size / 3;
-        for (let i = 0; i < petalCount; i++) {
-            const angle = (Math.PI * 2 / petalCount) * i;
-            const petalX = Math.cos(angle) * size * 0.8;
-            const petalY = Math.sin(angle) * size * 0.8;
-
-            ctx.fillStyle = '#FFC0CB';
-            ctx.beginPath();
-            ctx.arc(petalX, petalY, petalSize, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = '#FFB6C1';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-        }
-
-        ctx.restore();
     }
 }
 
