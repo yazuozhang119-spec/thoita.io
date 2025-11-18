@@ -277,15 +277,17 @@
         <!-- 重新打开聊天按钮 -->
         <button id="chatOpenButton" style="display: none;">💬</button>
 
-        <!-- 设置按钮 -->
-        <div id="settingsButton">
+        <!-- 顶部按钮容器 -->
+        <div id="topButtonsContainer">
+            <!-- 设置按钮 -->
             <button id="settingsToggle" class="settings-button">⚙️</button>
-        </div>
 
-        <!-- 商店按钮 -->
-        <div id="shopButton">
+            <!-- 商店按钮 -->
             <button id="shopToggle" class="shop-button">🏪</button>
         </div>
+
+        <!-- 退出按钮 - 独立显示在游戏画面左上角 -->
+        <button id="exitButton" class="exit-button">×</button>
 
         <!-- 设置面板 -->
         <div id="settingsPanel" class="settings-panel" style="display: none;">
@@ -324,6 +326,32 @@
                         <label class="toggle-label">
                             <input type="checkbox" id="showEntitiesToggle" checked>
                             <span class="toggle-text">显示实体</span>
+                        </label>
+                        <div class="toggle-switch">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 自动攻击 -->
+                <div class="settings-section">
+                    <div class="setting-toggle">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="autoAttackToggle">
+                            <span class="toggle-text">自动攻击</span>
+                        </label>
+                        <div class="toggle-switch">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 自动防守 -->
+                <div class="settings-section">
+                    <div class="setting-toggle">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="autoDefendToggle">
+                            <span class="toggle-text">自动防守</span>
                         </label>
                         <div class="toggle-switch">
                             <div class="toggle-slider"></div>

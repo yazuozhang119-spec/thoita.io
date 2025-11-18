@@ -7420,74 +7420,24 @@ function performReconnect() {
         // 检查连接是否成功
         setTimeout(() => {
             if (gameState.connected && gameState.socket.readyState === WebSocket.OPEN) {
-                // 连接成功，但不要立即关闭弹窗，等待服务器确认重连
-                statusElement.textContent = '✅ 连接成功，正在恢复状态...';
+                // 连接成功，直接关闭弹窗
+                statusElement.textContent = '✅ 重连成功！';
                 statusElement.style.color = '#1ea761';
 
-                // 监听重连成功消息
-                const originalOnMessage = gameState.socket.onmessage;
-                gameState.socket.onmessage = function(event) {
-                    try {
-                        const data = JSON.parse(event.data);
-
-                        // 检查是否为重连成功消息
-                        if (data.cmd === 'RECONNECT_SUCCESS') {
-                            statusElement.textContent = '✅ 重连成功！';
-                            statusElement.style.color = '#1ea761';
-
-                            // 关闭弹窗
-                            setTimeout(() => {
-                                const modal = document.getElementById('disconnected-modal');
-                                if (modal) {
-                                    modal.remove();
-                                }
-                            }, 1000);
-
-                            // 重置重连状态
-                            reconnectAttempts = 0;
-                            gameState.isReconnecting = false;
-                            if (reconnectInterval) {
-                                clearInterval(reconnectInterval);
-                                reconnectInterval = null;
-                            }
-
-                            // 恢复原来的消息处理
-                            gameState.socket.onmessage = originalOnMessage;
-                            return;
-                        }
-
-                        // 其他消息正常处理
-                        originalOnMessage(event);
-                    } catch (e) {
-                        console.error('重连过程中处理消息错误:', e);
-                        originalOnMessage(event);
-                    }
-                };
-
-                // 5秒后如果没收到重连成功消息，当作普通连接成功处理
                 setTimeout(() => {
-                    if (gameState.isReconnecting) {
-                        statusElement.textContent = '✅ 连接成功！';
-                        statusElement.style.color = '#1ea761';
-
-                        // 关闭弹窗
-                        setTimeout(() => {
-                            const modal = document.getElementById('disconnected-modal');
-                            if (modal) {
-                                modal.remove();
-                            }
-                        }, 1000);
-
-                        // 重置重连状态
-                        reconnectAttempts = 0;
-                        gameState.isReconnecting = false;
-                        if (reconnectInterval) {
-                            clearInterval(reconnectInterval);
-                            reconnectInterval = null;
-                        }
+                    const modal = document.getElementById('disconnected-modal');
+                    if (modal) {
+                        modal.remove();
                     }
-                }, 5000);
+                }, 1000);
 
+                // 重置重连状态
+                reconnectAttempts = 0;
+                gameState.isReconnecting = false;
+                if (reconnectInterval) {
+                    clearInterval(reconnectInterval);
+                    reconnectInterval = null;
+                }
             } else if (reconnectAttempts < maxReconnectAttempts) {
                 // 连接失败，继续尝试
                 statusElement.textContent = `❌ 重连失败，3秒后重试... (${reconnectAttempts}/${maxReconnectAttempts})`;
