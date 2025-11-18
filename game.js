@@ -1974,7 +1974,9 @@ window.gameState = {
     boundaryRadius: 0,
     playerAngle: 0,
     playerSize: null, // 服务器传输的玩家大小
-    playerState: 0, // 0: 正常, 1: 攻击, -1: 防御
+    playerState: 0, // 0: 正常, 1: 攻击, -1: 防御 (保留兼容性)
+    leftMouseDown: false, // 左键是否按下
+    rightMouseDown: false, // 右键是否按下
     petals: [],
     mobs: [],
     flowers: [],
@@ -2073,6 +2075,7 @@ window.gameState = {
     },
     isChatClosed: true, // 聊天窗口默认关闭
     hasSelectedRoom: false, // 是否已选择房间
+    isReconnecting: false,
     currentRoom: null, // 当前房间ID
     // 性能监控相关状态
     isPerformancePanelVisible: false,
@@ -2080,6 +2083,8 @@ window.gameState = {
     maxFpsHistoryLength: 60, // 保存60帧的历史记录用于计算平均FPS
     lastPerformanceUpdate: 0,
     performanceUpdateInterval: 500, // 每500ms更新一次性能显示
+    // Rita Mob虚化显示状态
+    ritaMobPink: false,
     // 视野相关状态
     viewWidth: 1200, // 默认视野宽度
     viewHeight: 800  // 默认视野高度
@@ -2427,6 +2432,62 @@ function initSettingsPanel() {
                 // 触发change事件
                 const event = new Event('change', { bubbles: true });
                 showEntitiesToggle.dispatchEvent(event);
+            });
+        }
+    }
+
+    // Rita Mob虚化显示toggle功能
+    const ritaMobPinkToggle = document.getElementById('ritaMobPinkToggle');
+    if (ritaMobPinkToggle) {
+        // 从localStorage获取保存的状态
+        const savedState = localStorage.getItem('ritaMobPink');
+        const initialState = savedState === 'true';
+        ritaMobPinkToggle.checked = initialState;
+
+        // 初始化游戏状态
+        gameState.ritaMobPink = initialState;
+
+        // 初始化视觉状态
+        const ritaMobPinkContainer = ritaMobPinkToggle.closest('.setting-toggle');
+        if (ritaMobPinkContainer) {
+            if (initialState) {
+                ritaMobPinkContainer.classList.add('active');
+            } else {
+                ritaMobPinkContainer.classList.remove('active');
+            }
+        }
+
+        // 监听checkbox变化
+        ritaMobPinkToggle.addEventListener('change', function() {
+            const container = this.closest('.setting-toggle');
+            if (container) {
+                if (this.checked) {
+                    container.classList.add('active');
+                } else {
+                    container.classList.remove('active');
+                }
+            }
+
+            // 更新游戏状态
+            gameState.ritaMobPink = this.checked;
+
+            // 保存到localStorage
+            localStorage.setItem('ritaMobPink', this.checked);
+
+            console.log('Rita Mob虚化显示:', this.checked ? '开启' : '关闭');
+        });
+
+        // 为toggle-switch添加点击事件
+        const toggleSwitch = ritaMobPinkToggle.parentElement.nextElementSibling;
+        if (toggleSwitch && toggleSwitch.classList.contains('toggle-switch')) {
+            toggleSwitch.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                ritaMobPinkToggle.checked = !ritaMobPinkToggle.checked;
+
+                // 触发change事件
+                const event = new Event('change', { bubbles: true });
+                ritaMobPinkToggle.dispatchEvent(event);
             });
         }
     }
@@ -2834,10 +2895,32 @@ function initGame() {
         }
     });
 
-    // 鼠标事件
-    canvas.addEventListener('mousemove', handleMouseMove);
-    canvas.addEventListener('mousedown', handleMouseDown);
-    canvas.addEventListener('mouseup', handleMouseUp);
+    // 鼠标事件 - 监听整个游戏容器，包括覆盖在canvas上的UI元素
+    const gameContainer = document.getElementById('gameContainer');
+
+    document.addEventListener('mousemove', (e) => {
+        // 检查鼠标是否在游戏容器内
+        if (gameContainer && gameContainer.contains(e.target)) {
+            handleMouseMove(e);
+        }
+    });
+
+    document.addEventListener('mousedown', (e) => {
+        // 检查鼠标是否在游戏容器内，但排除输入框等需要鼠标事件的元素
+        if (gameContainer && gameContainer.contains(e.target) &&
+            !e.target.matches('input, textarea, button, a')) {
+            handleMouseDown(e);
+        }
+    }, true);
+
+    document.addEventListener('mouseup', (e) => {
+        // 检查鼠标是否在游戏容器内，但排除输入框等需要鼠标事件的元素
+        if (gameContainer && gameContainer.contains(e.target) &&
+            !e.target.matches('input, textarea, button, a')) {
+            handleMouseUp(e);
+        }
+    }, true);
+
     canvas.addEventListener('wheel', handleWheel);
     canvas.addEventListener('contextmenu', e => e.preventDefault());
 
@@ -5335,6 +5418,49 @@ function handlePetalSwapByHotkey(slotIndex) {
     console.log(`快捷键 ${slotIndex + 1}: 交换槽位 ${slotIndex + 1} 和 ${correspondingSlot + 1}`);
 }
 
+// 全局变量记录上次调用时间
+let lastAllSlotsSwitchTime = 0;
+
+// 处理所有卡槽切换
+function handleAllPetalSlotsSwitch() {
+    const currentTime = Date.now();
+
+    // 检查是否距离上次调用不足1秒
+    if (currentTime - lastAllSlotsSwitchTime < 1000) {
+        console.log('R键切换冷却中，请稍后再试');
+        return;
+    }
+
+    // 检查设备槽位数量
+    if (gameState.equipmentSlots <= 0) {
+        console.log('没有可用的卡槽进行切换');
+        return;
+    }
+
+    // 遍历所有第一行的槽位（0-9，或实际可用的槽位数）
+    const slotsToSwitch = Math.min(10, gameState.equipmentSlots);
+
+    for (let i = 0; i < slotsToSwitch; i++) {
+        const correspondingSlot = getCorrespondingSlot(i);
+
+        // 检查对应槽位是否有效且在可用范围内
+        if (correspondingSlot !== null && correspondingSlot < gameState.equipmentSlots) {
+            // 根据当前状态执行交换
+            if (gameState.isLobby) {
+                // 大厅内交换
+                swapPetalsWithAnimation(i, correspondingSlot);
+            } else {
+                // 游戏内交换
+                swapInGamePetalsWithAnimation(i, correspondingSlot);
+            }
+        }
+    }
+
+    // 更新上次调用时间
+    lastAllSlotsSwitchTime = currentTime;
+    console.log(`R键: 切换所有 ${slotsToSwitch} 个卡槽`);
+}
+
 // 获取主副槽对应关系
 // 第一行(0-9)和第二行(10-19)对应位置的槽位可以交换
 function getCorrespondingSlot(slotIndex) {
@@ -6942,7 +7068,7 @@ function exitGame() {
 function connectToServer() {
     const storedPlayerId = localStorage.getItem('playerId');
     if (storedPlayerId) {
-        gameState.playerId = parseInt(storedPlayerId);
+        gameState.playerId = storedPlayerId;
         console.log('使用本地存储的玩家ID:', gameState.playerId);
     }
     try {
@@ -7824,12 +7950,22 @@ function handleServerMessage(data) {
 
                     // 解析统一的对象列表
                     message.objects.forEach(obj => {
-                        // 动态处理两种不同的传输格式
-                        let typeIdx, position, size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured, player_name;
+                        // 动态处理不同的传输格式
+                        let typeIdx, position, size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured, player_name, is_rita_mob;
 
                         if (obj.length >= 10) {
                             // # 花朵使用扩展传输格式: [idx, position, max_size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured, player_name]
                             [typeIdx, position, size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured, player_name] = obj;
+                            is_rita_mob = 0;
+                        } else if (obj.length === 6) {
+                            // 新格式: [typeIdx, position, size, angle, is_injured, is_rita_mob]
+                            [typeIdx, position, size, angle, is_injured, is_rita_mob] = obj;
+                            speed_x = 0;
+                            speed_y = 0;
+                            is_attack = 0;
+                            health = null;
+                            max_health = null;
+                            player_name = null;
                         } else if (obj.length === 5) {
                             // 其他对象普通格式: [typeIdx, position, size, angle, is_injured]
                             [typeIdx, position, size, angle, is_injured] = obj;
@@ -7838,6 +7974,8 @@ function handleServerMessage(data) {
                             is_attack = 0;
                             health = null;
                             max_health = null;
+                            player_name = null;
+                            is_rita_mob = 0;
                         } else {
                             // 兼容旧格式: [typeIdx, position, size, angle]
                             [typeIdx, position, size, angle] = obj;
@@ -7847,6 +7985,7 @@ function handleServerMessage(data) {
                             health = null;
                             max_health = null;
                             is_injured = false;
+                            is_rita_mob = 0;
                         }
 
                         const typeName = objectTypeMap[typeIdx] || 'unknown';
@@ -7867,7 +8006,9 @@ function handleServerMessage(data) {
                             // 受伤状态
                             is_injured: is_injured || false,
                             // 玩家名字（只有花朵对象才有）
-                            player_name: player_name || null
+                            player_name: player_name || null,
+                            // Rita mob标识
+                            is_rita_mob: is_rita_mob || 0
                         };
 
                         
@@ -8192,11 +8333,12 @@ function sendMousePosition() {
     // 如果开启键盘移动，禁用鼠标移动控制，只保留左右键和滚轮
     if (gameState.keyboardMovement) return;
 
-    // 时刻发送当前鼠标位置
+    // 时刻发送当前鼠标位置和按键状态
     sendToServer({
         COMMAND: 'SEND_DATA',
         client_name: gameState.playerName,
-        data: [gameState.currentMouseX, gameState.currentMouseY, gameState.playerState],
+        data: [gameState.currentMouseX, gameState.currentMouseY, gameState.playerState,
+               gameState.leftMouseDown, gameState.rightMouseDown],
         id: gameState.playerId
     });
 }
@@ -8205,34 +8347,44 @@ function sendMousePosition() {
 function handleMouseDown(event) {
     if (!gameState.connected || gameState.isLobby) return;
 
-    if (event.button === 0) { // 左键
-        gameState.playerState = 1; // 攻击
-    } else if (event.button === 2) { // 右键
-        gameState.playerState = -1; // 防御
+    // 阻止右键的默认行为
+    if (event.button === 2) {
+        event.preventDefault();
     }
 
-    // 发送状态到服务器
-    sendToServer({
-        COMMAND: 'SEND_DATA',
-        client_name: gameState.playerName,
-        data: [0, 0, gameState.playerState],
-        id: gameState.playerId
-    });
+    if (event.button === 0) { // 左键
+        gameState.leftMouseDown = true;
+        gameState.playerState = 1; // 攻击
+    } else if (event.button === 2) { // 右键
+        gameState.rightMouseDown = true;
+        gameState.playerState = -1; // 防御（后面按下的优先）
+    }
+
+    // 不发送移动数据，只更新状态
+    // 状态会在下一次sendMousePosition()调用时发送，这样可以避免发送[0,0]位置
 }
 
 // 处理鼠标释放
 function handleMouseUp(event) {
     if (!gameState.connected || gameState.isLobby) return;
 
-    gameState.playerState = 0; // 正常状态
+    // 阻止右键的默认行为
+    if (event.button === 2) {
+        event.preventDefault();
+    }
 
-    // 发送状态到服务器
-    sendToServer({
-        COMMAND: 'SEND_DATA',
-        client_name: gameState.playerName,
-        data: [0, 0, gameState.playerState],
-        id: gameState.playerId
-    });
+    if (event.button === 0) { // 左键
+        gameState.leftMouseDown = false;
+        // 如果右键还按着，则状态为防御，否则为正常
+        gameState.playerState = gameState.rightMouseDown ? -1 : 0;
+    } else if (event.button === 2) { // 右键
+        gameState.rightMouseDown = false;
+        // 如果左键还按着，则状态为攻击，否则为正常
+        gameState.playerState = gameState.leftMouseDown ? 1 : 0;
+    }
+
+    // 不发送移动数据，只更新状态
+    // 状态会在下一次sendMousePosition()调用时发送，这样可以避免发送[0,0]位置
 }
 
 // 处理键盘攻击和防守状态（始终有效，不需要开启键盘移动设置）
@@ -8307,7 +8459,7 @@ function handleKeyboardInput() {
         sendToServer({
             COMMAND: 'SEND_DATA',
             client_name: gameState.playerName,
-            data: [dx, dy, gameState.playerState],
+            data: [dx, dy, gameState.playerState, gameState.keyboardAttack, gameState.keyboardDefend],
             id: gameState.playerId
         });
     } else {
@@ -8315,7 +8467,7 @@ function handleKeyboardInput() {
         sendToServer({
             COMMAND: 'SEND_DATA',
             client_name: gameState.playerName,
-            data: [0, 0, gameState.playerState],
+            data: [0, 0, gameState.playerState, gameState.keyboardAttack, gameState.keyboardDefend],
             id: gameState.playerId
         });
 
@@ -8339,7 +8491,7 @@ function handleKeyboardInput() {
         sendToServer({
             COMMAND: 'SEND_DATA',
             client_name: gameState.playerName,
-            data: [0, 0, gameState.playerState],
+            data: [0, 0, gameState.playerState, gameState.keyboardAttack, gameState.keyboardDefend],
             id: gameState.playerId
         });
     }
@@ -9098,13 +9250,31 @@ function drawObject(obj) {
             const mobSize = Math.max(width, height);
 
 
-            // 现在所有怪物都使用矢量绘制，包括蚂蚁
-            if (obj.name.includes('soldierant') || obj.name.includes('workerant') ||
-                obj.name.includes('babyant') || obj.name.includes('antqueen')) {
-                drawVectorMonster(screenX, screenY, mobSize, obj.name, -obj.angle, obj.is_injured);
+            // 检查是否是rita_mob且开启虚化显示
+            if (obj.is_rita_mob && gameState.ritaMobPink) {
+                // Rita Mob虚化显示
+                ctx.save();
+                ctx.globalAlpha = 0.7; // 稍微透明
+
+                // 现在所有怪物都使用矢量绘制，包括蚂蚁
+                if (obj.name.includes('soldierant') || obj.name.includes('workerant') ||
+                    obj.name.includes('babyant') || obj.name.includes('antqueen')) {
+                    drawVectorMonster(screenX, screenY, mobSize, obj.name, -obj.angle, obj.is_injured);
+                } else {
+                    // 使用矢量绘制其他怪物
+                    drawVectorMonster(screenX, screenY, mobSize, obj.name, -obj.angle, obj.is_injured);
+                }
+
+                ctx.restore();
             } else {
-                // 使用矢量绘制其他怪物
-                drawVectorMonster(screenX, screenY, mobSize, obj.name, -obj.angle, obj.is_injured);
+                // 现在所有怪物都使用矢量绘制，包括蚂蚁
+                if (obj.name.includes('soldierant') || obj.name.includes('workerant') ||
+                    obj.name.includes('babyant') || obj.name.includes('antqueen')) {
+                    drawVectorMonster(screenX, screenY, mobSize, obj.name, -obj.angle, obj.is_injured);
+                } else {
+                    // 使用矢量绘制其他怪物
+                    drawVectorMonster(screenX, screenY, mobSize, obj.name, -obj.angle, obj.is_injured);
+                }
             }
         } else if (obj.name && obj.name.includes('drop')) {
             // 收集物 - 使用服务器传输的原始大小，但size应该是直径
@@ -11309,7 +11479,7 @@ function shiftToWhite(color, baseShiftAmount = 0.8, enableFlash = true) {
 }
 
 // 完全按照 enemy.js 的 Hornet 绘制方式
-function drawVectorHornet(x, y, size, angle, is_injured = false) {
+function drawVectorHornet(x, y, size, angle, is_injured = false, isPink = false) {
     const ctx = window.ctx;
     ctx.save();
     ctx.translate(x, y);
@@ -11327,8 +11497,17 @@ function drawVectorHornet(x, y, size, angle, is_injured = false) {
     };
 
     // 完全复制 enemy.js 中的 Hornet 绘制逻辑
-    let bodyColor = blendColor("#ffd363", "#FF0000", Math.max(0, 0)); // blendAmount(e)
-    let stripesColor = blendColor("#333333", "#FF0000", Math.max(0, 0));
+    let bodyColor, stripesColor;
+
+    if (isPink) {
+        // 粉色主题
+        bodyColor = blendColor("#FFB6C1", "#FF69B4", Math.max(0, 0)); // 浅粉色到深粉色
+        stripesColor = blendColor("#FF1493", "#C71585", Math.max(0, 0)); // 深粉色到中等粉色
+    } else {
+        // 原始颜色
+        bodyColor = blendColor("#ffd363", "#FF0000", Math.max(0, 0)); // blendAmount(e)
+        stripesColor = blendColor("#333333", "#FF0000", Math.max(0, 0));
+    }
 
     // 如果受伤，将颜色向白色偏向
     if (is_injured) {
@@ -12893,6 +13072,105 @@ function drawVectorFriendlySandstorm(x, y, size, angle, is_injured = false) {
 }
 
 // 绘制通用怪物形状（矢量版本）- 兼容旧版
+function drawVectorMonsterWithPink(x, y, size, type, angle, is_injured = false) {
+    // 根据类型调用具体的绘制函数，传递isPink参数
+    switch (type) {
+        case 'hornet':
+            drawVectorHornet(x, y, size, angle, is_injured, true);
+            break;
+        case 'ladybug':
+            drawVectorLadybug(x, y, size, angle, is_injured, true);
+            break;
+        case 'healbug':
+            drawVectorHealbug(x, y, size, angle, is_injured, true);
+            break;
+        case 'bee':
+            drawVectorBee(x, y, size, angle, is_injured, true);
+            break;
+        case 'centipede':
+        case 'centipede0':  // 蜈蚣头部（有触角）
+            drawCentipede(x, y, size, angle, true, is_injured, true); // 头部
+            break;
+        case 'centipede1':  // 蜈蚣身体（无触角）
+            drawCentipede(x, y, size, angle, false, is_injured, true); // 身体
+            break;
+        case 'rock':
+            drawVectorRock(x, y, size, angle, is_injured, true);
+            break;
+        case 'sandstorm':
+            drawVectorSandstorm(x, y, size, angle, is_injured, true);
+            break;
+        case 'friendlysandstorm':
+            drawVectorFriendlySandstorm(x, y, size, angle, is_injured, true);
+            break;
+        case 'bombbeetle':
+            drawVectorBombBeetle(x, y, size, angle, is_injured, true);
+            break;
+        case 'beetle':
+            drawVectorBeetle(x, y, size, angle, is_injured, true);
+            break;
+        case 'shield':
+            drawVectorShield(x, y, size, angle, is_injured, true);
+            break;
+        case 'venomspider':
+            drawVectorVenomSpider(x, y, size, angle, is_injured, true);
+            break;
+        case 'thunderelement':
+            drawVectorThunderElement(x, y, size, angle, is_injured, true);
+            break;
+        case 'soldierant':
+            drawVectorSoldierAnt(x, y, size, angle, is_injured, true);
+            break;
+        case 'workerant':
+            drawVectorWorkerAnt(x, y, size, angle, is_injured, true);
+            break;
+        case 'babyant':
+            drawVectorBabyAnt(x, y, size, angle, is_injured, true);
+            break;
+        case 'antqueen':
+            drawVectorAntQueen(x, y, size, angle, is_injured, true);
+            break;
+        case 'cactus':
+            drawVectorCactus(x, y, size, angle, is_injured, true);
+            break;
+        case 'soil':
+            drawVectorSoil(x, y, size, angle, is_injured, true);
+            break;
+        case 'evilcentipede':
+        case 'evilcentipede0':
+            drawVectorEvilCentipede(x, y, size, angle, true, is_injured, true);
+            break;
+        case 'evilcentipede1':
+            drawVectorEvilCentipede(x, y, size, angle, false, is_injured, true);
+            break;
+        case 'darkladybug':
+            drawVectorDarkLadybug(x, y, size, angle, is_injured, true);
+            break;
+        case 'dandeline':
+            drawVectorDandeline(x, y, size, angle, is_injured, true);
+            break;
+        case 'dandelinemissile':
+            drawVectorDandelineMissile(x, y, size, angle, is_injured, true);
+            break;
+        case 'starfish':
+            drawVectorStarfish(x, y, size, angle, is_injured, true);
+            break;
+        case 'crab':
+            drawVectorCrab(x, y, size, angle, is_injured, true);
+            break;
+        default:
+            // 默认绘制一个简单的粉色圆形
+            ctx.fillStyle = '#FFB6C1';
+            ctx.strokeStyle = '#FF69B4';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            break;
+    }
+}
+
 function drawVectorMonster(x, y, size, type, angle, is_injured = false) {
     // 强制重置canvas状态以防止污染
     // const ctx = window.ctx;
@@ -13074,7 +13352,8 @@ document.addEventListener('keydown', (e) => {
             gameState.keys[' '] = true;
             gameState.keys.Space = true;
             gameState.keyboardAttack = true;
-            e.preventDefault();
+            gameState.leftMouseDown = true; // 使用左键状态
+            gameState.playerState = 1; // 攻击（后面按下的优先）
         }
 
         // 防守键（Shift）- 始终监听
@@ -13082,7 +13361,8 @@ document.addEventListener('keydown', (e) => {
             gameState.keys.shift = true;
             gameState.keys.Shift = true;
             gameState.keyboardDefend = true;
-            e.preventDefault();
+            gameState.rightMouseDown = true; // 使用右键状态
+            gameState.playerState = -1; // 防御（后面按下的优先）
         }
     }
 
@@ -13097,6 +13377,10 @@ document.addEventListener('keydown', (e) => {
             e.preventDefault();
         } else if (key === '0') {
             handlePetalSwapByHotkey(9); // 0->9
+            e.preventDefault();
+        } else if (key === 'r') {
+            // R键 - 切换所有卡槽
+            handleAllPetalSlotsSwitch();
             e.preventDefault();
         }
 
@@ -13195,7 +13479,9 @@ document.addEventListener('keyup', (e) => {
             gameState.keys[' '] = false;
             gameState.keys.Space = false;
             gameState.keyboardAttack = false;
-            e.preventDefault();
+            gameState.leftMouseDown = false; // 释放左键状态
+            // 如果右键还按着，则状态为防御，否则为正常
+            gameState.playerState = gameState.rightMouseDown ? -1 : 0;
         }
 
         // 防守键（Shift）- 始终监听
@@ -13203,7 +13489,9 @@ document.addEventListener('keyup', (e) => {
             gameState.keys.shift = false;
             gameState.keys.Shift = false;
             gameState.keyboardDefend = false;
-            e.preventDefault();
+            gameState.rightMouseDown = false; // 释放右键状态
+            // 如果左键还按着，则状态为攻击，否则为正常
+            gameState.playerState = gameState.leftMouseDown ? 1 : 0;
         }
     }
 
