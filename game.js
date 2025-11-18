@@ -7414,8 +7414,12 @@ function performReconnect() {
         // 设置重连标志，让 connectToServer 知道这是重连
         gameState.isReconnecting = true;
 
-        // 重新建立连接
-        connectToServer();
+        // 延迟一段时间再重连，让服务器有时间清理连接状态
+        console.log('等待0.5秒后开始重连...');
+        setTimeout(() => {
+            // 重新建立连接
+            connectToServer();
+        }, 500);
 
         // 检查连接是否成功
         setTimeout(() => {
