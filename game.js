@@ -1903,6 +1903,12 @@ const objectTypeMap = {
     48: 'dandelinemissile',
     55: 'starfish',
     56: 'crab',
+    // 新增mob类型
+    57: 'urchin',
+    58: 'scorpion',
+    59: 'sponge',
+    60: 'bubble',
+    61: 'poison_needle',
     20: 'card',
     21: 'peas',
     22: 'grapes',
@@ -7992,6 +7998,7 @@ function handleServerMessage(data) {
                     const previousHealth = gameState.playerHealth;
                     gameState.playerHealth = message.health;
                     gameState.playerMaxHealth = message.maxhealth;
+                    gameState.isPoisoned = message.is_poisoned || 0;  // 添加中毒状态更新
                     updateHealthBar();
 
                     // 检查玩家是否死亡
@@ -8023,11 +8030,11 @@ function handleServerMessage(data) {
                     // 解析统一的对象列表
                     message.objects.forEach(obj => {
                         // 动态处理不同的传输格式
-                        let typeIdx, position, size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured, player_name, is_rita_mob;
+                        let typeIdx, position, size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured, is_poisoned, player_name, is_rita_mob;
 
-                        if (obj.length >= 10) {
-                            // # 花朵使用扩展传输格式: [idx, position, max_size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured, player_name]
-                            [typeIdx, position, size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured, player_name] = obj;
+                        if (obj.length >= 11) {
+                            // # 花朵使用扩展传输格式: [idx, position, max_size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured, is_poisoned, player_name]
+                            [typeIdx, position, size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured, is_poisoned, player_name] = obj;
                             is_rita_mob = 0;
                         } else if (obj.length === 6) {
                             // 新格式: [typeIdx, position, size, angle, is_injured, is_rita_mob]
@@ -8038,6 +8045,7 @@ function handleServerMessage(data) {
                             health = null;
                             max_health = null;
                             player_name = null;
+                            is_poisoned = 0;
                         } else if (obj.length === 5) {
                             // 其他对象普通格式: [typeIdx, position, size, angle, is_injured]
                             [typeIdx, position, size, angle, is_injured] = obj;
@@ -8048,6 +8056,7 @@ function handleServerMessage(data) {
                             max_health = null;
                             player_name = null;
                             is_rita_mob = 0;
+                            is_poisoned = 0;
                         } else {
                             // 兼容旧格式: [typeIdx, position, size, angle]
                             [typeIdx, position, size, angle] = obj;
@@ -8058,6 +8067,7 @@ function handleServerMessage(data) {
                             max_health = null;
                             is_injured = false;
                             is_rita_mob = 0;
+                            is_poisoned = 0;
                         }
 
                         const typeName = objectTypeMap[typeIdx] || 'unknown';
@@ -8077,6 +8087,8 @@ function handleServerMessage(data) {
                             max_health: max_health,
                             // 受伤状态
                             is_injured: is_injured || false,
+                            // 中毒状态（只有花朵对象才有）
+                            is_poisoned: is_poisoned || 0,
                             // 玩家名字（只有花朵对象才有）
                             player_name: player_name || null,
                             // Rita mob标识
@@ -8974,7 +8986,7 @@ function drawOtherPlayerHealthBarAndFlower(barX, barY, flower) {
 // 绘制其他玩家的迷你花朵
 function drawOtherPlayerMiniFlower(x, y, size, flower) {
     // 使用 flower.js 的 Flower 类来绘制其他玩家小花朵
-    if (typeof Flower !== 'undefined') {
+    if (typeof flower !== 'undefined') {
         const miniFlower = new Flower('mini');
 
         // 设置花朵属性 - 使用指定的位置
@@ -8986,6 +8998,7 @@ function drawOtherPlayerMiniFlower(x, y, size, flower) {
         miniFlower.maxHp = flower.max_hp || flower.maxHealth || 100;
         miniFlower.character = 'flower';
         miniFlower.ticksSinceLastDamaged = 1000;
+        miniFlower.is_poisoned = flower.is_poisoned || false;
 
         // 根据攻击状态设置表情和花瓣距离（完全复制其他玩家花朵的逻辑）
         let fastPetalDistance = 70; // 中立距离（与其他玩家花朵相同）
@@ -9013,7 +9026,7 @@ function drawOtherPlayerMiniFlower(x, y, size, flower) {
             angle: miniFlower.angle,
             hp: miniFlower.hp,
             shield: 0,
-            isPoisoned: 0,
+            isPoisoned: miniFlower.is_poisoned,
             healingReduction: 1,
             fastPetalDistance: fastPetalDistance,
             beforeStreakHp: miniFlower.hp,
@@ -9344,7 +9357,10 @@ function drawObject(obj) {
                    obj.name.includes('cactus') || obj.name.includes('soil') ||
                    obj.name.includes('evilcentipede') || obj.name.includes('darkladybug') ||
                    obj.name.includes('dandeline') || obj.name.includes('dandelinemissile') ||
-                   obj.name.includes('starfish') || obj.name.includes('crab'))) {
+                   obj.name.includes('starfish') || obj.name.includes('crab') ||
+                   obj.name.includes('urchin') || obj.name.includes('scorpion') ||
+                   obj.name.includes('sponge') || obj.name.includes('bubble') || 
+                   obj.name.includes('poison_needle'))) {
 
 
             // 使用服务器传输的原始大小，不应用最小尺寸限制
@@ -9479,7 +9495,7 @@ function drawObject(obj) {
                     angle: flower.angle,
                     hp: flower.hp,
                     shield: 0,
-                    isPoisoned: 0,
+                    isPoisoned: obj.is_poisoned || 0,  // 使用服务器传输的中毒状态
                     healingReduction: 1,
                     fastPetalDistance: fastPetalDistance,
                     beforeStreakHp: flower.hp,
@@ -13272,6 +13288,331 @@ function drawVectorMonsterWithPink(x, y, size, type, angle, is_injured = false) 
     }
 }
 
+// 辅助函数：从enemy.js复制
+function blendColor(color1, color2, t) {
+    const memoizedIndex = color1 + '_' + color2 + '_' + t
+    if (window.memoizedColors && window.memoizedColors[memoizedIndex] !== undefined) {
+        return window.memoizedColors[memoizedIndex];
+    }
+    const rgb1 = {
+        r: parseInt(color1.slice(1, 3), 16),
+        g: parseInt(color1.slice(3, 5), 16),
+        b: parseInt(color1.slice(5, 7), 16)
+    }
+    const rgb2 = {
+        r: parseInt(color2.slice(1, 3), 16),
+        g: parseInt(color2.slice(3, 5), 16),
+        b: parseInt(color2.slice(5, 7), 16)
+    }
+
+    const rgb = {
+        r: Math.round(rgb1.r + (rgb2.r - rgb1.r) * t),
+        g: Math.round(rgb1.g + (rgb2.g - rgb1.g) * t),
+        b: Math.round(rgb1.b + (rgb2.b - rgb1.b) * t)
+    }
+
+    const result = '#' + rgb.r.toString(16).padStart(2, '0') + rgb.g.toString(16).padStart(2, '0') + rgb.b.toString(16).padStart(2, '0');
+
+    if (!window.memoizedColors) {
+        window.memoizedColors = {};
+    }
+    window.memoizedColors[memoizedIndex] = result;
+
+    return result;
+}
+
+function checkForFirstFrame(e) {
+    return (e.lastTicksSinceLastDamaged < 13 && !window.damageFlash)
+}
+
+// 海胆绘制函数
+function drawVectorUrchin(x, y, size, angle, is_injured = false) {
+    const e = {
+        render: {
+            x: 0, y: 0,
+            radius: size / 2,
+            angle: angle,
+            time: 0
+        },
+        lastTicksSinceLastDamaged: is_injured ? 5 : 20
+    };
+
+    ctx.lineWidth = e.render.radius / 6;
+    e.render.time += 16; // 模拟时间增量
+
+    ctx.fillStyle = blendColor('#452930', "#FF0000", Math.max(0, is_injured ? 0.5 : 0));
+    ctx.strokeStyle = blendColor('#341f24', "#FF0000", Math.max(0, is_injured ? 0.5 : 0));
+    if (checkForFirstFrame(e)) {
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "#ffffff";
+    }
+
+    let oldAlpha = ctx.globalAlpha;
+
+    ctx.globalAlpha = oldAlpha * 0.1;
+    ctx.beginPath();
+    ctx.arc(x, y, e.render.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.closePath();
+    ctx.globalAlpha = oldAlpha;
+    ctx.beginPath();
+    ctx.arc(x, y, e.render.radius * 1 / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    for (let i = 18; i > 0; i--) {
+        let offset = Math.cos(e.render.time / 500 + i * Math.PI / 1.45) / 4;
+        ctx.rotate(Math.PI * 1 / 9 * i)
+        ctx.beginPath();
+        ctx.moveTo(e.render.radius * 0.4, 0);
+        ctx.lineTo(e.render.radius * (1.2 + offset), 0)
+        ctx.stroke();
+        ctx.closePath();
+        ctx.rotate(-Math.PI * 1 / 9 * i)
+    }
+    ctx.restore();
+}
+
+// 蝎子绘制函数
+function drawVectorScorpion(x, y, size, angle, is_injured = false) {
+    const e = {
+        render: {
+            x: 0, y: 0,
+            radius: size / 2,
+            angle: angle,
+            time: 0,
+            lastX: 0,
+            lastY: 0
+        },
+        lastTicksSinceLastDamaged: is_injured ? 5 : 20
+    };
+
+    e.render.time = Date.now() / 1000; // 使用实际时间产生动画
+
+    let bodyColor = blendColor('#c69a2c', "#FF0000", Math.max(0, is_injured ? 0.5 : 0));
+    let edgeColor = blendColor('#9e7d24', "#FF0000", Math.max(0, is_injured ? 0.5 : 0));
+    let bodyColor2 = blendColor('#dbab30', "#FF0000", Math.max(0, is_injured ? 0.5 : 0));
+    let edgeColor2 = blendColor('#b28b29', "#FF0000", Math.max(0, is_injured ? 0.5 : 0));
+
+    if (checkForFirstFrame(e)) {
+        bodyColor = "#ffffff";
+        edgeColor = "#ffffff";
+        bodyColor2 = "#ffffff";
+        edgeColor2 = "#ffffff";
+    }
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    //Legs
+    ctx.strokeStyle = "#333333";
+    ctx.lineWidth = e.render.radius / 7;
+
+    ctx.rotate(Math.PI / 2);
+
+    for (let i = 4; i--; i > 0) {
+        let rotateAmount = i * 0.52359 - 0.52359 - 0.26179938 + Math.sin(e.render.time * 32 + i * 1.5) * 0.05; // 加快频率到32倍
+        ctx.rotate(rotateAmount);
+        ctx.beginPath();
+        ctx.moveTo(-e.render.radius * 1, 0);
+        ctx.quadraticCurveTo(-e.render.radius, e.render.radius * 1 / 6, 0, 0);
+        ctx.quadraticCurveTo(e.render.radius, -e.render.radius * 1 / 6, e.render.radius * 1, 0);
+        ctx.stroke();
+        ctx.rotate(-rotateAmount);
+        ctx.closePath();
+    }
+
+    ctx.rotate(-Math.PI / 2);
+
+    //Pincers
+    ctx.fillStyle = "#333333";
+
+    ctx.translate(e.render.radius * 0.79, e.render.radius * -0.48);
+
+    let rotateAngle = Math.cos(e.render.time / 10) / 7 + 0.1;
+    ctx.rotate(rotateAngle);
+    ctx.beginPath();
+    ctx.lineTo(e.render.radius * (0.79 - 0.79), e.render.radius * (-0.48 + 0.48));
+    ctx.quadraticCurveTo(e.render.radius * (1.49 - 0.79), e.render.radius * (-0.32 + 0.48), e.render.radius * (1.43 - 0.79), e.render.radius * (-0.26 + 0.48));
+    ctx.quadraticCurveTo(e.render.radius * (1.43 - 0.79), e.render.radius * (-0.13 + 0.48), e.render.radius * (0.76 - 0.79), e.render.radius * (-0.28 + 0.48));
+    ctx.fill();
+    ctx.closePath();
+    ctx.rotate(-rotateAngle);
+    ctx.translate(-e.render.radius * 0.79, -e.render.radius * -0.48);
+
+    ctx.translate(e.render.radius * 0.79, -e.render.radius * -0.48);
+
+    ctx.rotate(-rotateAngle);
+    ctx.beginPath();
+    ctx.lineTo(e.render.radius * (0.79 - 0.79), e.render.radius * (0.48 - 0.48));
+    ctx.quadraticCurveTo(e.render.radius * (1.49 - 0.79), e.render.radius * (0.32 - 0.48), e.render.radius * (1.43 - 0.79), e.render.radius * (0.26 - 0.48));
+    ctx.quadraticCurveTo(e.render.radius * (1.43 - 0.79), e.render.radius * (0.13 - 0.48), e.render.radius * (0.76 - 0.79), e.render.radius * (0.28 - 0.48));
+    ctx.fill();
+    ctx.closePath();
+    ctx.rotate(rotateAngle);
+    ctx.translate(-e.render.radius * 0.79, e.render.radius * -0.48);
+
+    //Main Body
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round"
+    ctx.lineWidth = e.render.radius * 0.19310344827586207;
+    ctx.strokeStyle = edgeColor;
+    ctx.fillStyle = bodyColor;
+
+    ctx.beginPath();
+    ctx.lineTo(e.render.radius * -0.97, e.render.radius * 0);
+    ctx.bezierCurveTo(e.render.radius * -1.1, e.render.radius * -1.27, e.render.radius * 1.01, e.render.radius * -0.75, e.render.radius * 1.01, e.render.radius * 0);
+    ctx.bezierCurveTo(e.render.radius * 1.01, e.render.radius * 0.75, e.render.radius * -1.1, e.render.radius * 1.27, e.render.radius * -0.97, e.render.radius * 0);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    //Main Body Patterns
+    ctx.lineWidth = e.render.radius * 0.16551724137931034;
+    ctx.beginPath();
+    ctx.lineTo(e.render.radius * 0.55, e.render.radius * -0.3);
+    ctx.quadraticCurveTo(e.render.radius * 0.66, e.render.radius * 0, e.render.radius * 0.55, e.render.radius * 0.3);
+    ctx.stroke();
+    ctx.closePath();
+    ctx.beginPath();
+    ctx.lineTo(e.render.radius * 0.17, e.render.radius * -0.46);
+    ctx.quadraticCurveTo(e.render.radius * 0.26, e.render.radius * 0, e.render.radius * 0.17, e.render.radius * 0.46);
+    ctx.stroke();
+    ctx.closePath();
+    ctx.beginPath();
+    ctx.lineTo(e.render.radius * -0.19, e.render.radius * -0.46);
+    ctx.quadraticCurveTo(e.render.radius * -0.28, e.render.radius * 0, e.render.radius * -0.19, e.render.radius * 0.46);
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.restore();
+}
+
+// 海绵绘制函数
+function drawVectorSponge(x, y, size, angle, is_injured = false) {
+    const e = {
+        render: {
+            radius: size / 2
+        },
+        data: [0, 0], // 简化数据
+        lastTicksSinceLastDamaged: is_injured ? 5 : 20
+    };
+
+    if (e.data[0] == 0) {
+        ctx.strokeStyle = blendColor('#c1a37d', "#FF0000", Math.max(0, is_injured ? 0.5 : 0));
+        ctx.fillStyle = blendColor('#efc99b', "#FF0000", Math.max(0, is_injured ? 0.5 : 0));
+    } else if (e.data[0] == 1) {
+        ctx.strokeStyle = blendColor('#977d90', "#FF0000", Math.max(0, is_injured ? 0.5 : 0));
+        ctx.fillStyle = blendColor('#ad90a3', "#FF0000", Math.max(0, is_injured ? 0.5 : 0));
+    } else if (e.data[0] == 2) {
+        ctx.strokeStyle = blendColor('#9b81b9', "#FF0000", Math.max(0, is_injured ? 0.5 : 0));
+        ctx.fillStyle = blendColor('#b798d1', "#FF0000", Math.max(0, is_injured ? 0.5 : 0));
+    } else {
+        ctx.strokeStyle = blendColor('#000000', "#FF0000", Math.max(0, is_injured ? 0.5 : 0));
+        ctx.fillStyle = `hsl(${Date.now()%360}, 50%, 50%)`
+    }
+    if (checkForFirstFrame(e)) {
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "#ffffff";
+    }
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.lineWidth = e.render.radius / 6;
+    ctx.rotate(e.data[1]);
+    ctx.beginPath();
+    ctx.moveTo(e.render.radius, 0);
+    for (let i = 0; i < Math.PI * 2; i += Math.PI * 2 / 15) {
+        ctx.quadraticCurveTo(Math.cos(i) * e.render.radius * 1.2, Math.sin(i) * e.render.radius * 1.2, Math.cos(i + Math.PI * 1 / 15) * e.render.radius * 0.9, Math.sin(i + Math.PI * 1 / 15) * e.render.radius * 0.9);
+    }
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.fillStyle = ctx.strokeStyle;
+    for (let i = 0; i < Math.PI * 2; i += Math.PI * 2 / 5) {
+        ctx.beginPath();
+        ctx.arc(Math.cos(i) * e.render.radius * 0.5, Math.sin(i) * e.render.radius * 0.5, e.render.radius * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    ctx.restore();
+}
+
+// 气泡绘制函数
+function drawVectorBubble(x, y, size, angle, is_injured = false) {
+    const e = {
+        render: {
+            radius: size / 2,
+            angle: angle
+        },
+        lastTicksSinceLastDamaged: is_injured ? 5 : 20
+    };
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.lineWidth = e.render.radius / 10;
+
+    ctx.fillStyle = blendColor('#ffffff', "#FF0000", Math.max(0, is_injured ? 0.5 : 0));
+    ctx.strokeStyle = blendColor('#ffffff', "#FF0000", Math.max(0, is_injured ? 0.5 : 0));
+    if (checkForFirstFrame(e)) {
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "#ffffff";
+    }
+    let oldGlobalAlpha = ctx.globalAlpha;
+    ctx.globalAlpha *= 0.6;
+    ctx.beginPath();
+    ctx.arc(0, 0, e.render.radius * 19 / 20, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.closePath();
+    ctx.globalAlpha *= 0.6;
+    ctx.beginPath();
+    ctx.arc(0, 0, e.render.radius * 18 / 20, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.closePath();
+    ctx.beginPath();
+    ctx.arc(-e.render.radius * 0.45, 0, e.render.radius * 1 / 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.closePath();
+
+    ctx.globalAlpha = oldGlobalAlpha;
+    ctx.restore();
+}
+
+// 毒针绘制函数
+function drawVectorPoisonNeedle(x, y, size, angle) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.lineJoin = 'round';
+
+    const radius = size / 2;
+    let bodyColor = "#333333";
+
+    ctx.rotate(angle + Math.PI / 2);
+    ctx.beginPath();
+    ctx.fillStyle = bodyColor;
+    ctx.strokeStyle = bodyColor;
+    ctx.lineWidth = radius / 1.5;
+
+    ctx.moveTo(0, -radius * Math.sqrt(3) * 0.6);
+    ctx.lineTo(radius * Math.sqrt(3) * .58, 0);
+    ctx.lineTo(-radius * Math.sqrt(3) * .58, 0);
+    ctx.lineTo(0, -radius * Math.sqrt(3) * 0.6);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.rotate(-angle - Math.PI / 2);
+    ctx.restore();
+}
+
 function drawVectorMonster(x, y, size, type, angle, is_injured = false) {
     // 强制重置canvas状态以防止污染
     // const ctx = window.ctx;
@@ -13373,6 +13714,21 @@ function drawVectorMonster(x, y, size, type, angle, is_injured = false) {
             break;
         case 'crab':
             drawVectorCrab(x, y, size, angle, is_injured);
+            break;
+        case 'urchin':
+            drawVectorUrchin(x, y, size, angle, is_injured);
+            break;
+        case 'scorpion':
+            drawVectorScorpion(x, y, size, angle, is_injured);
+            break;
+        case 'sponge':
+            drawVectorSponge(x, y, size, angle, is_injured);
+            break;
+        case 'bubble':
+            drawVectorBubble(x, y, size, angle, is_injured);
+            break;
+        case 'poison_needle':
+            drawVectorPoisonNeedle(x, y, size, angle);
             break;
         default:
             // 默认绘制简单圆形
