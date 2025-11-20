@@ -550,12 +550,14 @@ function startPetalAnimation() {
             }
         });
 
-        // 继续动画循环
-        if (animatedCanvases.length > 0) {
-            requestAnimationFrame(animate);
-        } else {
-            window.petalAnimationRunning = false;
-        }
+        // 降低动画帧率到15fps
+        setTimeout(() => {
+            if (animatedCanvases.length > 0) {
+                requestAnimationFrame(animate);
+            } else {
+                window.petalAnimationRunning = false;
+            }
+        }, 1000 / 15); // 15fps
     }
 
     animate();
@@ -5440,6 +5442,55 @@ function initializeEquipmentSlots() {
                 }
             });
 
+            // 添加点击交换功能（修改现有的，添加Ctrl检测）
+            slot.addEventListener('click', (e) => {
+                // 阻止事件冒泡
+                e.stopPropagation();
+
+                // 如果按住Ctrl，执行回收操作
+                if (e.ctrlKey || e.metaKey) {
+                    const petal = gameState.equippedPetals[slotIndex];
+                    if (petal && petal.type !== undefined && petal.level !== undefined) {
+                        // 检查背包中是否已有同类型同等级的花瓣
+                        const existingPetalIndex = gameState.availablePetals.findIndex(
+                            p => p && p.type === petal.type && p.level === petal.level
+                        );
+
+                        if (existingPetalIndex !== -1) {
+                            // 如果存在，增加数量
+                            gameState.availablePetals[existingPetalIndex].count += petal.count || 1;
+                        } else {
+                            // 如果不存在，添加到背包
+                            gameState.availablePetals.push({
+                                type: petal.type,
+                                level: petal.level,
+                                count: petal.count || 1
+                            });
+                        }
+
+                        // 清空装备槽
+                        gameState.equippedPetals[slotIndex] = null;
+
+                        // 更新UI
+                        updateEquipmentSlots();
+                        updateBagContent();
+
+                        // 保存构建到服务器
+                        saveCurrentBuild();
+                    }
+                    return;
+                }
+
+                // 原有的点击交换逻辑
+                const correspondingSlot = getCorrespondingSlot(slotIndex);
+                if (correspondingSlot === null) {
+                    return; // 没有对应的槽位
+                }
+
+                // 执行交换（带动画），不检查是否有花瓣
+                swapPetalsWithAnimation(slotIndex, correspondingSlot);
+            });
+
             slot.addEventListener('dragstart', (e) => {
                 const petal = gameState.equippedPetals[slotIndex];
                 if (petal && petal.type !== undefined && petal.level !== undefined) {
@@ -5472,21 +5523,6 @@ function initializeEquipmentSlots() {
 
             slot.addEventListener('dragend', (e) => {
                 slot.classList.remove('dragging');
-            });
-
-            // 添加点击交换功能
-            slot.addEventListener('click', (e) => {
-                // 阻止事件冒泡
-                e.stopPropagation();
-
-                // 获取主副槽对应关系
-                const correspondingSlot = getCorrespondingSlot(slotIndex);
-                if (correspondingSlot === null) {
-                    return; // 没有对应的槽位
-                }
-
-                // 执行交换（带动画），不检查是否有花瓣
-                swapPetalsWithAnimation(slotIndex, correspondingSlot);
             });
 
             // 添加提示文本
@@ -9861,6 +9897,44 @@ function drawEffects() {
                     ctx.beginPath();
                     ctx.arc(px, py, size, 0, Math.PI * 2);
                     ctx.fill();
+                }
+
+                ctx.restore();
+                return true;
+            }
+        }
+        else if (effect.type === 'dandelion_suppression') {
+            // 蒲公英抑制效果：0.4秒内从中心发射到边界
+            if (elapsed < 0.4) {
+                const progress = elapsed / 0.4;
+                const screenX = config.baseCanvasWidth/2 + (effect.position[0] - gameState.playerPosition.x);
+                const screenY = config.baseCanvasHeight/2 + (effect.position[1] - gameState.playerPosition.y);
+                const alpha = 1 - progress;
+
+                ctx.save();
+
+                // 生成10个小蒲公英从中心向边界发射
+                const dandelionCount = 10;
+                const angleStep = Math.PI * 2 / dandelionCount;
+
+                for (let i = 0; i < dandelionCount; i++) {
+                    const angle = angleStep * i;
+                    // 确保粒子中心不会超出radius范围（减去粒子自身半径）
+                    const maxDistance = effect.radius - 8; // 8是粒子半径
+                    const distance = maxDistance * progress; // 从中心到边界（留出粒子半径空间）
+                    const dandelionX = screenX + Math.cos(angle) * distance;
+                    const dandelionY = screenY + Math.sin(angle) * distance;
+
+                    // 绘制小蒲公英（淡黄色圆形，增大尺寸）
+                    ctx.fillStyle = `rgba(255, 255, 200, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(dandelionX, dandelionY, 8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 添加白色边框使其更明显
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
                 }
 
                 ctx.restore();
