@@ -2071,7 +2071,7 @@ window.gameState = {
     pendingSynthesisResult: null, // 待领取的合成结果（避免重复添加）
     wave: {
         current: 1,
-        start_time: 0,  // wave开始时间戳
+        now_time: 0,  // wave开始时间戳
         duration: 120,
         spawn_phase_duration: 60,
         is_spawn_phase: true
@@ -3243,9 +3243,8 @@ function updateWaveBar(waveData) {
     // 更新wave状态（新格式使用时间戳）
     gameState.wave = {
         current: waveData.current,
-        start_time: waveData.start_time,
+        now_time: waveData.now_time,
         duration: waveData.duration,
-        spawn_phase_duration: waveData.spawn_phase_duration,
         is_spawn_phase: waveData.is_spawn_phase
     };
 
@@ -3253,16 +3252,16 @@ function updateWaveBar(waveData) {
 
 // 客户端计算wave进度的函数
 function updateWaveProgress() {
-    if (gameState.isLobby || !gameState.wave.start_time) return;
+    if (gameState.isLobby || !gameState.wave.now_time) return;
 
     const currentTime = Date.now() / 1000; // 转换为秒
-    const elapsed = currentTime - gameState.wave.start_time;
+    const elapsed = gameState.wave.now_time;
 
     // 更新wave文本
     waveText.textContent = `Wave: ${gameState.wave.current}`;
 
     // 计算当前阶段的进度
-    const spawnPhaseDuration = gameState.wave.spawn_phase_duration; // 前60秒
+    const spawnPhaseDuration = gameState.wave.duration / 2; // 前60秒
     const dangerPhaseDuration = gameState.wave.duration - spawnPhaseDuration; // 后60秒
 
     if (elapsed <= spawnPhaseDuration) {
@@ -7101,7 +7100,7 @@ function restartGame() {
     gameState.currentRoom = null;
     gameState.hasSelectedRoom = false;
     gameState.previousRoom = null;
-    gameState.wave = { current: 1, start_time: null, duration: 120, spawn_phase_duration: 60, is_spawn_phase: false };
+    gameState.wave = { current: 1, now_time: null, duration: 120, spawn_phase_duration: 60, is_spawn_phase: false };
     gameState.effects = [];
     gameState.mobs = [];
     gameState.drops = [];
@@ -7193,7 +7192,7 @@ function exitGame() {
     gameState.currentRoom = null;
     gameState.hasSelectedRoom = false;
     gameState.previousRoom = null;
-    gameState.wave = { current: 1, start_time: null, duration: 120, spawn_phase_duration: 60, is_spawn_phase: false };
+    gameState.wave = { current: 1, now_time: null, duration: 120, spawn_phase_duration: 60, is_spawn_phase: false };
     gameState.effects = [];
     gameState.mobs = [];
     gameState.drops = [];
@@ -8072,6 +8071,7 @@ function handleServerMessage(data) {
                             // # 花朵使用扩展传输格式: [idx, position, max_size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured, is_poisoned, player_name]
                             [typeIdx, position, size, angle, speed_x, speed_y, is_attack, health, max_health, is_injured, is_poisoned, player_name] = obj;
                             is_rita_mob = 0;
+                            quantity = 1;
                         } else if (obj.length === 6) {
                             // 新格式: [typeIdx, position, size, angle, is_injured, is_rita_mob]
                             [typeIdx, position, size, angle, is_injured, is_rita_mob] = obj;
@@ -8082,17 +8082,37 @@ function handleServerMessage(data) {
                             max_health = null;
                             player_name = null;
                             is_poisoned = 0;
+                            quantity = 1;
                         } else if (obj.length === 5) {
                             // 其他对象普通格式: [typeIdx, position, size, angle, is_injured]
-                            [typeIdx, position, size, angle, is_injured] = obj;
-                            speed_x = 0;
-                            speed_y = 0;
-                            is_attack = 0;
-                            health = null;
-                            max_health = null;
-                            player_name = null;
-                            is_rita_mob = 0;
-                            is_poisoned = 0;
+                            // 掉落物特殊格式: [typeIdx, position, size, drop_name, quantity]
+                            if (obj[0] === 51) {
+                                // 掉落物格式: [typeIdx, position, size, drop_name, quantity]
+                                [typeIdx, position, size, angle, quantity] = obj;
+                                // 掉落物的 angle 实际上是 drop_name，quantity 是数量
+                                drop_name = angle;
+                                is_injured = false;
+                                speed_x = 0;
+                                speed_y = 0;
+                                is_attack = 0;
+                                health = null;
+                                max_health = null;
+                                player_name = null;
+                                is_rita_mob = 0;
+                                is_poisoned = 0;
+                            } else {
+                                // 其他对象普通格式: [typeIdx, position, size, angle, is_injured]
+                                [typeIdx, position, size, angle, is_injured] = obj;
+                                speed_x = 0;
+                                speed_y = 0;
+                                is_attack = 0;
+                                health = null;
+                                max_health = null;
+                                player_name = null;
+                                is_rita_mob = 0;
+                                is_poisoned = 0;
+                                quantity = 1;  // 非掉落物默认数量为1
+                            }
                         } else {
                             // 兼容旧格式: [typeIdx, position, size, angle]
                             [typeIdx, position, size, angle] = obj;
@@ -8104,6 +8124,7 @@ function handleServerMessage(data) {
                             is_injured = false;
                             is_rita_mob = 0;
                             is_poisoned = 0;
+                            quantity = 1;
                         }
 
                         const typeName = objectTypeMap[typeIdx] || 'unknown';
@@ -8128,7 +8149,8 @@ function handleServerMessage(data) {
                             // 玩家名字（只有花朵对象才有）
                             player_name: player_name || null,
                             // Rita mob标识
-                            is_rita_mob: is_rita_mob || 0
+                            is_rita_mob: is_rita_mob || 0,
+                            quantity: quantity || 1,
                         };
 
                         
@@ -8142,7 +8164,7 @@ function handleServerMessage(data) {
                             // 花朵类型 (20)
                             gameState.flowers.push(baseObject);
                         } else if (typeIdx === 51) {
-                            // 掉落物类型 (21)
+                            // 掉落物类型 (51)
                             gameState.collectDrops.push(baseObject);
                         } else{
                             gameState.mobs.push(baseObject);
@@ -8187,7 +8209,8 @@ function handleServerMessage(data) {
                         position: { x: drop[1][0], y: drop[1][1] },
                         angle: drop[2],
                         level: drop[3],
-                        size: [drop[4][0], drop[4][1]]
+                        size: [drop[4][0], drop[4][1]],
+                        quantity: drop[5] || 1  // 添加数量字段，默认为1
                     }));
                 }
 
@@ -8322,7 +8345,7 @@ function handleServerMessage(data) {
                 gameState.mobsSummary = {};
                 gameState.currentRoom = null;
                 gameState.previousRoom = null;
-                gameState.wave = { current: 1, start_time: null, duration: 120, spawn_phase_duration: 60, is_spawn_phase: false };
+                gameState.wave = { current: 1, now_time: null, duration: 120, spawn_phase_duration: 60, is_spawn_phase: false };
                 gameState.effects = [];
                 gameState.mobs = [];
                 gameState.drops = [];
@@ -9485,7 +9508,31 @@ function drawObject(obj) {
                 drawPetalInContext(tempPetal, ctx, dropSize);
             }
 
-            
+            // 绘制掉落物数量
+            const quantity = obj.quantity || 1;
+            if (quantity > 1) {
+                ctx.save();
+                ctx.fillStyle = 'white';
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 2;
+                ctx.font = `bold ${Math.max(12, dropSize * 0.4)}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                const countText = `x${quantity}`;
+                // 掉落物绘制区域：从 screenX - dropSize 到 screenX + dropSize * 3
+                const rightEdge = dropSize * 3;  // 掉落物右边缘相对于中心的偏移
+                const topEdge = dropSize;         // 掉落物上边缘相对于中心的偏移
+                const countOffsetX = rightEdge * 0.8;  // 右偏移（更接近右边缘）
+                const countOffsetY = topEdge * 0.6;    // 上偏移（接近上边缘）
+
+                // 先描边再填充，使文字更清晰
+                ctx.strokeText(countText, screenX + countOffsetX, screenY - countOffsetY);
+                ctx.fillText(countText, screenX + countOffsetX, screenY - countOffsetY);
+                ctx.restore();
+            }
+
+
             ctx.restore()
 
         } else if (obj.name && obj.name.includes('flower')) {
@@ -11297,7 +11344,7 @@ function drawVectorPlayer(x, y, size, angle) {
 
     // 绘制微笑嘴巴
     ctx.beginPath();
-    ctx.arc(0, radius * 0.1, radius * 0.4, 0.2 * Math.PI, 0.8 * Math.PI, false);
+    ctx.arc(0, radius * 0.1, radius * 0.4, 0.2 * Math.PI, 0.10 * math.PI, false);
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = radius * 0.05;
     ctx.lineCap = 'round';
