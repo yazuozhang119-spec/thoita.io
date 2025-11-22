@@ -1918,6 +1918,7 @@ const objectTypeMap = {
     24: 'cactus_petal',
     25: 'soil_petal',
     26: 'starfish_petal',
+    62: 'friendlyqueenant',
 };
 
 // 游戏配置
@@ -8128,6 +8129,7 @@ function handleServerMessage(data) {
                         }
 
                         const typeName = objectTypeMap[typeIdx] || 'unknown';
+                        console.log(`处理对象: ${typeName}`)
 
                         const baseObject = {
                             name: typeName,
@@ -9419,7 +9421,7 @@ function drawObject(obj) {
                    obj.name.includes('starfish') || obj.name.includes('crab') ||
                    obj.name.includes('urchin') || obj.name.includes('scorpion') ||
                    obj.name.includes('sponge') || obj.name.includes('bubble') || 
-                   obj.name.includes('poison_needle'))) {
+                   obj.name.includes('poison_needle') || obj.name.includes('friendlyqueenant'))) {
 
 
             // 使用服务器传输的原始大小，不应用最小尺寸限制
@@ -10057,6 +10059,7 @@ function drawMobsSummary() {
         // 蚂蚁类怪物使用矢量绘制
         'soldierant': drawVectorSoldierAnt,
         'friendlysoldierant': drawVectorFriendlySoldierAnt,
+        'friendlyqueenant': drawVectorFriendlyQueenAnt,
         'workerant': drawVectorWorkerAnt,
         'babyant': drawVectorBabyAnt,
         'antqueen': drawVectorAntQueen,
@@ -13100,6 +13103,156 @@ function drawVectorFriendlySoldierAnt(x, y, size, angle, is_injured = false) {
     ctx.restore();
 }
 
+// 绘制友好蚁后（黄色版本的蚁后）
+function drawVectorFriendlyQueenAnt(x, y, size, angle, is_injured = false) {
+    const ctx = window.ctx;
+    ctx.save();
+    ctx.translate(x, y);
+
+    // 创建完全符合enemy.js格式的enemy对象
+    const e = {
+        render: {
+            x: x,
+            y: y,
+            angle: angle,
+            radius: size / 2,
+            time: getCurrentTime() / 1000, // 初始化时间
+            lastX: x,
+            lastY: y
+        },
+        ticksSinceLastDamaged: is_injured ? 10 : 1000,
+        lastTicksSinceLastDamaged: 1000,
+        team: "mob"
+    };
+
+    // 完全复制enemy.js中的Queen Ant绘制代码，但使用友方黄色
+    ctx.lastTransform73408 = ctx.getTransform();
+    ctx.scale(.8, .8); // 调整蚁后的显示大小为0.8倍
+
+    // 更新动画时间
+    e.render.time = getCurrentTime() / 1000;
+
+    // 使用友方黄色（参考友好兵蚁的颜色）
+    let body = '#ffeb3b'; // 黄色身体
+    let bodyOutline = '#fbc02d'; // 黄色边框
+
+    // 如果is_injured为true，使用闪烁变白效果
+    if (is_injured) {
+        body = shiftToWhite(body);
+        bodyOutline = shiftToWhite(bodyOutline);
+    } else {
+        // 如果是受伤的第一帧，也显示白色
+        if (checkForFirstFrame(e)) {
+            body = "#ffffff";
+            bodyOutline = "#ffffff";
+        }
+    }
+
+    // "legs" no they are jaws you dumbbum-
+    // 如果is_injured为true，颚部也用白色
+    if (is_injured) {
+        ctx.strokeStyle = "#ffffff";
+    } else {
+        ctx.strokeStyle = '#292929';
+        // 如果是受伤的第一帧，也显示白色
+        if (checkForFirstFrame(e)) {
+            ctx.strokeStyle = "#ffffff";
+        }
+    }
+    ctx.lineWidth = e.render.radius / 3.75;
+
+    ctx.rotate(e.render.angle);
+
+    ctx.translate(-e.render.radius * 0.52, 0);
+
+    let angle1 = Math.cos(getCurrentTime() / 240 + e.render.time * 7) * 0.045;
+    ctx.translate(e.render.radius * 1.2, e.render.radius * 0.4); // 1
+    ctx.rotate(angle1);
+    ctx.beginPath();
+    ctx.lineTo(-e.render.radius * 0.4, e.render.radius * 0.05);
+    ctx.quadraticCurveTo(e.render.radius * 0.7, e.render.radius * 0.05, e.render.radius * 0.9, -e.render.radius * 0.125);
+    ctx.stroke();
+    ctx.closePath();
+    ctx.rotate(-angle1);
+    ctx.translate(-e.render.radius * 1.2, -e.render.radius * 0.4); // 0
+
+    ctx.translate(e.render.radius * 1.2, -e.render.radius * 0.4); // 1
+    ctx.rotate(-angle1);
+    ctx.beginPath();
+    ctx.lineTo(-e.render.radius * 0.4, -e.render.radius * 0.05);
+    ctx.quadraticCurveTo(e.render.radius * 0.7, -e.render.radius * 0.05, e.render.radius * 0.9, e.render.radius * 0.125);
+    ctx.stroke();
+    ctx.closePath();
+    ctx.rotate(angle1);
+    ctx.translate(-e.render.radius * 1.2, e.render.radius * 0.4); // 0
+
+    ctx.lineWidth = e.render.radius / 5;
+    ctx.fillStyle = body;
+    ctx.strokeStyle = bodyOutline;
+    ctx.beginPath();
+    ctx.arc(-e.render.radius * 3 / 4, 0, e.render.radius * 13 / 12.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.beginPath();
+    ctx.arc(e.render.radius * 1 / 4, 0, e.render.radius * 11.5 / 12.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    //Wings
+    ctx.globalAlpha *= 0.3;
+    ctx.fillStyle = "white";
+    let wingAngle = Math.cos(getCurrentTime() / 90 + e.render.time * 15) / 2.5 - 0.015;
+    ctx.translate(e.render.radius * 0.4, 0); // -0.4
+    ctx.rotate(wingAngle);
+    ctx.translate(e.render.radius * -0.1, e.render.radius * 0.4); // -0.5
+    ctx.beginPath();
+    ctx.ellipse(-e.render.radius * 0.7, 0, e.render.radius * 1.1, e.render.radius * 0.45, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.translate(-(e.render.radius * -0.1), -(e.render.radius * 0.4)) // -0.4
+    ctx.rotate(-wingAngle);
+    ctx.rotate(-wingAngle);
+    ctx.translate(e.render.radius * -0.1, -e.render.radius * 0.4); // -0.5
+    ctx.beginPath();
+    ctx.ellipse(-e.render.radius * 0.7, 0, e.render.radius * 1.1, e.render.radius * 0.45, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.translate(-(e.render.radius * -0.1), (e.render.radius * 0.4)) // -0.4
+    ctx.rotate(wingAngle);
+    ctx.translate(e.render.radius * -0.4, 0); // 0
+    ctx.globalAlpha *= (1 / 0.3);
+
+    ctx.rotate(-e.render.angle);
+
+    ctx.lineWidth = e.render.radius / 5;
+
+    // 受伤时头部也是白色
+    if (is_injured) {
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "#ffffff";
+    } else {
+        ctx.fillStyle = body;
+        ctx.strokeStyle = bodyOutline;
+        // 如果是受伤的第一帧，也显示白色
+        if (checkForFirstFrame(e)) {
+            ctx.fillStyle = "#ffffff";
+            ctx.strokeStyle = "#ffffff";
+        }
+    }
+
+    ctx.rotate(e.render.angle);
+    // head
+    ctx.beginPath();
+    ctx.arc(e.render.radius, 0, e.render.radius * 9.5 / 12.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.setTransform(ctx.lastTransform73408);
+    ctx.restore();
+}
+
 // 绘制蚂蚁卵
 function drawVectorAntEgg(x, y, size, angle, is_injured = false) {
     ctx.save();
@@ -13799,6 +13952,9 @@ function drawVectorMonster(x, y, size, type, angle, is_injured = false) {
             break;
         case 'friendlysoldierant':
             drawVectorFriendlySoldierAnt(x, y, size, angle, is_injured);
+            break;
+        case 'friendlyqueenant':
+            drawVectorFriendlyQueenAnt(x, y, size, angle, is_injured);
             break;
         case 'workerant':
             drawVectorWorkerAnt(x, y, size, angle, is_injured);
@@ -14879,6 +15035,7 @@ function updateMonsterEncyclopedia() {
                     'beetle': drawVectorBeetle,
                     'soldierant': drawVectorSoldierAnt,
                     'friendlysoldierant': drawVectorFriendlySoldierAnt,
+                    'friendlyqueenant': drawVectorFriendlyQueenAnt,
                     'workerant': drawVectorWorkerAnt,
                     'babyant': drawVectorBabyAnt,
                     'antqueen': drawVectorAntQueen,
