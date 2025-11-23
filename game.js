@@ -1454,6 +1454,29 @@ function drawStaticPetalItem(petal, canvas, options) {
             ctx.arc(p.radius * 0.31, p.radius * -0.57, p.radius * 0.11, 0, Math.PI * 2);
             ctx.fill();
             ctx.closePath();
+        },
+        salt: (p) => {
+            ctx.beginPath();
+            ctx.fillStyle = blendColor("#ffffff", '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor("#cfcfcf", '#FF0000', blendAmount(p));
+            ctx.lineWidth = 3;
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF"
+            }
+            //1.28, -0.25then 0.88, 0.7 then -0.04, 1.15 then -0.97, 0.71 then -1.23, -0.35 then -0.56, -1.23 then 0.6, -1.12
+            ctx.moveTo(p.radius * 1.28, p.radius * -0.25),
+            ctx.lineTo(p.radius * 0.88, p.radius * 0.7),
+            ctx.lineTo(p.radius * -0.04, p.radius * 1.15),
+            ctx.lineTo(p.radius * -0.97, p.radius * 0.71),
+            ctx.lineTo(p.radius * -1.23, p.radius * -0.35),
+            ctx.lineTo(p.radius * -0.56, p.radius * -1.23),
+            ctx.lineTo(p.radius * 0.6, p.radius * -1.12),
+
+            ctx.fill();
+            ctx.lineTo(p.radius * 1.28, p.radius * -0.25),
+            ctx.stroke();
+            ctx.closePath();
         }
     };
 
@@ -1643,6 +1666,7 @@ function drawStaticPetalItem(petal, canvas, options) {
             24: 'cactus_petal',
             25: 'soil_petal',
             26: 'starfish_petal',
+            27: 'salt',
         };
 
         const renderType = typeMap[type] || 'basic';
@@ -1694,6 +1718,7 @@ function drawStaticPetalItem(petal, canvas, options) {
         24: '仙人掌',
         25: '土壤',
         26: '海星',
+        27: '盐',
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -1883,7 +1908,7 @@ const objectTypeMap = {
     39: 'friendlysandstorm',
     49: 'hornet',  // 移动到23避免冲突
     53: 'beetle',
-    27: 'bee',
+    63: 'bee',
     34: 'healbug',
     // 蚂蚁类型
     29: 'soldierant',
@@ -1918,6 +1943,7 @@ const objectTypeMap = {
     24: 'cactus_petal',
     25: 'soil_petal',
     26: 'starfish_petal',
+    27: 'salt',
     62: 'friendlyqueenant',
 };
 
@@ -5144,6 +5170,29 @@ function drawPetalInContext(petal, ctx, displaySize) {
             ctx.arc(p.radius * 0.31, p.radius * -0.57, p.radius * 0.11, 0, Math.PI * 2);
             ctx.fill();
             ctx.closePath();
+        },
+        salt: (p) => {
+            ctx.beginPath();
+            ctx.fillStyle = blendColor("#ffffff", '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor("#cfcfcf", '#FF0000', blendAmount(p));
+            ctx.lineWidth = 3;
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF"
+            }
+            //1.28, -0.25then 0.88, 0.7 then -0.04, 1.15 then -0.97, 0.71 then -1.23, -0.35 then -0.56, -1.23 then 0.6, -1.12
+            ctx.moveTo(p.radius * 1.28, p.radius * -0.25),
+            ctx.lineTo(p.radius * 0.88, p.radius * 0.7),
+            ctx.lineTo(p.radius * -0.04, p.radius * 1.15),
+            ctx.lineTo(p.radius * -0.97, p.radius * 0.71),
+            ctx.lineTo(p.radius * -1.23, p.radius * -0.35),
+            ctx.lineTo(p.radius * -0.56, p.radius * -1.23),
+            ctx.lineTo(p.radius * 0.6, p.radius * -1.12),
+
+            ctx.fill();
+            ctx.lineTo(p.radius * 1.28, p.radius * -0.25),
+            ctx.stroke();
+            ctx.closePath();
         }
     };
 
@@ -5236,6 +5285,7 @@ function drawPetalInContext(petal, ctx, displaySize) {
             24: 'cactus_petal',
             25: 'soil_petal',
             26: 'starfish_petal',
+            27: 'salt',
         };
 
         if(typeof type === 'integer' || typeof type === 'number'){
@@ -5288,6 +5338,7 @@ function drawPetalInContext(petal, ctx, displaySize) {
         24: '仙人掌',
         25: '土壤',
         26: '海星',
+        27: '盐',
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -5955,7 +6006,7 @@ function calculateTotalAvailablePetals() {
     const totalPetals = [];
 
     // 解析服务器完整数据
-    for (let i = 0; i <= 26; i++) {  // 扩展到14以包含square花瓣
+    for (let i = 0; i <= 27; i++) {  // 扩展到14以包含square花瓣
         const petalKey = `petal${i}`;
         const petalString = gameState.serverBuild[petalKey];
 
@@ -6350,7 +6401,7 @@ function parseServerBuild(buildData) {
     const availablePetals = [];
 
     // 遍历petal0到petal15（共16种花瓣类型，包含pearl）
-    for (let i = 0; i <= 26; i++) {
+    for (let i = 0; i <= 27; i++) {
         const petalKey = `petal${i}`;
         const petalString = buildData[petalKey];
 
@@ -8157,7 +8208,7 @@ function handleServerMessage(data) {
 
                         
                         // 根据类型分类到不同数组
-                        if (typeIdx >= 0 && typeIdx <= 26) {
+                        if (typeIdx >= 0 && typeIdx <= 27) {
                             // 花瓣类型 (0-14)
                             baseObject.type = typeIdx;
                             gameState.petals.push(baseObject);
@@ -11265,6 +11316,29 @@ const petalRenderMap = {
         ctx.beginPath();
         ctx.arc(p.radius * 0.31, p.radius * -0.57, p.radius * 0.11, 0, Math.PI * 2);
         ctx.fill();
+        ctx.closePath();
+    },
+    salt: (p) => {
+        ctx.beginPath();
+        ctx.fillStyle = blendColor("#ffffff", '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor("#cfcfcf", '#FF0000', blendAmount(p));
+        ctx.lineWidth = 3;
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF"
+        }
+        //1.28, -0.25then 0.88, 0.7 then -0.04, 1.15 then -0.97, 0.71 then -1.23, -0.35 then -0.56, -1.23 then 0.6, -1.12
+        ctx.moveTo(p.radius * 1.28, p.radius * -0.25),
+        ctx.lineTo(p.radius * 0.88, p.radius * 0.7),
+        ctx.lineTo(p.radius * -0.04, p.radius * 1.15),
+        ctx.lineTo(p.radius * -0.97, p.radius * 0.71),
+        ctx.lineTo(p.radius * -1.23, p.radius * -0.35),
+        ctx.lineTo(p.radius * -0.56, p.radius * -1.23),
+        ctx.lineTo(p.radius * 0.6, p.radius * -1.12),
+
+        ctx.fill();
+        ctx.lineTo(p.radius * 1.28, p.radius * -0.25),
+        ctx.stroke();
         ctx.closePath();
     }
 };
