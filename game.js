@@ -1477,6 +1477,24 @@ function drawStaticPetalItem(petal, canvas, options) {
             ctx.lineTo(p.radius * 1.28, p.radius * -0.25),
             ctx.stroke();
             ctx.closePath();
+        },
+        sponge_petal: (p) => {
+            ctx.fillStyle = blendColor('#efc99a', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#c2a37d', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+
+            ctx.lineWidth = p.radius*0.2;
+            ctx.beginPath();
+            ctx.moveTo(p.radius * 0.7, 0);
+            for (let i = Math.PI * 1/7; i < Math.PI * 2; i += Math.PI * 2 / 7) {
+              ctx.quadraticCurveTo(Math.cos(i) * p.radius * 1.2, Math.sin(i) * p.radius * 1.2, Math.cos(i + Math.PI * 1 / 7) * p.radius * 0.7, Math.sin(i + Math.PI * 1 / 7) * p.radius * 0.7);
+            }
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
         }
     };
 
@@ -1667,6 +1685,7 @@ function drawStaticPetalItem(petal, canvas, options) {
             25: 'soil_petal',
             26: 'starfish_petal',
             27: 'salt',
+            28: 'sponge_petal',
         };
 
         const renderType = typeMap[type] || 'basic';
@@ -1719,6 +1738,7 @@ function drawStaticPetalItem(petal, canvas, options) {
         25: '土壤',
         26: '海星',
         27: '盐',
+        28: '海绵',
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -1899,7 +1919,7 @@ const objectTypeMap = {
     50: 'rock',
     52: 'ladybug',
     54: 'centipede0',
-    28: 'thunderelement',
+    64: 'thunderelement',
     33: 'venomspider',
     35: 'friendlysoldierant',
     36: 'shieldguardian',
@@ -1944,12 +1964,13 @@ const objectTypeMap = {
     25: 'soil_petal',
     26: 'starfish_petal',
     27: 'salt',
+    28: 'sponge_petal',
     62: 'friendlyqueenant',
 };
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -5193,6 +5214,24 @@ function drawPetalInContext(petal, ctx, displaySize) {
             ctx.lineTo(p.radius * 1.28, p.radius * -0.25),
             ctx.stroke();
             ctx.closePath();
+        },
+        sponge_petal: (p) => {
+            ctx.fillStyle = blendColor('#efc99a', '#FF0000', blendAmount(p));
+            ctx.strokeStyle = blendColor('#c2a37d', '#FF0000', blendAmount(p));
+            if(checkForFirstFrame(p)){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.strokeStyle = "#FFFFFF";
+            }
+
+            ctx.lineWidth = p.radius*0.2;
+            ctx.beginPath();
+            ctx.moveTo(p.radius * 0.7, 0);
+            for (let i = Math.PI * 1/7; i < Math.PI * 2; i += Math.PI * 2 / 7) {
+              ctx.quadraticCurveTo(Math.cos(i) * p.radius * 1.2, Math.sin(i) * p.radius * 1.2, Math.cos(i + Math.PI * 1 / 7) * p.radius * 0.7, Math.sin(i + Math.PI * 1 / 7) * p.radius * 0.7);
+            }
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
         }
     };
 
@@ -5286,6 +5325,7 @@ function drawPetalInContext(petal, ctx, displaySize) {
             25: 'soil_petal',
             26: 'starfish_petal',
             27: 'salt',
+            28: 'sponge_petal',
         };
 
         if(typeof type === 'integer' || typeof type === 'number'){
@@ -5339,6 +5379,7 @@ function drawPetalInContext(petal, ctx, displaySize) {
         25: '土壤',
         26: '海星',
         27: '盐',
+        28: '海绵',
     };
 
     // 获取花瓣名称，处理各种异常情况
@@ -6006,7 +6047,7 @@ function calculateTotalAvailablePetals() {
     const totalPetals = [];
 
     // 解析服务器完整数据
-    for (let i = 0; i <= 27; i++) {  // 扩展到14以包含square花瓣
+    for (let i = 0; i <= 28; i++) {  // 扩展到14以包含square花瓣
         const petalKey = `petal${i}`;
         const petalString = gameState.serverBuild[petalKey];
 
@@ -6401,7 +6442,7 @@ function parseServerBuild(buildData) {
     const availablePetals = [];
 
     // 遍历petal0到petal15（共16种花瓣类型，包含pearl）
-    for (let i = 0; i <= 27; i++) {
+    for (let i = 0; i <= 28; i++) {
         const petalKey = `petal${i}`;
         const petalString = buildData[petalKey];
 
@@ -8180,7 +8221,6 @@ function handleServerMessage(data) {
                         }
 
                         const typeName = objectTypeMap[typeIdx] || 'unknown';
-                        console.log(`处理对象: ${typeName}`)
 
                         const baseObject = {
                             name: typeName,
@@ -8208,7 +8248,7 @@ function handleServerMessage(data) {
 
                         
                         // 根据类型分类到不同数组
-                        if (typeIdx >= 0 && typeIdx <= 27) {
+                        if (typeIdx >= 0 && typeIdx <= 28) {
                             // 花瓣类型 (0-14)
                             baseObject.type = typeIdx;
                             gameState.petals.push(baseObject);
@@ -10565,7 +10605,8 @@ function getPetalColorScheme(type, level) {
             primary: `hsl(${level * 30}, 80%, 50%)`,
             secondary: `hsl(${level * 30}, 70%, 40%)`,
             highlight: `hsl(${level * 30}, 90%, 60%)`
-        }
+        },
+        
     };
 
     return schemes[type] || schemes[1];
@@ -11338,6 +11379,23 @@ const petalRenderMap = {
 
         ctx.fill();
         ctx.lineTo(p.radius * 1.28, p.radius * -0.25),
+        ctx.stroke();
+        ctx.closePath();
+    },
+    sponge_petal: (p) => {
+        ctx.fillStyle = blendColor('#efc99a', '#FF0000', blendAmount(p));
+        ctx.strokeStyle = blendColor('#c2a37d', '#FF0000', blendAmount(p));
+        if(checkForFirstFrame(p)){
+            ctx.fillStyle = "#FFFFFF";
+            ctx.strokeStyle = "#FFFFFF";
+        }
+        ctx.lineWidth = p.radius*0.2;
+        ctx.beginPath();
+        ctx.moveTo(p.radius * 0.7, 0);
+        for (let i = Math.PI * 1/7; i < Math.PI * 2; i += Math.PI * 2 / 7) {
+          ctx.quadraticCurveTo(Math.cos(i) * p.radius * 1.2, Math.sin(i) * p.radius * 1.2, Math.cos(i + Math.PI * 1 / 7) * p.radius * 0.7, Math.sin(i + Math.PI * 1 / 7) * p.radius * 0.7);
+        }
+        ctx.fill();
         ctx.stroke();
         ctx.closePath();
     }
