@@ -1970,7 +1970,7 @@ const objectTypeMap = {
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
+    serverAddress: 'wss://crxtest.gleeze.com:8888/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -7324,7 +7324,8 @@ function connectToServer() {
         console.log('使用本地存储的玩家ID:', gameState.playerId);
     }
     try {
-        gameState.socket = new WebSocket(config.serverAddress);
+        const ws = new WebSocket(config.serverAddress);
+        gameState.socket = ws;
 
         gameState.socket.onopen = () => {
             console.log('连接到服务器成功');
