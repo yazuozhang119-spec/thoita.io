@@ -280,8 +280,8 @@ class AuthManager {
         try {
             await this.waitForWebSocketConnection();
         } catch (error) {
-            this.showError('服务器未连接，请稍后重试');
-            return;
+            this.showError('服务器未连接，请稍后重试3');
+            //return;
         }
 
         this.setLoading(true, 'loginButton');
@@ -302,7 +302,7 @@ class AuthManager {
             } else if (error.message === '用户名或密码不能为空') {
                 this.showError('用户名和密码不能为空');
             } else if (error.message === 'WebSocket连接未建立') {
-                this.showError('服务器未连接，请稍后重试');
+                this.showError('服务器未连接，请稍后重试2');
             } else if (error.message === '请求超时') {
                 this.showError('服务器响应超时，请重试');
             } else {
@@ -329,7 +329,9 @@ class AuthManager {
         try {
             await this.waitForWebSocketConnection();
         } catch (error) {
-            this.showError('服务器未连接，请稍后重试');
+			console.log(error)
+			console.log("error143")
+            this.showError('服务器未连接，请稍后重试1');
             return;
         }
 

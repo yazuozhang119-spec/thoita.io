@@ -54,6 +54,82 @@ function generateICHealth(level1) {
     }
     return health;
 }
+// 花瓣相对值表格（与后端保持一致）
+const PETAL_RELATIVE_VALUES = [
+    1, 1.8, 3.22, 5.74, 10.15, 17.87, 31.27, 54.4, 94.12, 161.88, 
+    276.81, 470.59, 795.29, 1336.09, 2231.26, 3703.9, 6111.43, 10022.75, 
+    16337.07, 26466.06, 42610.36, 68176.57, 108400.75, 171273.19, 268898.9
+];
+
+// 怪物相对值表格（与后端保持一致）
+const MOB_HP_RELATIVE_VALUES = [
+    1, 1.8, 3.33, 6.33, 12.34, 24.68, 50.58, 106.23, 228.39, 502.45, 
+    1130.52, 2600.2, 6110.47, 14665.14, 35929.59, 89823.98, 229051.15, 595532.98, 
+    1578162.4, 4261038.47, 11717855.81, 32809996.26, 93508489.33, 271174619.1, 799965126.2
+];
+
+const MOB_ATTACK_RELATIVE_VALUES = [
+    1, 1.35, 1.86, 2.63, 3.78, 5.56, 8.34, 12.76, 19.91, 31.65, 
+    51.28, 84.61, 142.14, 243.06, 422.93, 748.59, 1347.46, 2465.85, 
+    4586.48, 8668.45, 16643.42, 32454.67, 64260.26, 129163.11, 263492.75
+];
+
+const MOB_OTHER_RELATIVE_VALUES = [
+    1, 1.35, 1.86, 2.63, 3.78, 5.56, 8.34, 12.76, 19.91, 31.65, 
+    51.28, 84.61, 142.14, 243.06, 422.93, 748.59, 1347.46, 2465.85, 
+    4586.48, 8668.45, 16643.42, 32454.67, 64260.26, 129163.11, 263492.75
+];
+// 新的数值生成函数 - 使用相对值表格
+function generateRelativeValues(baseValue, relativeValues = PETAL_RELATIVE_VALUES) {
+    const values = [0];
+    values.push(baseValue);
+    
+    for (let i = 2; i <= 25; i++) {
+        if (i <= relativeValues.length) {
+            values.push(baseValue * (relativeValues[i-1] / relativeValues[0]));
+        } else {
+            // 如果超过表格长度，使用最后一个值
+            values.push(baseValue * (relativeValues[relativeValues.length-1] / relativeValues[0]));
+        }
+    }
+    return values;
+}
+
+// 怪物数值生成函数
+function generateMobHpValues(baseHp) {
+    return generateRelativeValues(baseHp, MOB_HP_RELATIVE_VALUES);
+}
+
+function generateMobAttackValues(baseAttack) {
+    return generateRelativeValues(baseAttack, MOB_ATTACK_RELATIVE_VALUES);
+}
+
+function generateMobOtherValues(baseOther) {
+    return generateRelativeValues(baseOther, MOB_OTHER_RELATIVE_VALUES);
+}
+
+// 保留旧的生成函数（如果需要向后兼容）
+function generateDoublingHealth(level1) {
+    const health = [0];
+    health.push(level1);
+    let current = level1;
+    for (let i = 2; i <= 25; i++) {
+        current *= 2;
+        health.push(current);
+    }
+    return health;
+}
+
+function generateTriplingHealth(level1) {
+    const health = [0];
+    health.push(level1);
+    let current = level1;
+    for (let i = 2; i <= 25; i++) {
+        current *= 3;
+        health.push(current);
+    }
+    return health;
+}
 
 const PETALS_DATA = {
     // 花瓣类型映射 (根据服务器allPetals数组顺序)
@@ -238,73 +314,73 @@ const PETALS_DATA = {
         starfish_petal: '海星花瓣，在玩家血量低于50%时自动回血，回血量是leaf花瓣的两倍'
     },
 
-    // 花瓣血量数据 (1-25级)
+   // 花瓣血量数据 (1-25级) - 使用新的相对值生成
     HEALTH: {
-        missile: generateDoublingHealth(10),
-        basic: generateDoublingHealth(10),
-        leaf: generateDoublingHealth(10),
-        wing: generateDoublingHealth(12),
-        thunder: generateDoublingHealth(14),
-        venom: generateDoublingHealth(10),
-        shield: generateDoublingHealth(20),
+        missile: generateRelativeValues(10),
+        basic: generateRelativeValues(10),
+        leaf: generateRelativeValues(10),
+        wing: generateRelativeValues(12),
+        thunder: generateRelativeValues(14),
+        venom: generateRelativeValues(10),
+        shield: generateRelativeValues(20),
         bomb: [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-        hornet_missile: generateTriplingHealth(20),
-        magnet: generateDoublingHealth(12),
-        thirdeye: generateDoublingHealth(14),
-        stinger: generateDoublingHealth(8),
-        orange: generateDoublingHealth(8),
-        egg: generateDoublingHealth(8),
-        square: generate23xHealth(2000),
-        pearl: generateDoublingHealth(10),
-        bud: generateDoublingHealth(15),
-        antegg: generateDoublingHealth(6),
-        rita: generateDoublingHealth(10),
-        stick: generateDoublingHealth(15),
-        card: generateDoublingHealth(10),
-        peas: generateDoublingHealth(12),
-        grapes: generateDoublingHealth(10),
-        dandelion: generateDoublingHealth(10),
-        cactus_petal: generateDoublingHealth(15),  // 1级15，后续每级翻倍，较高血量
-        soil_petal: generateDoublingHealth(18),    // 1级18，后续每级翻倍，更高血量
-        starfish_petal: generateDoublingHealth(8) // 1级8，后续每级翻倍，低血量高回血
+        hornet_missile: generateRelativeValues(20),
+        magnet: generateRelativeValues(12),
+        thirdeye: generateRelativeValues(14),
+        stinger: generateRelativeValues(8),
+        orange: generateRelativeValues(8),
+        egg: generateRelativeValues(8),
+        square: generateRelativeValues(2000),
+        pearl: generateRelativeValues(10),
+        bud: generateRelativeValues(15),
+        antegg: generateRelativeValues(6),
+        rita: generateRelativeValues(10),
+        stick: generateRelativeValues(15),
+        card: generateRelativeValues(10),
+        peas: generateRelativeValues(12),
+        grapes: generateRelativeValues(10),
+        dandelion: generateRelativeValues(10),
+        cactus_petal: generateRelativeValues(15),
+        soil_petal: generateRelativeValues(18),
+        starfish_petal: generateRelativeValues(8)
     },
 
-    // 花瓣体伤数据 (1-25级)
+    // 花瓣体伤数据 (1-25级) - 使用新的相对值生成
     BODY_DAMAGE: {
-        missile: generateTriplingHealth(30),
-        basic: generateTriplingHealth(10),
-        leaf: [0, 7, 20, 60, 180, 540, 1620, 4860, 14580, 43740, 131220, 393660, 1180980, 3542940, 10628820, 31886460, 95659380, 286978140, 860934420, 2582803260, 7748409780, 23245229340, 69735688020, 209207064060, 627621192180, 1882863576540],  // 伤害削弱到原来的2/3
-        wing: generateTriplingHealth(13),
-        thunder: generateTriplingHealth(13),
-        venom: generateTriplingHealth(8),
-        shield: generateTriplingHealth(5),
-        bomb: [0, 17, 50, 150, 450, 1350, 4050, 12150, 36450, 109350, 328050, 984150, 2952450, 8857350, 26572050, 79716150, 239148450, 717445350, 2152336050, 6457008150, 19371022025, 58113073350, 174339220050, 523017660150, 1569052980450, 4707158941350],  // 伤害削弱到原来的2/3
-        hornet_missile: [0, 1, 2, 5, 10, 20, 40, 80, 160, 320, 640, 1280, 2560, 5120, 10240, 20480, 40960, 81920, 163840, 327680, 655360, 1310720, 2621440, 5242880, 10485760, 20971520],
-        magnet: generateTriplingHealth(8),
-        thirdeye: generateTriplingHealth(12),
-        stinger: generateTriplingHealth(81),
-        orange: generateTriplingHealth(22),
-        egg: generateTriplingHealth(10),
-        square: generateTriplingHealth(1),
-        pearl: generateTriplingHealth(24),
-        bud: generateTriplingHealth(5),
-        antegg: generateDoublingHealth(8),
-        rita: generateDoublingHealth(5),
-        stick: generateDoublingHealth(12),
-        card: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125],
-        peas: [0, 14, 40, 120, 360, 1080, 3240, 9720, 29160, 87480, 262440, 787320, 2361960, 7085880, 21257640, 63772920, 191318760, 573956280, 1721868840, 5165606520, 15496819560, 46490458680, 139471376040, 418414128120, 1255242384360, 3765727153080],  // 伤害增强到原来的2倍
-        grapes: [0, 10, 32, 96, 288, 864, 2592, 7776, 23328, 69984, 209952, 629856, 1889568, 5668704, 17006112, 51018336, 153055008, 459165024, 1377495072, 4132485216, 12397455648, 37192366944, 111577100832, 334731302496, 1004193907488, 3012581722464],  // 伤害增强到原来的2倍
-        dandelion: [0, 30, 90, 270, 810, 2430, 7290, 21870, 65610, 196830, 590490, 1771470, 5314410, 15943230, 47829690, 143489070, 430467210, 1291401630, 3874204890, 11622614670, 34867844010, 104603532030, 313810596090, 941431788270, 2824295364810, 8472886094430],
-        cactus_petal: [0, 12, 36, 108, 324, 972, 2916, 8748, 26244, 78732, 236196, 708588, 2125764, 6377292, 19131876, 57395628, 172186884, 516560652, 1549681956, 4649045868, 13947137604, 41841412812, 125524238436, 376572715308, 1129718145924, 3389154437772],  // 中等攻击力
-        soil_petal: [0, 8, 24, 72, 216, 648, 1944, 5832, 17496, 52488, 157464, 472392, 1417176, 4251528, 12754584, 38263752, 114791256, 344373768, 1033121304, 3099363912, 9298091736, 27894275208, 83682825624, 251048476872, 753145430616, 2259436291848],  // 较低攻击力，主要功能是增加血量
-        starfish_petal: [0, 5, 15, 45, 135, 405, 1215, 3645, 10935, 32805, 98415, 295245, 885735, 2657205, 7971615, 23914845, 71744535, 215233605, 645700815, 1937102445, 5811307335, 17433922005, 52301766015, 156905298045, 470715894135, 1412147682405]  // 低攻击力，主要功能是回血
+        missile: generateRelativeValues(30),
+        basic: generateRelativeValues(10),
+        leaf: generateRelativeValues(7),
+        wing: generateRelativeValues(13),
+        thunder: generateRelativeValues(13),
+        venom: generateRelativeValues(8),
+        shield: generateRelativeValues(5),
+        bomb: generateRelativeValues(17),
+        hornet_missile: generateRelativeValues(1),
+        magnet: generateRelativeValues(8),
+        thirdeye: generateRelativeValues(12),
+        stinger: generateRelativeValues(81),
+        orange: generateRelativeValues(22),
+        egg: generateRelativeValues(10),
+        square: generateRelativeValues(1),
+        pearl: generateRelativeValues(24),
+        bud: generateRelativeValues(5),
+        antegg: generateRelativeValues(40),
+        rita: generateRelativeValues(5),
+        stick: generateRelativeValues(40),
+        card: generateRelativeValues(5),
+        peas: generateRelativeValues(14),
+        grapes: generateRelativeValues(10),
+        dandelion: generateRelativeValues(30),
+        cactus_petal: generateRelativeValues(12),
+        soil_petal: generateRelativeValues(8),
+        starfish_petal: generateRelativeValues(5)
     },
 
-    // 花瓣回血数据 (1-25级，大部分为0)
+    // 花瓣回血数据 (1-25级) - 使用新的相对值生成
     HEAL: {
         missile: Array(26).fill(0),
         basic: Array(26).fill(0),
-        leaf: [0, 25, 50, 100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600, 51200, 102400, 204800, 409600, 819200, 1638400, 3276800, 6553600, 13107200, 26214400, 52428800, 104857600, 209715200, 419430400],
+        leaf: generateRelativeValues(25),
         wing: Array(26).fill(0),
         thunder: Array(26).fill(0),
         venom: Array(26).fill(0),
@@ -326,42 +402,41 @@ const PETALS_DATA = {
         peas: Array(26).fill(0),
         grapes: Array(26).fill(0),
         dandelion: Array(26).fill(0),
-        cactus_petal: Array(26).fill(0),  // 仙人掌花瓣没有回血功能
-        soil_petal: Array(26).fill(0),    // 土壤花瓣没有回血功能
-        starfish_petal: [0, 50, 100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600, 51200, 102400, 204800, 409600, 819200, 1638400, 3276800, 6553600, 13107200, 26214400, 52428800, 104857600, 209715200, 419430400, 838860800]  // 回血量是leaf的两倍
+        cactus_petal: Array(26).fill(0),
+        soil_petal: Array(26).fill(0),
+        starfish_petal: generateRelativeValues(50)
     },
 
-    // 花瓣重量数据 (1-25级)
+    // 花瓣重量数据 (1-25级) - 使用新的相对值生成
     WEIGHT: {
-        missile: generateTriplingHealth(1),
-        basic: generateTriplingHealth(1),
-        leaf: generateTriplingHealth(1),
-        wing: generateTriplingHealth(1),
-        thunder: generateTriplingHealth(3),
-        venom: generateTriplingHealth(2),
-        shield: generateTriplingHealth(4),
-        bomb: generateTriplingHealth(5),
-        hornet_missile: [0, 10, 30, 90, 270, 810, 2430, 8290, 24870, 74610, 223830, 671490, 2014470, 6043410, 18130230, 54390690, 163172070, 489516210, 1468548630, 4405645890, 13216937670, 39650813010, 118952439030, 356857317090, 1070571951270, 3211715853810],
-        magnet: generateTriplingHealth(2),
-        thirdeye: generateTriplingHealth(3),
-        stinger: generateTriplingHealth(2),
-        orange: generateTriplingHealth(2),
-        egg: generateTriplingHealth(3),
-        square: generateTriplingHealth(1),
-        pearl: generateTriplingHealth(2),
-        bud: generateTriplingHealth(2),
-        antegg: generateTriplingHealth(2),
-        rita: generateTriplingHealth(3),
-        stick: generateTriplingHealth(2),
-        card: generateTriplingHealth(3),
-        peas: generateTriplingHealth(4),
-        grapes: generateTriplingHealth(3),
-        dandelion: generateTriplingHealth(1),
-        cactus_petal: generateTriplingHealth(1),  // 仙人掌花瓣重量
-        soil_petal: generateTriplingHealth(1),    // 土壤花瓣重量
-        starfish_petal: generateTriplingHealth(1) // 海星花瓣重量
+        missile: generateRelativeValues(1),
+        basic: generateRelativeValues(1),
+        leaf: generateRelativeValues(1),
+        wing: generateRelativeValues(1),
+        thunder: generateRelativeValues(3),
+        venom: generateRelativeValues(2),
+        shield: generateRelativeValues(4),
+        bomb: generateRelativeValues(5),
+        hornet_missile: generateRelativeValues(10),
+        magnet: generateRelativeValues(2),
+        thirdeye: generateRelativeValues(3),
+        stinger: generateRelativeValues(2),
+        orange: generateRelativeValues(2),
+        egg: generateRelativeValues(3),
+        square: generateRelativeValues(1),
+        pearl: generateRelativeValues(2),
+        bud: generateRelativeValues(3),
+        antegg: generateRelativeValues(2),
+        rita: generateRelativeValues(3),
+        stick: generateRelativeValues(2),
+        card: generateRelativeValues(3),
+        peas: generateRelativeValues(4),
+        grapes: generateRelativeValues(3),
+        dandelion: generateRelativeValues(1),
+        cactus_petal: generateRelativeValues(3),
+        soil_petal: generateRelativeValues(3),
+        starfish_petal: generateRelativeValues(2)
     },
-
     // 特殊机制数据
     SPECIAL_MECHANICS: {
         missile: {

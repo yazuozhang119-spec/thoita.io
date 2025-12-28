@@ -1967,10 +1967,32 @@ const objectTypeMap = {
     28: 'sponge_petal',
     62: 'friendlyqueenant',
 };
+// 检查浏览器是否修改了WebSocket请求
+console.log('WebSocket支持情况:');
+console.log('window.WebSocket:', typeof window.WebSocket);
+console.log('WebSocket.prototype:', WebSocket.prototype);
+
+// 监控所有WebSocket连接
+const originalWebSocket = window.WebSocket;/*
+window.WebSocket = function(...args) {
+    console.log('创建WebSocket连接:', args);
+    const ws = new originalWebSocket(...args);
+    
+    // 拦截send方法查看发送的数据
+    const originalSend = ws.send;
+    ws.send = function(data) {
+        console.log('WebSocket发送数据:', data);
+        return originalSend.call(this, data);
+    };
+    
+    return ws;
+};*/
 
 // 游戏配置
 const config = {
-    serverAddress: 'wss://crxtest.gleeze.com:8888/ws', // 服务器地址
+	serverAddress: 'ws://crxtest.gleeze.com:8888/ws',
+	//serverAddress: 'ws://127.0.0.1:8888/ws', // 服务器地址
+    //serverAddress: 'wss://thoita-prod-1g7djd2id1fdb4d2-1381831241.ap-shanghai.run.wxcloudrun.com/ws', // 服务器地址
     baseCanvasWidth: 1200,  // 基准画布宽度（将被动态调整）
     baseCanvasHeight: 800,  // 基准画布高度（将被动态调整）
     canvasWidth: 1200,
@@ -2961,11 +2983,11 @@ function initGame() {
     window.addEventListener('resize', resizeCanvas);
 
     // 初始化音频系统
-    initAudioSystem();
+    //initAudioSystem();
 
     // 初始化积分显示
     initCreditsDisplay();
-
+console.log(1)
     // 连接到WebSocket（等待认证）
     connectToServer()
 
@@ -3811,31 +3833,31 @@ function updateAbsorbButton() {
     if (absorbChanceText && gameState.currentAbsorbLevel !== null && gameState.currentAbsorbLevel < 25) {
         // 定义合成概率 - 25级系统
         const absorb_chances = {
-            1: 0.3,   // common -> unusual: 30%
-            2: 0.25,  // unusual -> rare: 25%
-            3: 0.2,   // rare -> epic: 20%
-            4: 0.15,  // epic -> legendary: 15%
-            5: 0.1,   // legendary -> mythic: 10%
-            6: 0.08,  // mythic -> ultra: 8%
-            7: 0.05,  // ultra -> super: 5%
-            8: 0.04,  // super -> omega: 4%
-            9: 0.03,  // omega -> fabled: 3%
-            10: 0.02, // fabled -> divine: 2%
-            11: 0.01, // divine -> supreme: 1%
-            12: 0.01, // supreme -> omnipotent: 1%
-            13: 0.009, // omnipotent -> astral: 0.9%
-            14: 0.008, // astral -> celestial: 0.8%
-            15: 0.007, // celestial -> seraphic: 0.7%
-            16: 0.005, // seraphic -> paradisiac: 0.5%
-            17: 0.004, // paradisiac -> protean: 0.4%
-            18: 0.003, // protean -> unsurpassed: 0.1%
-            19: 0.002, // unsurpassed -> eternal: 0.09%
-            20: 0.001, // eternal -> infinite: 0.08%
-            21: 0.0009, // infinite -> transcendent: 0.07%
-            22: 0.0007, // transcendent -> cosmic: 0.05%
-            23: 0.0005, // cosmic -> divine_essence: 0.04%
-            24: 0.0003, // divine_essence -> celestial_force: 0.03%
-            25: 0.0001  // celestial_force -> ultimate: 0.01% (最高级)
+            1: 1.0,  // common -> unusual: 30%
+            2: 1.0,  //# unusual -> rare: 25%
+            3: 0.80,  //# rare -> epic: 20%
+            4: 0.70,  //# epic -> legendary: 15%
+            5: 0.65,  //# legendary -> mythic: 10%
+            6: 0.50,  //# mythic -> ultra: 8%
+            7: 0.50,  //# ultra -> super: 5%
+            8: 0.42,  //# super -> omega: 4%
+            9: 0.38,  //# omega -> fabled: 3%
+            10: 0.32,  //# fabled -> divine: 2%
+            11: 0.28,  //# divine -> supreme: 1%
+            12: 0.25,  //# supreme -> omnipotent: 1%
+            13: 0.25,  //# omnipotent -> astral: 0.9%
+            14: 0.25,  //# astral -> celestial: 0.8%
+            15: 0.25,  //# celestial -> seraphic: 0.7%
+            16: 0.20, // # seraphic -> paradisiac: 0.5%
+            17: 0.18, // # paradisiac -> protean: 0.4%
+            18: 0.15, // # protean -> unsurpassed: 0.1%
+            19: 0.12,  //# unsurpassed -> eternal: 0.09%
+            20: 0.09, // # eternal -> infinite: 0.08%
+            21: 0.06,  //# infinite -> transcendent: 0.07%
+            22: 0.05,  //# transcendent -> cosmic: 0.05%
+            23: 0.05,  //# cosmic -> divine_essence: 0.04%
+            24: 0.05, // # divine_essence -> celestial_force: 0.03%
+            25: 0.05  // # celestial_force -> ultimate: 0.01% (最高级)
         };
 
         const chance = absorb_chances[gameState.currentAbsorbLevel];
@@ -7324,13 +7346,14 @@ function connectToServer() {
         console.log('使用本地存储的玩家ID:', gameState.playerId);
     }
     try {
-        const ws = new WebSocket(config.serverAddress);
-        gameState.socket = ws;
-
+		console.log('尝试连接到:', config.serverAddress);
+        gameState.socket = new WebSocket(config.serverAddress);
+console.log('WebSocket URL:', config.serverAddress);
         gameState.socket.onopen = () => {
-            console.log('连接到服务器成功');
+            console.log('连接到服务器成功crx');
             gameState.connected = true;
-
+			console.log('success');
+			
             // 如果是重连，自动发送连接消息
             if (gameState.isReconnecting && gameState.playerId) {
                 console.log('重连中，自动发送连接消息，玩家ID:', gameState.playerId);
@@ -7354,8 +7377,16 @@ function connectToServer() {
         gameState.socket.onmessage = (event) => {
             handleServerMessage(event.data);
         };
+gameState.socket.onerror = (error) => {
+    console.error('WebSocket 错误详情:');
+    console.error('错误类型:', error.type);
+    console.error('错误时间:', error.timeStamp);
+    console.error('当前 URL:', window.location.href);
+    console.error('WebSocket URL:', config.serverAddress);
+    
 
-        gameState.socket.onerror = (error) => {
+};
+  /*      gameState.socket.onerror = (error) => {
             console.error('WebSocket错误:', error);
             gameState.connected = false;
             // 停止心跳
@@ -7363,7 +7394,7 @@ function connectToServer() {
 
             // 显示连接错误提示
             showConnectionError();
-        };
+        };*/
 
         gameState.socket.onclose = () => {
             console.log('与服务器断开连接');
@@ -8505,6 +8536,7 @@ function handleServerMessage(data) {
 // 发送消息到服务器
 function sendToServer(data) {
     if (gameState.connected && gameState.socket.readyState === WebSocket.OPEN) {
+		//console.log(1);
         gameState.socket.send(JSON.stringify(data));
     }
 }
@@ -15321,6 +15353,35 @@ function updateMonsterEncyclopedia() {
     }
 }
 
+// 掉落表格数据映射（与后端保持一致）
+const DROP_TABLE = {
+    1: {'levels': [2, 1], 'quantities': [1, 1], 'probabilities': [0.3, 0.7]},
+    2: {'levels': [2, 1], 'quantities': [1, 3], 'probabilities': [0.5, 0.5]},
+    3: {'levels': [3, 2, 1], 'quantities': [1, 2, 5], 'probabilities': [0.3, 0.2, 0.5]},
+    4: {'levels': [4, 3, 2], 'quantities': [1, 2, 5], 'probabilities': [0.15, 0.35, 0.6]},
+    5: {'levels': [5, 4, 3], 'quantities': [1, 3, 2], 'probabilities': [0.08, 0.25, 0.68]},
+    6: {'levels': [5, 4, 3], 'quantities': [3, 5, 5], 'probabilities': [0.2, 0.3, 0.5]},
+    7: {'levels': [6, 5, 4], 'quantities': [1, 5, 5], 'probabilities': [0.1, 0.15, 0.75]},
+    8: {'levels': [6, 5], 'quantities': [3, 3], 'probabilities': [0.2, 0.8]},
+    9: {'levels': [7, 6], 'quantities': [1, 1], 'probabilities': [0.1, 0.9]},
+    10: {'levels': [8, 7, 6], 'quantities': [1, 3, 5], 'probabilities': [0.02, 0.15, 0.83]},
+    11: {'levels': [8, 7], 'quantities': [3, 5], 'probabilities': [0.05, 0.95]},
+    12: {'levels': [9, 8, 7], 'quantities': [1, 1, 5], 'probabilities': [0.01, 0.59, 0.4]},
+    13: {'levels': [9, 9, 8], 'quantities': [3, 1, 1], 'probabilities': [0.03, 0.15, 0.82]},
+    14: {'levels': [9, 9, 8], 'quantities': [3, 1, 60], 'probabilities': [0.5, 0.5, 0.7]},
+    15: {'levels': [10, 9, 8], 'quantities': [1, 1, 100], 'probabilities': [0.06, 0.24, 0.6]},
+    16: {'levels': [10, 9, 8], 'quantities': [1, 1, 8], 'probabilities': [0.14, 0.26, 0.67]},
+    17: {'levels': [10, 9], 'quantities': [1, 1], 'probabilities': [0.2, 0.8]},
+    18: {'levels': [11, 10, 9], 'quantities': [1, 3, 8], 'probabilities': [0.03, 0.3, 0.89]},
+    19: {'levels': [12, 11, 10], 'quantities': [1, 1, 8], 'probabilities': [0.01, 0.1, 0.94]},
+    20: {'levels': [12, 11], 'quantities': [1, 1], 'probabilities': [0.05, 0.95]},
+    21: {'levels': [13, 12, 11], 'quantities': [1, 3, 3], 'probabilities': [0.01, 0.05, 0.85]},
+    22: {'levels': [13, 12], 'quantities': [1, 3], 'probabilities': [0.07, 0.93]},
+    23: {'levels': [14, 13, 12], 'quantities': [1, 1, 10], 'probabilities': [0.01, 0.14, 0.85]},
+    24: {'levels': [14, 13], 'quantities': [1, 1], 'probabilities': [0.03, 0.97]},
+    25: {'levels': [15, 14, 13], 'quantities': [1, 1, 30], 'probabilities': [0.03, 0.4, 0.47]}
+};
+
 // 获取掉落物显示HTML
 function getDropDisplay(drops, level = 1) {
     if (!drops || drops.length === 0) {
@@ -15335,56 +15396,39 @@ function getDropDisplay(drops, level = 1) {
 
         html += '<div class="drop-possibilities">';
 
-        if (level >= 17) {
-            // Level >= 17: 掉落level-2级花瓣
+        // 获取掉落配置
+        const dropConfig = DROP_TABLE[level];
+        if (!dropConfig) {
+            // 如果没有配置，使用默认掉落
+            const dropLevel = Math.max(1, level - 1);
             html += `<div class="drop-group">`;
-            let dropLevel = Math.max(1, level - 2);
-
-            // 根据generate_drops函数的修正逻辑
-            // 40%几率掉落2个
-            html += `<div class="drop-item"><span class="${rarityClass}">40.0%</span> ${petalName} Lv${dropLevel} x2</div>`;
-
-            // 条件概率：60%剩余概率中再取20% = 12%几率掉落5个
-            html += `<div class="drop-item"><span class="${rarityClass}">12.0%</span> ${petalName} Lv${dropLevel} x5</div>`;
-
-            // 剩余48%几率掉落1个
-            html += `<div class="drop-item"><span class="${rarityClass}">48.0%</span> ${petalName} Lv${dropLevel} x1</div>`;
-            html += `</div>`;
-
-        } else if (level >= 12) {
-            // Level >= 12: 掉落level-2级花瓣（99%）或level-1级花瓣（1%）
-            html += `<div class="drop-group">`;
-
-            let dropLevelMinus1 = Math.max(1, level - 1);
-            let dropLevelMinus2 = Math.max(1, level - 2);
-
-            // 1% * 63.5% = 0.635% -> 1个Lv-1
-            html += `<div class="drop-item"><span class="${rarityClass}">0.635%</span> ${petalName} Lv${dropLevelMinus1} x1</div>`;
-
-            // 1% * 30% = 0.3% -> 2个Lv-1
-            html += `<div class="drop-item"><span class="${rarityClass}">0.300%</span> ${petalName} Lv${dropLevelMinus1} x2</div>`;
-
-            // 1% * 6.5% = 0.065% -> 10个Lv-1
-            html += `<div class="drop-item"><span class="${rarityClass}">0.065%</span> ${petalName} Lv${dropLevelMinus1} x10</div>`;
-
-            // 99% * 63.5% = 62.865% -> 1个Lv-2
-            html += `<div class="drop-item"><span class="${rarityClass}">62.865%</span> ${petalName} Lv${dropLevelMinus2} x1</div>`;
-
-            // 99% * 30% = 29.7% -> 2个Lv-2
-            html += `<div class="drop-item"><span class="${rarityClass}">29.700%</span> ${petalName} Lv${dropLevelMinus2} x2</div>`;
-
-            // 99% * 6.5% = 6.435% -> 10个Lv-2
-            html += `<div class="drop-item"><span class="${rarityClass}">6.435%</span> ${petalName} Lv${dropLevelMinus2} x10</div>`;
-            html += `</div>`;
-
-        } else {
-            // Level < 12: 掉落level-1级花瓣
-            html += `<div class="drop-group">`;
-
-            let dropLevel = Math.max(1, level - 1);
-
-            // 100%几率掉落1个level-1级花瓣
             html += `<div class="drop-item"><span class="${rarityClass}">100%</span> ${petalName} Lv${dropLevel} x1</div>`;
+            html += `</div>`;
+        } else {
+            // 显示所有可能的掉落选项
+            const levels = dropConfig['levels'];
+            const quantities = dropConfig['quantities'];
+            const probabilities = dropConfig['probabilities'];
+            
+            html += `<div class="drop-group">`;
+            
+            // 计算概率总和并归一化显示
+            const totalProb = probabilities.reduce((sum, prob) => sum + prob, 0);
+            
+            for (let i = 0; i < levels.length; i++) {
+                const dropLevel = levels[i];
+                const quantity = quantities[i];
+                let probability = probabilities[i];
+                
+                // 如果概率总和不为1，显示归一化后的百分比
+                if (totalProb !== 1.0) {
+                    probability = probability / totalProb;
+                }
+                
+                const percentage = (probability * 100).toFixed(3);
+                html += `<div class="drop-item"><span class="${rarityClass}">${percentage}%</span> ${petalName} Lv${dropLevel} x${quantity}</div>`;
+            }
+            
             html += `</div>`;
         }
 
@@ -15393,6 +15437,104 @@ function getDropDisplay(drops, level = 1) {
 
     return html;
 }
+
+// 获取简化的掉落显示（只显示最常见的掉落）
+function getSimpleDropDisplay(drops, level = 1) {
+    if (!drops || drops.length === 0) {
+        return '无掉落';
+    }
+
+    let result = '';
+    drops.forEach((dropType, index) => {
+        const petalName = PETAL_NAMES[dropType] || `未知${dropType}`;
+        
+        // 获取掉落配置
+        const dropConfig = DROP_TABLE[level];
+        if (!dropConfig) {
+            // 如果没有配置，使用默认掉落
+            const dropLevel = Math.max(1, level - 1);
+            result += `${petalName} Lv${dropLevel}`;
+        } else {
+            // 显示最常见的掉落（概率最高的）
+            const levels = dropConfig['levels'];
+            const quantities = dropConfig['quantities'];
+            const probabilities = dropConfig['probabilities'];
+            
+            // 找到概率最高的选项
+            let maxProbIndex = 0;
+            for (let i = 1; i < probabilities.length; i++) {
+                if (probabilities[i] > probabilities[maxProbIndex]) {
+                    maxProbIndex = i;
+                }
+            }
+            
+            const dropLevel = levels[maxProbIndex];
+            const quantity = quantities[maxProbIndex];
+            
+            if (quantity > 1) {
+                result += `${petalName} Lv${dropLevel} x${quantity}`;
+            } else {
+                result += `${petalName} Lv${dropLevel}`;
+            }
+        }
+        
+        if (index < drops.length - 1) {
+            result += '、';
+        }
+    });
+
+    return result;
+}
+
+// 获取掉落详细信息（用于工具提示）
+function getDropTooltip(drops, level = 1) {
+    if (!drops || drops.length === 0) {
+        return '无掉落';
+    }
+
+    let tooltip = '<div class="drop-tooltip">';
+    drops.forEach(dropType => {
+        const petalName = PETAL_NAMES[dropType] || `未知${dropType}`;
+        const rarity = getItemRarity(dropType);
+        const rarityClass = `rarity-${rarity}`;
+        
+        tooltip += `<div class="drop-type">${petalName}:</div>`;
+        
+        // 获取掉落配置
+        const dropConfig = DROP_TABLE[level];
+        if (!dropConfig) {
+            // 如果没有配置，使用默认掉落
+            const dropLevel = Math.max(1, level - 1);
+            tooltip += `<div class="drop-option"><span class="${rarityClass}">100%</span> Lv${dropLevel} x1</div>`;
+        } else {
+            // 显示所有可能的掉落选项
+            const levels = dropConfig['levels'];
+            const quantities = dropConfig['quantities'];
+            const probabilities = dropConfig['probabilities'];
+            
+            // 计算概率总和并归一化显示
+            const totalProb = probabilities.reduce((sum, prob) => sum + prob, 0);
+            
+            for (let i = 0; i < levels.length; i++) {
+                const dropLevel = levels[i];
+                const quantity = quantities[i];
+                let probability = probabilities[i];
+                
+                // 如果概率总和不为1，显示归一化后的百分比
+                if (totalProb !== 1.0) {
+                    probability = probability / totalProb;
+                }
+                
+                const percentage = (probability * 100).toFixed(1);
+                tooltip += `<div class="drop-option"><span class="${rarityClass}">${percentage}%</span> Lv${dropLevel} x${quantity}</div>`;
+            }
+        }
+    });
+    
+    tooltip += '</div>';
+    return tooltip;
+}
+
 
 // 在显示图鉴窗口时更新怪物图鉴
 const originalShowWindow = showWindow;
